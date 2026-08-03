@@ -38,7 +38,13 @@ export default async function DashboardHome() {
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <Image src="/brand/logo-mark.png" alt="" width={40} height={40} priority />
+          <Image
+            src="/brand/logo-mark.png"
+            alt=""
+            width={40}
+            height={40}
+            priority
+          />
           <div>
             KartVizyon<small>AI saha hafızası</small>
           </div>

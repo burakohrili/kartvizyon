@@ -76,7 +76,8 @@ const features = [
   {
     title: "KVKK uyumlu veri yaşam döngüsü",
     how: "Veri dışa aktarma, rıza kaydı ve hesap silme talepleri uçtan uca desteklenir.",
-    value: "Yasal uyum ve müşteri güveni için ekstra süreç kurmanıza gerek kalmaz.",
+    value:
+      "Yasal uyum ve müşteri güveni için ekstra süreç kurmanıza gerek kalmaz.",
   },
 ];
 
@@ -175,7 +176,13 @@ export default function MarketingHome() {
           href="/"
           aria-label="KartVizyon ana sayfa"
         >
-          <Image src="/brand/logo-mark.png" alt="" width={36} height={36} priority />
+          <Image
+            src="/brand/logo-mark.png"
+            alt=""
+            width={36}
+            height={36}
+            priority
+          />
           <strong>KartVizyon</strong>
         </Link>
         <nav aria-label="Tanıtım menüsü">
@@ -184,6 +191,7 @@ export default function MarketingHome() {
           <a href="#guven">Güven</a>
           <a href="#fiyatlandirma">Fiyatlandırma</a>
           <a href="#sss">SSS</a>
+          <a href="#iletisim">İletişim</a>
           <Link href="/support">Destek</Link>
         </nav>
         <div className="marketing-actions">
@@ -371,9 +379,13 @@ export default function MarketingHome() {
           {pricing.map((tier) => (
             <article
               key={tier.name}
-              className={tier.highlight ? "pricing-card featured" : "pricing-card"}
+              className={
+                tier.highlight ? "pricing-card featured" : "pricing-card"
+              }
             >
-              {tier.highlight && <span className="pricing-badge">En çok tercih edilen</span>}
+              {tier.highlight && (
+                <span className="pricing-badge">En çok tercih edilen</span>
+              )}
               <h3>{tier.name}</h3>
               <p className="pricing-audience">{tier.audience}</p>
               <ul>
@@ -418,6 +430,37 @@ export default function MarketingHome() {
         </a>
       </section>
 
+      <section className="marketing-section" id="iletisim">
+        <div className="section-heading">
+          <span>İLETİŞİM</span>
+          <h2>KartVizyon ve Noesis Social</h2>
+          <p>
+            Ürün, demo, destek ve veri hakları talepleriniz için doğrudan bize
+            ulaşabilirsiniz.
+          </p>
+        </div>
+        <div className="persona-grid">
+          <article>
+            <h3>İşletme</h3>
+            <p>Noesis Social - Burak OHRİLİ</p>
+            <p>Ege Vergi Dairesi · VKN 35509755908</p>
+          </article>
+          <article>
+            <h3>Adres</h3>
+            <p>Gazi Osmanpaşa Mahallesi 5499/1 Sokak No:9 Bornova / İzmir</p>
+          </article>
+          <article>
+            <h3>E-posta</h3>
+            <p>
+              <a href="mailto:kartvizyonapp@gmail.com">
+                kartvizyonapp@gmail.com
+              </a>
+            </p>
+            <Link href="/contact">Tüm iletişim bilgileri →</Link>
+          </article>
+        </div>
+      </section>
+
       <footer className="marketing-footer">
         <div>
           <strong>KartVizyon</strong>
@@ -428,9 +471,13 @@ export default function MarketingHome() {
           </p>
         </div>
         <nav aria-label="Yasal bağlantılar">
+          <Link href="/about">Hakkımızda</Link>
+          <Link href="/contact">İletişim</Link>
           <Link href="/privacy">Gizlilik</Link>
           <Link href="/kvkk">KVKK Aydınlatma</Link>
           <Link href="/terms">Kullanım Koşulları</Link>
+          <Link href="/distance-sales">Mesafeli Satış</Link>
+          <Link href="/delivery-refund">Teslim, İptal ve İade</Link>
           <Link href="/account-deletion">Hesap Silme</Link>
           <Link href="/support">Destek</Link>
         </nav>

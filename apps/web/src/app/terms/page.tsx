@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LegalPage } from "../legal-page";
 export const metadata: Metadata = {
   title: "Kullanım Koşulları",
@@ -29,6 +30,13 @@ export default function TermsPage() {
         Bireysel ve kurumsal paketlerin fiyat, yenileme, iptal ve iade şartları
         satın alma kanalında açıkça gösterilecektir. Ödeme özellikleri
         etkinleştirilmeden ücret tahsil edilmez.
+      </p>
+      <p>
+        Satışa açılan aboneliklerde satın alma öncesi bilgilendirme ve sözleşme
+        için <Link href="/distance-sales">Mesafeli Satış Sözleşmesi</Link>,
+        hizmet başlangıcı, iptal ve iade için{" "}
+        <Link href="/delivery-refund">Teslim, İptal ve İade Koşulları</Link>
+        uygulanır.
       </p>
       <h2>Fikri mülkiyet ve sorumluluk</h2>
       <p>

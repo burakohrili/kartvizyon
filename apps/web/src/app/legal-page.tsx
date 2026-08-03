@@ -13,7 +13,7 @@ export function LegalPage({
     <main className="legal-shell">
       <header>
         <Link href="/">← KartVizyon</Link>
-        <a href="mailto:kartvizyonapp@gmail.com">İletişim</a>
+        <Link href="/contact">İletişim</Link>
       </header>
       <article>
         <span className="marketing-kicker">KARTVİZYON</span>

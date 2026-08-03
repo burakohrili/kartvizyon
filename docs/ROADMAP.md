@@ -60,6 +60,8 @@ Uygulanacaklar:
 - iyzico webhook ucu: imza doğrulama, idempotent işleme, audit kaydı.
 - Web checkout akışı ve plan yükseltme/iptal ekranları.
 - Fatura ve iade süreci (Türkiye mevzuatı).
+- iyzico site hazırlığı: Hakkımızda, İletişim, Mesafeli Satış ve Hizmet Teslim–İptal–İade
+  sayfaları hazır; fiyat, telefon, KEP, meslek odası ve resmî ödeme logoları bekliyor.
 - Mobil `settings/billing` yüzeyinin salt-okunur kaldığının testle doğrulanması.
 
 ## Bilinçli kapsam dışı

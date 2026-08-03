@@ -3143,20 +3143,29 @@ nav a.active {
     font-size: 48px;
   }
   .marketing-visual {
-    min-height: 420px;
+    display: grid;
+    min-height: 0;
+    gap: 14px;
+    padding: 20px;
     border-radius: 32px;
   }
+  .marketing-visual .visual-orbit {
+    display: none;
+  }
+  .marketing-visual .visual-card {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    padding: 20px;
+  }
   .main-card {
-    left: 20px;
-    width: 80%;
+    grid-row: 1;
   }
   .note-card {
-    right: 14px;
-    width: 74%;
+    grid-row: 2;
   }
   .task-card {
-    left: 14px;
-    bottom: 18px;
+    grid-row: 3;
   }
   .outcome-grid {
     grid-template-columns: 1fr;

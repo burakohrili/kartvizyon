@@ -4,6 +4,10 @@ const routes = [
   "/privacy",
   "/kvkk",
   "/terms",
+  "/about",
+  "/contact",
+  "/distance-sales",
+  "/delivery-refund",
   "/support",
   "/account-deletion",
 ];
