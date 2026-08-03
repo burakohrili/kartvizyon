@@ -2,7 +2,9 @@ workflows:
   kartvizyon-android-release:
     name: KartVizyon Android signed AAB
     max_build_duration: 60
-    instance_type: linux_x2
+    # Personal accounts receive free build minutes on the macOS M2 runner.
+    # Linux X2 requires billing even for Android-only workflows.
+    instance_type: mac_mini_m2
     working_directory: apps/mobile
     environment:
       groups:
