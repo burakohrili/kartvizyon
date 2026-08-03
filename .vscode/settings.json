@@ -1,6 +1,8 @@
 {
   "gradle.nestedProjects": false,
-  "java.import.gradle.enabled": true,
+  "java.import.gradle.enabled": false,
+  "java.import.gradle.wrapper.enabled": false,
+  "java.configuration.updateBuildConfiguration": "disabled",
   "java.import.exclusions": [
     "**/node_modules/**",
     "**/.metadata/**",
