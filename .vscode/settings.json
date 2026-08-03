@@ -1,7 +1,25 @@
 {
+  // Bu bir Flutter projesidir. Android tarafı `flutter build` ile derlenir;
+  // IDE'nin Java/Gradle tooling'ine ihtiyaç yoktur. Açık bırakılırsa pub
+  // cache'teki eklenti örnek projelerini tarar ve her wrapper sürümü için
+  // ayrı Gradle daemon açar (bir seferinde 33 daemon / 4+ GB RAM görüldü).
+  //
+  // Tek JDK standardı: Java 21 (Android Studio JBR).
+  // Sistemdeki Oracle JDK 24 Gradle 8.12 ile uyumsuz ("major version 68"),
+  // JDK 11.0.2 kurulumu ise bozuk. Hiçbiri kullanılmamalı.
+
+  // --- Oracle Java Platform (oracle.oracle-java, NetBeans tabanlı) ---
+  // Otomatik seçimde Java 24'ü buluyordu.
+  "jdk.jdkhome": "C:\\Program Files\\Android\\Android Studio\\jbr",
+  "jdk.project.jdkhome": "C:\\Program Files\\Android\\Android Studio\\jbr",
+
+  // --- Gradle for Java (vscjava.vscode-gradle) ---
+  "gradle.autoDetect": "off",
   "gradle.nestedProjects": false,
+  "java.gradle.buildServer.enabled": "off",
+
+  // --- Red Hat Java (şu an kurulu değil; ileride kurulursa diye) ---
   "java.import.gradle.enabled": false,
-  "java.import.gradle.wrapper.enabled": false,
   "java.configuration.updateBuildConfiguration": "disabled",
   "java.import.exclusions": [
     "**/node_modules/**",
@@ -13,6 +31,8 @@
     "**/build/**",
     "**/.dart_tool/**"
   ],
+
+  // --- Dosya izleme ve arama dışlamaları ---
   "files.watcherExclude": {
     "**/.tools/**": true,
     "**/build/**": true,

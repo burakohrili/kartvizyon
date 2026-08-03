@@ -5,9 +5,36 @@ Android ve iOS saha uygulaması; offline-first ziyaret/debrief, müşteri hafız
 ## Gereksinimler
 
 - Flutter stable / Dart 3.8+
-- Android Studio + Android SDK 36, Java 17
+- Android Studio + Android SDK 36
 - iOS için Codemagic macOS/Xcode (yerel Mac zorunlu değil)
 - Supabase project URL ve publishable/anon key
+
+## Yerel toolchain standardı
+
+Bu proje **tek bir JDK** ile çalışır: **Java 21 — Android Studio JBR**
+(`C:\Program Files\Android\Android Studio\jbr`). Gradle 8.12 bunu destekler;
+Java 24 desteklemez (`Unsupported class file major version 68`).
+
+| Ayar | Değer | Nerede |
+| --- | --- | --- |
+| Gradle JDK | JBR 21 | `~/.gradle/gradle.properties` → `org.gradle.java.home` |
+| IDE Java eklentileri | JBR 21 | `.vscode/settings.json` → `jdk.jdkhome` |
+| `PUB_CACHE` | `D:\pub-cache` | kullanıcı ortam değişkeni |
+
+İki kural:
+
+1. **`org.gradle.java.home` depoya girmez.** Makineye özel bir yoldur;
+   `apps/mobile/android/gradle.properties` içine yazılırsa Codemagic'in
+   macOS runner'ı kırılır. Kullanıcı seviyesindeki `~/.gradle/gradle.properties`
+   içinde tutulur.
+2. **`PUB_CACHE` projeyle aynı sürücüde olmalıdır.** Proje `D:`, cache `C:`
+   olduğunda Gradle sürücüler arası göreli yol hesaplayamaz ve
+   `this and base files have different roots` hatası verir.
+
+VS Code'daki Java/Gradle eklentileri (`oracle.oracle-java`, `vscjava.vscode-gradle`)
+bu projede gerekli değildir; `.vscode/settings.json` otomatik taramalarını kapatır.
+Açık kalırlarsa pub cache'teki eklenti örnek projelerini tarayıp her wrapper
+sürümü için ayrı Gradle daemon açarlar.
 
 ## Yerel çalışma
 
