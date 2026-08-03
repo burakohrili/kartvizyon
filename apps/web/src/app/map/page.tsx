@@ -6,7 +6,7 @@ export default function MapPage() {
     <main className="map-page">
       <header className="map-header">
         <div>
-          <Link href="/" className="back-link">
+          <Link href="/dashboard" className="back-link">
             ← Genel bakış
           </Link>
           <span className="eyebrow">BÖLGE GÖRÜNÜMÜ</span>

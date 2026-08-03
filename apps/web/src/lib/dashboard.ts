@@ -59,7 +59,7 @@ export async function loadDashboard() {
       supabase
         .from("visits")
         .select(
-          "id,approved_at,ai_summary,company:companies(name),representative:profiles(full_name)",
+          "id,approved_at,ai_summary,company:companies(name),representative:profiles!visits_representative_id_fkey(full_name)",
         )
         .eq("workspace_id", workspaceId)
         .eq("status", "approved")

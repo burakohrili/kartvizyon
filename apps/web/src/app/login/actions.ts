@@ -10,7 +10,7 @@ export async function signIn(formData: FormData) {
   if (!supabase) redirect("/login?error=config");
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) redirect("/login?error=credentials");
-  redirect("/");
+  redirect("/dashboard");
 }
 
 export async function signUp(formData: FormData) {

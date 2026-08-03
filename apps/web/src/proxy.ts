@@ -6,7 +6,14 @@ export function proxy(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") ?? randomUUID();
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", requestId);
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  const hostname = request.headers.get("host")?.split(":")[0];
+  const isAppDomain = hostname === "app.kartvizyon.app";
+  const response =
+    isAppDomain && request.nextUrl.pathname === "/"
+      ? NextResponse.rewrite(new URL("/dashboard", request.url), {
+          request: { headers: requestHeaders },
+        })
+      : NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("x-request-id", requestId);
   response.headers.set(
     "server-timing",

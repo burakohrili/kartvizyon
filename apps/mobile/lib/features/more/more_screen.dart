@@ -25,6 +25,12 @@ class MoreScreen extends StatelessWidget {
     body: ListView(
       children: [
         ListTile(
+          leading: const Icon(Icons.map_outlined),
+          title: const Text('Saha haritası'),
+          subtitle: const Text('Yakındaki müşteriler ve ziyaret rotası'),
+          onTap: () => context.push('/map'),
+        ),
+        ListTile(
           leading: const Icon(Icons.mic_none),
           title: const Text('Ziyaretler ve sesli not'),
           subtitle: const Text(

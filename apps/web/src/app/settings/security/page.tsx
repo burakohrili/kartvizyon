@@ -5,7 +5,7 @@ export default function SecuritySettingsPage() {
   return (
     <main className="form-page">
       <section className="form-card security-card">
-        <Link href="/" className="back-link">
+        <Link href="/dashboard" className="back-link">
           ← Genel bakış
         </Link>
         <span className="eyebrow">HESAP GÜVENLİĞİ</span>

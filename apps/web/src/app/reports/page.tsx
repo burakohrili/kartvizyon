@@ -30,10 +30,11 @@ export default async function ReportsPage({
   const { positive, followUps, companies } = reportMetrics(report.visits);
   const representatives = Array.from(
     new Map(
-      allReport.visits.map((visit) => [
-        visit.representativeId,
-        visit.representativeName,
-      ]),
+      allReport.visits.flatMap((visit) =>
+        visit.representativeId
+          ? [[visit.representativeId, visit.representativeName] as const]
+          : [],
+      ),
     ),
   );
   const companyOptions = Array.from(
@@ -62,7 +63,7 @@ export default async function ReportsPage({
     <main className="customers-page reports-page">
       <header className="customers-header">
         <div>
-          <Link href="/" className="back-link">
+          <Link href="/dashboard" className="back-link">
             ← Genel bakış
           </Link>
           <span className="eyebrow">ONAYLI KAYITLAR</span>

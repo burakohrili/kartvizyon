@@ -6,6 +6,8 @@ const inputSchema = z.object({
   documentId: z.uuid(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   status: z.enum(["clean", "blocked", "failed"]),
+  scannerSignature: z.string().max(200).optional(),
+  error: z.string().max(500).optional(),
 });
 
 export async function POST(request: Request) {
@@ -31,9 +33,14 @@ export async function POST(request: Request) {
     return Response.json({ error: "Dosya özeti uyuşmuyor." }, { status: 409 });
   const updated = await supabase
     .from("documents")
-    .update({ scan_status: input.data.status })
+    .update({
+      scan_status: input.data.status,
+      scan_completed_at: new Date().toISOString(),
+      scan_error: input.data.error ?? null,
+      scanner_signature: input.data.scannerSignature ?? null,
+    })
     .eq("id", input.data.documentId)
-    .eq("scan_status", "pending");
+    .in("scan_status", ["pending", "processing"]);
   if (updated.error)
     return Response.json({ error: updated.error.message }, { status: 500 });
   await supabase.from("audit_logs").insert({

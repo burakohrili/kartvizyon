@@ -29,7 +29,7 @@ export default async function ProductsPage() {
     <main className="customers-page">
       <header className="customers-header">
         <div>
-          <Link href="/" className="back-link">
+          <Link href="/dashboard" className="back-link">
             ← Genel bakış
           </Link>
           <span className="eyebrow">ÜRÜN VE FİYAT</span>

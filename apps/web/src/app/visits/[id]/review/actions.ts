@@ -26,15 +26,29 @@ export async function approveVisit(formData: FormData) {
     .eq("status", "needs_review")
     .single();
   const parsed = visitSummarySchema.safeParse(current.data?.ai_summary);
-  if (!parsed.success) redirect(`/visits/${id}/review?error=summary`);
 
   const selectedFollowUps = formData.getAll("followUps").map(String);
   const firstDate = String(formData.get("followUpDate") ?? "") || null;
+  const baseSummary = parsed.success
+    ? parsed.data
+    : {
+        summary: String(formData.get("summary") ?? ""),
+        outcome: "unknown" as const,
+        customerNeeds: [],
+        promises: [],
+        followUps: selectedFollowUps.map((title, index) => ({
+          title,
+          dueDate: index === 0 ? firstDate : null,
+          ownerHint: null,
+        })),
+        sensitiveContentDetected: false,
+        confidence: 0,
+      };
   const aiSummary = visitSummarySchema.parse({
-    ...parsed.data,
+    ...baseSummary,
     summary: String(formData.get("summary") ?? ""),
     outcome: String(formData.get("outcome") ?? "unknown"),
-    followUps: parsed.data.followUps
+    followUps: baseSummary.followUps
       .filter((item) => selectedFollowUps.includes(item.title))
       .map((item, index) => ({
         ...item,

@@ -1,0 +1,97 @@
+workflows:
+  kartvizyon-android-release:
+    name: KartVizyon Android signed AAB
+    max_build_duration: 60
+    instance_type: linux_x2
+    working_directory: apps/mobile
+    environment:
+      groups:
+        - mobile_runtime
+      android_signing:
+        - kartvizyon_upload
+      vars:
+        PACKAGE_NAME: app.kartvizyon.mobile
+      flutter: stable
+      java: 17
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/.gradle/caches
+    scripts:
+      - name: Create isolated Android signing configuration
+        script: |
+          cat > android/key.properties <<EOF
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=$CM_KEYSTORE_PATH
+          EOF
+      - name: Resolve dependencies
+        script: flutter pub get
+      - name: Static analysis
+        script: flutter analyze
+      - name: Unit and widget tests
+        script: flutter test
+      - name: Build signed Android App Bundle
+        script: |
+          flutter build appbundle --release \
+            --build-number=$PROJECT_BUILD_NUMBER \
+            --dart-define=SUPABASE_URL=$SUPABASE_URL \
+            --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \
+            --dart-define=SENTRY_DSN=$SENTRY_DSN
+    artifacts:
+      - build/app/outputs/bundle/release/*.aab
+      - build/app/outputs/mapping/release/mapping.txt
+      - flutter_drive.log
+
+  kartvizyon-ios-testflight:
+    name: KartVizyon iOS signed IPA / TestFlight
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    working_directory: apps/mobile
+    inputs:
+      submitToTestFlight:
+        description: Upload the verified build to TestFlight
+        type: boolean
+        default: false
+    integrations:
+      app_store_connect: kartvizyon_app_store
+    environment:
+      groups:
+        - mobile_runtime
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.kartvizyon.mobile
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+    scripts:
+      - name: Resolve dependencies
+        script: flutter pub get
+      - name: Static analysis
+        script: flutter analyze
+      - name: Unit and widget tests
+        script: flutter test
+      - name: Install CocoaPods dependencies
+        script: find ios -name Podfile -execdir pod install \;
+      - name: Apply KartVizyon-only iOS signing profiles
+        script: xcode-project use-profiles --project ios/Runner.xcodeproj
+      - name: Build signed IPA
+        script: |
+          flutter build ipa --release \
+            --build-number=$PROJECT_BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist \
+            --dart-define=SUPABASE_URL=$SUPABASE_URL \
+            --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \
+            --dart-define=SENTRY_DSN=$SENTRY_DSN
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: ${{ inputs.submitToTestFlight }}

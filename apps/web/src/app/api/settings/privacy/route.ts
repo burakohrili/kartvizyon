@@ -17,7 +17,9 @@ export async function GET(request: Request) {
         .eq("user_id", context.user.id),
       context.supabase
         .from("privacy_requests")
-        .select("id,kind,status,requested_at,due_at,completed_at")
+        .select(
+          "id,kind,status,requested_at,due_at,completed_at,resolution_note",
+        )
         .eq("workspace_id", context.workspaceId)
         .eq("user_id", context.user.id)
         .order("requested_at", { ascending: false }),

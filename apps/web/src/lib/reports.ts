@@ -7,7 +7,7 @@ export type ReportVisit = {
   approvedAt: string;
   companyName: string;
   representativeName: string;
-  representativeId: string;
+  representativeId: string | null;
   companyId: string;
   summary: {
     summary?: string;
@@ -122,7 +122,7 @@ export async function loadApprovedReport(
   let query = supabase
     .from("visits")
     .select(
-      "id,approved_at,ai_summary,company_id,representative_id,company:companies(name),representative:profiles(full_name)",
+      "id,approved_at,ai_summary,company_id,representative_id,company:companies(name),representative:profiles!visits_representative_id_fkey(full_name)",
     )
     .eq("workspace_id", workspaceId)
     .eq("status", "approved")

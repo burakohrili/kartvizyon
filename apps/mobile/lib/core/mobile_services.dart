@@ -10,6 +10,7 @@ class MobileConfig {
     required this.apiBaseUrl,
     required this.supabaseUrl,
     required this.supabaseAnonKey,
+    required this.sentryDsn,
   });
 
   factory MobileConfig.fromEnvironment() => const MobileConfig(
@@ -19,11 +20,13 @@ class MobileConfig {
     ),
     supabaseUrl: String.fromEnvironment('SUPABASE_URL'),
     supabaseAnonKey: String.fromEnvironment('SUPABASE_ANON_KEY'),
+    sentryDsn: String.fromEnvironment('SENTRY_DSN'),
   );
 
   final String apiBaseUrl;
   final String supabaseUrl;
   final String supabaseAnonKey;
+  final String sentryDsn;
   bool get hasSupabase => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 }
 

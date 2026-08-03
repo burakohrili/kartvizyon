@@ -171,10 +171,139 @@ export async function POST(request: Request) {
       failed += 1;
     }
   }
+
+  const deletionQueue = await supabase
+    .from("privacy_requests")
+    .select("id,user_id,workspace_id,organization_id")
+    .eq("kind", "deletion")
+    .eq("status", "requested")
+    .order("requested_at")
+    .limit(10);
+  if (deletionQueue.error)
+    return Response.json(
+      { error: deletionQueue.error.message },
+      { status: 500 },
+    );
+
+  let deleted = 0;
+  let rejected = 0;
+  let deletionFailed = 0;
+  for (const item of deletionQueue.data ?? []) {
+    const claim = await supabase
+      .from("privacy_requests")
+      .update({ status: "processing", resolution_note: null })
+      .eq("id", item.id)
+      .eq("status", "requested")
+      .select("id")
+      .maybeSingle();
+    if (claim.error || !claim.data) continue;
+
+    try {
+      const ownedOrganizations = await supabase
+        .from("organizations")
+        .select("id")
+        .eq("owner_id", item.user_id)
+        .is("archived_at", null)
+        .limit(1);
+      if (ownedOrganizations.error) throw ownedOrganizations.error;
+      if (ownedOrganizations.data?.length) {
+        await supabase
+          .from("privacy_requests")
+          .update({
+            status: "rejected",
+            completed_at: new Date().toISOString(),
+            resolution_note:
+              "Organizasyon sahipliğini başka bir yöneticiye devrettikten sonra yeniden deneyin.",
+          })
+          .eq("id", item.id);
+        rejected += 1;
+        continue;
+      }
+
+      const [audio, documents, exports] = await Promise.all([
+        supabase
+          .from("visit_audio_assets")
+          .select("storage_path")
+          .eq("owner_id", item.user_id),
+        supabase
+          .from("documents")
+          .select("storage_path")
+          .eq("owner_id", item.user_id),
+        supabase
+          .from("privacy_requests")
+          .select("export_storage_path")
+          .eq("user_id", item.user_id)
+          .not("export_storage_path", "is", null),
+      ]);
+      const storageErrors = [
+        audio.error,
+        documents.error,
+        exports.error,
+      ].filter(Boolean);
+      if (storageErrors.length) throw storageErrors[0];
+
+      const removals = [
+        [
+          process.env.SUPABASE_AUDIO_BUCKET ?? "visit-audio",
+          (audio.data ?? []).map((row) => row.storage_path),
+        ],
+        [
+          "document-quarantine",
+          (documents.data ?? []).map((row) => row.storage_path),
+        ],
+        [
+          "privacy-exports",
+          (exports.data ?? []).flatMap((row) =>
+            row.export_storage_path ? [row.export_storage_path] : [],
+          ),
+        ],
+      ] as const;
+      for (const [bucket, paths] of removals) {
+        if (!paths.length) continue;
+        const removal = await supabase.storage.from(bucket).remove(paths);
+        if (removal.error) throw removal.error;
+      }
+
+      await supabase.from("audit_logs").insert({
+        organization_id: item.organization_id,
+        workspace_id: item.workspace_id,
+        actor_id: item.user_id,
+        action: "privacy.deletion_completed",
+        resource_type: "privacy_request",
+        resource_id: item.id,
+        metadata: { mode: item.organization_id ? "anonymized" : "deleted" },
+      });
+      const authDeletion = await supabase.auth.admin.deleteUser(item.user_id);
+      if (authDeletion.error) throw authDeletion.error;
+      deleted += 1;
+    } catch (error) {
+      await supabase
+        .from("privacy_requests")
+        .update({
+          status: "requested",
+          resolution_note:
+            "İşlem geçici olarak tamamlanamadı; otomatik olarak yeniden denenecek.",
+        })
+        .eq("id", item.id);
+      console.error(
+        JSON.stringify({
+          level: "error",
+          event: "privacy.deletion_failed",
+          requestId: item.id,
+          error: error instanceof Error ? error.message : "unknown",
+        }),
+      );
+      deletionFailed += 1;
+    }
+  }
   return Response.json({
-    processed: (pending.data ?? []).length,
-    ready,
-    failed,
+    exports: { processed: (pending.data ?? []).length, ready, failed },
+    deletions: {
+      processed: (deletionQueue.data ?? []).length,
+      deleted,
+      rejected,
+      failed: deletionFailed,
+    },
   });
 }
 

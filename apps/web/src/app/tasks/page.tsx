@@ -62,7 +62,7 @@ export default async function TasksPage() {
     <main className="customers-page tasks-page">
       <header className="customers-header">
         <div>
-          <Link href="/" className="back-link">
+          <Link href="/dashboard" className="back-link">
             ← Genel bakış
           </Link>
           <span className="eyebrow">TAKVİM VE TAKİPLER</span>

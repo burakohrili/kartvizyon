@@ -349,6 +349,7 @@ export function PrivacyPanel({ workspaceId }: { workspaceId: string | null }) {
             {item.kind === "export" ? "Dışa aktarma" : "Silme"} ·{" "}
             <strong>{String(item.status)}</strong> ·{" "}
             {new Date(String(item.requested_at)).toLocaleDateString("tr-TR")}
+            {item.resolution_note ? ` · ${String(item.resolution_note)}` : ""}
             {item.kind === "export" && item.status === "ready" ? (
               <>
                 {" "}

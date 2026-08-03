@@ -7,11 +7,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Bugünün saha özeti'), findsOneWidget);
     expect(find.text('Müşteriler'), findsOneWidget);
-    expect(find.text('Harita'), findsOneWidget);
-    expect(find.text('Takipler'), findsOneWidget);
-    expect(find.text('Daha fazla'), findsOneWidget);
+    expect(find.text('Ziyaret'), findsOneWidget);
+    expect(find.text('Görevler'), findsOneWidget);
+    expect(find.text('Menü'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Hızlı ziyaret kaydı'));
+    await tester.tap(find.text('Ziyaret'));
     await tester.pumpAndSettle();
     expect(find.text('Ziyaretler'), findsOneWidget);
   });

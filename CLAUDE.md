@@ -12,3 +12,12 @@
 - Şema değişikliği migration ve rollback; AI sözleşmesi Zod/JSON Schema doğrulaması gerektirir.
 
 Uygulama sırası ve kabul kriterleri için `docs/ROADMAP.md` dosyasını kullanın.
+
+## Production kararları
+
+- İşletme: Noesis Social - Burak OHRİLİ, Gazi Osmanpaşa Mah. 5499/1 Sok. No:9 Bornova / İzmir, Ege VD. 35509755908.
+- Bireysel ve kurumsal satış birlikte desteklenecektir; ödeme entegrasyonu ayrı karar tamamlanana kadar kapalıdır.
+- Public yüzey `kartvizyon.app`, authenticated uygulama `app.kartvizyon.app`, mobil kimlik `app.kartvizyon.mobile`.
+- Harici production kararları için ADR-0002; mobil UX için `docs/DESIGN.md`; mağaza kapısı için `docs/STORE_RELEASE.md` bağlayıcıdır.
+- Mağaza başlık/açıklama/reviewer notu için `docs/STORE_LISTING_TR.md` kullanılır; gerçek uygulama kapsamını aşan pazarlama iddiası eklenmez.
+- Başka Apple/Google uygulamalarının sertifika, App ID, provisioning profile, service account veya keystore’u KartVizyon’da kullanılmaz.

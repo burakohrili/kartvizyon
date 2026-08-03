@@ -84,6 +84,10 @@ const operationalSecuritySql = await readFile(
   ),
   "utf8",
 );
+const documentScanJobsSql = await readFile(
+  resolve(import.meta.dirname, "../migrations/0018_document_scan_jobs.up.sql"),
+  "utf8",
+);
 
 describe("temel veri güvenliği", () => {
   it.each([
@@ -346,5 +350,23 @@ describe("operasyonel güvenlik", () => {
       "event_payload := jsonb_build_object",
     );
     expect(operationalSecuritySql).toContain("resource_id, payload");
+  });
+});
+
+describe("belge zararlı yazılım tarama kuyruğu", () => {
+  it("işleri eşzamanlı çalışanlar arasında atomik olarak sahiplenir", () => {
+    expect(documentScanJobsSql).toContain("for update skip locked");
+    expect(documentScanJobsSql).toContain("claim_document_scan_jobs");
+  });
+
+  it("takılan işleri yeniden dener ve üç denemeden sonra kapatır", () => {
+    expect(documentScanJobsSql).toContain("interval '15 minutes'");
+    expect(documentScanJobsSql).toContain("scan_attempts >= 3");
+  });
+
+  it("kuyruk fonksiyonunu yalnız servis rolüne açar", () => {
+    expect(documentScanJobsSql).toContain(
+      "grant execute on function public.claim_document_scan_jobs(integer) to service_role",
+    );
   });
 });

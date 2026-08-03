@@ -38,7 +38,7 @@ export default async function OpportunitiesPage() {
     <main className="customers-page">
       <header className="customers-header">
         <div>
-          <Link href="/" className="back-link">
+          <Link href="/dashboard" className="back-link">
             ← Genel bakış
           </Link>
           <span className="eyebrow">SATIŞ PIPELINE</span>

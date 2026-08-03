@@ -41,6 +41,7 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
             apiBaseUrl: 'http://10.0.2.2:3000',
             supabaseUrl: '',
             supabaseAnonKey: '',
+            sentryDsn: '',
           ),
         );
     authenticated =
@@ -155,46 +156,195 @@ class _MobileShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const paths = ['/', '/customers', '/map', '/tasks', '/more'];
-    final index = paths.indexOf(location).clamp(0, paths.length - 1);
+    const paths = ['/', '/customers', '/visits', '/tasks', '/more'];
+    final index = switch (location) {
+      '/' => 0,
+      String value when value.startsWith('/customers') => 1,
+      String value when value.startsWith('/tasks') => 3,
+      _ => 4,
+    };
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Scaffold(
-      body: SafeArea(child: child),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Hızlı ziyaret kaydı',
-        onPressed: () => context.push('/visits'),
-        child: const Icon(Icons.add),
+      body: SafeArea(
+        bottom: false,
+        child: AnimatedSwitcher(
+          duration: Duration(milliseconds: reduceMotion ? 120 : 280),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (current, animation) => FadeTransition(
+            opacity: animation,
+            child: reduceMotion
+                ? current
+                : SlideTransition(
+                    position: Tween(
+                      begin: const Offset(0.025, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: current,
+                  ),
+          ),
+          child: KeyedSubtree(key: ValueKey(location), child: child),
+        ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: _FieldNavigation(
         selectedIndex: index,
-        onDestinationSelected: (value) => context.go(paths[value]),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.today_outlined),
-            selectedIcon: Icon(Icons.today),
-            label: 'Bugün',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.apartment_outlined),
-            selectedIcon: Icon(Icons.apartment),
-            label: 'Müşteriler',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map),
-            label: 'Harita',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.task_alt_outlined),
-            selectedIcon: Icon(Icons.task_alt),
-            label: 'Takipler',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.more_horiz),
-            label: 'Daha fazla',
-          ),
-        ],
+        onSelected: (value) =>
+            value == 2 ? context.push('/visits') : context.go(paths[value]),
       ),
     );
   }
+}
+
+class _FieldNavigation extends StatelessWidget {
+  const _FieldNavigation({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    minimum: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+    child: Material(
+      color: KartVizyonTheme.navy,
+      elevation: 12,
+      shadowColor: KartVizyonTheme.navy.withValues(alpha: 0.22),
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 72,
+        child: Row(
+          children: [
+            _NavItem(
+              index: 0,
+              selected: selectedIndex == 0,
+              icon: Icons.today_outlined,
+              selectedIcon: Icons.today,
+              label: 'Bugün',
+              onTap: onSelected,
+            ),
+            _NavItem(
+              index: 1,
+              selected: selectedIndex == 1,
+              icon: Icons.apartment_outlined,
+              selectedIcon: Icons.apartment,
+              label: 'Müşteriler',
+              onTap: onSelected,
+            ),
+            _VisitAction(onTap: () => onSelected(2)),
+            _NavItem(
+              index: 3,
+              selected: selectedIndex == 3,
+              icon: Icons.task_alt_outlined,
+              selectedIcon: Icons.task_alt,
+              label: 'Görevler',
+              onTap: onSelected,
+            ),
+            _NavItem(
+              index: 4,
+              selected: selectedIndex == 4,
+              icon: Icons.grid_view_outlined,
+              selectedIcon: Icons.grid_view_rounded,
+              label: 'Menü',
+              onTap: onSelected,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.index,
+    required this.selected,
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.onTap,
+  });
+  final int index;
+  final bool selected;
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Semantics(
+      selected: selected,
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: () => onTap(index),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              selected ? selectedIcon : icon,
+              color: selected ? KartVizyonTheme.lime : Colors.white70,
+              size: 23,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                color: selected ? Colors.white : Colors.white70,
+                fontSize: 10,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _VisitAction extends StatelessWidget {
+  const _VisitAction({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Semantics(
+      button: true,
+      label: 'Yeni ziyaret',
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                color: KartVizyonTheme.lime,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.add_rounded,
+                color: KartVizyonTheme.navy,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'Ziyaret',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
