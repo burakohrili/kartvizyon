@@ -75,6 +75,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
             children: [
               if (customers.isNotEmpty)
                 DropdownButtonFormField<String>(
+                  // Keep compatibility with the current local Flutter SDK.
+                  // ignore: deprecated_member_use
                   value: companyId,
                   decoration: const InputDecoration(labelText: 'Müşteri'),
                   items: customers

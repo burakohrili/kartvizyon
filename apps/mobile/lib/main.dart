@@ -18,7 +18,6 @@ Future<void> main() async {
       options.sendDefaultPii = false;
       options.tracesSampleRate = 0.1;
       options.attachScreenshot = false;
-      options.attachViewHierarchy = false;
     }, appRunner: () => _bootstrap(config));
     return;
   }
