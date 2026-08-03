@@ -1,0 +1,25 @@
+{
+  "gradle.nestedProjects": false,
+  "java.import.gradle.enabled": true,
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/.metadata/**",
+    "**/archetype-resources/**",
+    "**/META-INF/maven/**",
+    "**/.tools/**",
+    "**/pub-cache/**",
+    "**/build/**",
+    "**/.dart_tool/**"
+  ],
+  "files.watcherExclude": {
+    "**/.tools/**": true,
+    "**/build/**": true,
+    "**/.dart_tool/**": true,
+    "**/node_modules/**": true
+  },
+  "search.exclude": {
+    "**/.tools/**": true,
+    "**/build/**": true,
+    "**/.dart_tool/**": true
+  }
+}
