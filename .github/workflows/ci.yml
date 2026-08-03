@@ -14,5 +14,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
       - run: npm ci
       - run: npm run check
