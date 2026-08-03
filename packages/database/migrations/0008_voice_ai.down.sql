@@ -1,0 +1,13 @@
+begin;
+drop policy if exists visit_audio_object_owner_delete on storage.objects;
+drop policy if exists visit_audio_object_owner_read on storage.objects;
+drop policy if exists visit_audio_object_owner_insert on storage.objects;
+delete from storage.objects where bucket_id = 'visit-audio';
+delete from storage.buckets where id = 'visit-audio';
+drop table if exists public.usage_records;
+drop table if exists public.ai_jobs;
+drop table if exists public.visit_transcripts;
+drop table if exists public.visit_audio_assets;
+drop type if exists public.ai_job_status;
+drop type if exists public.ai_job_kind;
+commit;

@@ -1,0 +1,21 @@
+{
+  "name": "@kartvizyon/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint scripts tests --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "migration:validate": "tsx scripts/validate-migrations.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@types/node": "^24.1.0",
+    "eslint": "^9.32.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0",
+    "vitest": "^3.2.4"
+  }
+}

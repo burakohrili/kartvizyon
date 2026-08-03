@@ -1,0 +1,26 @@
+{
+  "name": "kartvizyon",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @kartvizyon/web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "migration:validate": "npm run migration:validate --workspace @kartvizyon/database",
+    "format:check": "prettier --check .",
+    "mobile:check": "cd apps/mobile && flutter analyze && flutter test",
+    "check": "npm run format:check && npm run migration:validate && npm run lint && npm run typecheck && npm run test && npm run build && npm run mobile:check"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

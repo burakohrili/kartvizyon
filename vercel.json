@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build --workspace @kartvizyon/web",
+  "outputDirectory": "apps/web/.next",
+  "crons": [
+    {
+      "path": "/api/internal/retention/audio",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/internal/privacy/process",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/internal/webhooks/deliver",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

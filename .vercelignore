@@ -1,0 +1,11 @@
+.git
+.vercel
+.env
+.env.*
+node_modules
+**/.next
+**/coverage
+**/build
+apps/mobile
+*.apk
+*.log

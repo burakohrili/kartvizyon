@@ -1,0 +1,16 @@
+node_modules/
+.npm-cache/
+.next/
+coverage/
+dist/
+.env
+.env.local
+*.log
+*.tsbuildinfo
+.DS_Store
+.dart_tool/
+build/
+
+.vercel
+.env*
+.tools/
