@@ -47,9 +47,20 @@
 - `0019_account_deletion` migration'ının Supabase'e uygulanması ve worker'ın production uçtan uca testi.
 - 15 saha çalışanı + 5 satış müdürü görüşmesi, 3 şirket pilotu ve gerçek veri doğruluk ölçümleri.
 
-### Bilinçli olarak en son
+### Ödeme (ADR-0003 ile kararlaştırıldı)
 
-- Hem bireysel hem kurumsal satış yapılacaktır. Web tahsilatı, App Store/Play billing, vergi/fatura, entitlement ve iade modeli birlikte kararlaştırılmadan ödeme sağlayıcısı bağlanmaz.
+Model kesinleşti: iyzico Subscription, TRY, aylık/yıllık; bireysel ve kurumsal plan birlikte;
+satın alma yalnız `app.kartvizyon.app` üzerinde; mobilde satın alma ve ödeme CTA'sı yok.
+Detay ve gerekçe için `docs/product/decisions/0003-commerce-and-store-distribution.md`.
+
+Uygulanacaklar:
+
+- iyzico sandbox hesabı ve ürün/plan tanımları.
+- `subscriptions` / `entitlements` migration'ı ve plan limiti kontrolü.
+- iyzico webhook ucu: imza doğrulama, idempotent işleme, audit kaydı.
+- Web checkout akışı ve plan yükseltme/iptal ekranları.
+- Fatura ve iade süreci (Türkiye mevzuatı).
+- Mobil `settings/billing` yüzeyinin salt-okunur kaldığının testle doğrulanması.
 
 ## Bilinçli kapsam dışı
 

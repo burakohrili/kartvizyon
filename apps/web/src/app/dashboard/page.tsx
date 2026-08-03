@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { loadDashboard } from "@/lib/dashboard";
 
@@ -37,7 +38,7 @@ export default async function DashboardHome() {
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <span>KV</span>
+          <Image src="/brand/logo-mark.png" alt="" width={40} height={40} priority />
           <div>
             KartVizyon<small>AI saha hafızası</small>
           </div>

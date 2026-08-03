@@ -65,6 +65,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   drift_dev: ^2.31.0
   build_runner: ^2.15.1
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -72,6 +73,16 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   generate: true
+
+  assets:
+    - assets/branding/app-icon-1024.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/branding/app-icon-1024.png"
+  min_sdk_android: 23
+  remove_alpha_ios: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

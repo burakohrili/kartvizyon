@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -34,22 +35,155 @@ const trust = [
   "KVKK veri dışa aktarma ve hesap silme akışları",
 ];
 
+const features = [
+  {
+    title: "AI destekli ziyaret debrief’i",
+    how: "Ziyaret sonrası sesli not otomatik transkript edilir ve taslak özete dönüşür.",
+    value:
+      "Rapor yazma süresini kısaltır; taslak kullanıcı onaylamadan kurumsal kayda geçmez.",
+  },
+  {
+    title: "Kartvizit ve belge OCR",
+    how: "Kamerayla taranan kartvizit veya belge otomatik olarak kişi/şirket alanlarına dönüşür.",
+    value: "Manuel veri girişini ortadan kaldırır, saha temposunu bozmaz.",
+  },
+  {
+    title: "Offline-first saha çalışması",
+    how: "Ziyaret, not ve debrief taslakları cihazda kuyruklanır; bağlantı gelince idempotent senkronize olur.",
+    value: "Kırsalda veya bodrum katta bile veri kaybı yaşanmaz.",
+  },
+  {
+    title: "Bağlamsal konum hatırlatması",
+    how: "Kullanıcı yakın müşteriye geldiğinde tek seferlik öneri gösterir.",
+    value:
+      "Unutulan ziyaretleri azaltır; sürekli arka plan takibi hiç yapılmaz.",
+  },
+  {
+    title: "Belge karantina ve zararlı yazılım taraması",
+    how: "Yüklenen her belge ayrı bir tarama servisinde ClamAV ile taranır; temiz onay almadan açılmaz.",
+    value: "Ekibinizi ve müşteri belgelerinizi zararlı dosya riskinden korur.",
+  },
+  {
+    title: "Yönetici raporları",
+    how: "Yalnızca onaylı ziyaretlerden filtrelenen veriler Türkçe PDF/XLSX olarak dışa aktarılır.",
+    value: "Yöneticiye doğrulanmış, tahmin içermeyen saha görünürlüğü sağlar.",
+  },
+  {
+    title: "Rol ve çalışma alanı bazlı yetkilendirme",
+    how: "Her organizasyon kendi çalışma alanında izole edilir; davetler rol bazlı sınırlandırılır.",
+    value: "Ekip büyürken veri karışması veya yetki sızıntısı yaşanmaz.",
+  },
+  {
+    title: "KVKK uyumlu veri yaşam döngüsü",
+    how: "Veri dışa aktarma, rıza kaydı ve hesap silme talepleri uçtan uca desteklenir.",
+    value: "Yasal uyum ve müşteri güveni için ekstra süreç kurmanıza gerek kalmaz.",
+  },
+];
+
+type PricingTier = {
+  name: string;
+  audience: string;
+  highlight?: boolean;
+  items: string[];
+};
+
+const pricing: PricingTier[] = [
+  {
+    name: "Bireysel",
+    audience: "Tek başına saha çalışan profesyoneller için",
+    items: [
+      "Sınırsız müşteri ve ziyaret kaydı",
+      "AI destekli debrief ve kartvizit OCR",
+      "Offline mobil kullanım",
+      "Kişisel takip ve hatırlatmalar",
+    ],
+  },
+  {
+    name: "Ekip",
+    audience: "Büyüyen saha satış ekipleri için",
+    highlight: true,
+    items: [
+      "Bireysel plandaki her şey",
+      "Rol bazlı yetkilendirme ve ekip davetleri",
+      "Fırsat, sipariş taslağı ve ürün/fiyat listesi",
+      "Yönetici raporları ve paylaşılabilir bağlantılar",
+    ],
+  },
+  {
+    name: "Kurumsal",
+    audience: "Bölge/takım yapısı olan organizasyonlar için",
+    items: [
+      "Ekip plandaki her şey",
+      "Bölge/takım yönetimi ve entegrasyon webhookları",
+      "Genişletilmiş audit log ve veri saklama politikaları",
+      "Öncelikli destek ve kurulum danışmanlığı",
+    ],
+  },
+];
+
+const faqs = [
+  {
+    q: "KartVizyon bir kartvizit arşivi mi, yoksa tam bir CRM mi?",
+    a: "İkisi de değil. KartVizyon; saha satış ekiplerinin müşteri hafızasını ve ziyaret yönetimini hedefler. Stok, cari hesap, e-fatura veya karmaşık rota optimizasyonu kapsam dışıdır.",
+  },
+  {
+    q: "AI ürettiği özetler doğrudan kayda mı geçiyor?",
+    a: "Hayır. Her AI çıktısı 'incelemede' durumunda başlar; kullanıcı onaylamadan kurumsal hafızaya, rapora veya yönetici akışına girmez.",
+  },
+  {
+    q: "İnternet olmayan bir bölgede ziyaret kaydedebilir miyim?",
+    a: "Evet. Mobil uygulama offline-first çalışır; ziyaret, not ve debrief taslakları cihazda kuyruklanır ve bağlantı geldiğinde güvenli şekilde senkronize olur.",
+  },
+  {
+    q: "Konumumu sürekli mi takip ediyorsunuz?",
+    a: "Hayır. Konum yalnızca kullanıcının açık bir eylemiyle (ör. yakındaki müşteri önerisi) alınır; arka planda sürekli GPS takibi yapılmaz.",
+  },
+  {
+    q: "Verilerimiz diğer şirketlerin verileriyle karışır mı?",
+    a: "Hayır. Her kurumsal veri çalışma alanı ve organizasyon kapsamında satır bazlı güvenlik (RLS) ile izole edilir; bu izolasyon yetkilendirme testleriyle doğrulanır.",
+  },
+  {
+    q: "Fiyatlandırma nasıl işliyor?",
+    a: "Hem bireysel hem kurumsal kullanım için plan yapıyoruz. Ödeme altyapımız tamamlanma aşamasında; güncel fiyat ve plan detayları için demo talebiyle bize ulaşabilirsiniz.",
+  },
+  {
+    q: "Belgelerim yüklenirken güvende mi?",
+    a: "Her belge ayrı bir karantina alanında ClamAV ile taranır; temiz sonuç alınmadan belge açılamaz veya paylaşılamaz.",
+  },
+];
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((faq) => ({
+    "@type": "Question",
+    name: faq.q,
+    acceptedAnswer: { "@type": "Answer", text: faq.a },
+  })),
+};
+
 export default function MarketingHome() {
   return (
     <main className="marketing-shell">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <header className="marketing-nav">
         <Link
           className="marketing-brand"
           href="/"
           aria-label="KartVizyon ana sayfa"
         >
-          <span>KV</span>
+          <Image src="/brand/logo-mark.png" alt="" width={36} height={36} priority />
           <strong>KartVizyon</strong>
         </Link>
         <nav aria-label="Tanıtım menüsü">
           <a href="#cozum">Çözüm</a>
+          <a href="#ozellikler">Özellikler</a>
           <a href="#guven">Güven</a>
-          <a href="#kimler-icin">Kimler için?</a>
+          <a href="#fiyatlandirma">Fiyatlandırma</a>
+          <a href="#sss">SSS</a>
           <Link href="/support">Destek</Link>
         </nav>
         <div className="marketing-actions">
@@ -147,6 +281,30 @@ export default function MarketingHome() {
         </div>
       </section>
 
+      <section className="marketing-section" id="ozellikler">
+        <div className="section-heading">
+          <span>NASIL ÇALIŞIR, NE İŞE YARAR</span>
+          <h2>Her özellik saha akışının bir adımını doğrudan çözer.</h2>
+          <p>
+            Gösteriş için değil, ziyaret öncesi, sırası ve sonrasındaki gerçek
+            sürtünmeyi azaltmak için tasarlandı.
+          </p>
+        </div>
+        <div className="feature-grid">
+          {features.map((feature) => (
+            <article key={feature.title}>
+              <h3>{feature.title}</h3>
+              <p className="feature-how">
+                <strong>Nasıl:</strong> {feature.how}
+              </p>
+              <p className="feature-value">
+                <strong>Ne işe yarar:</strong> {feature.value}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="marketing-section split-section" id="guven">
         <div>
           <span className="marketing-kicker">GÜVEN VARSAYILAN AYAR</span>
@@ -196,6 +354,56 @@ export default function MarketingHome() {
               kontrollü ölçeklenir.
             </p>
           </article>
+        </div>
+      </section>
+
+      <section className="marketing-section pricing-section" id="fiyatlandirma">
+        <div className="section-heading">
+          <span>FİYATLANDIRMA</span>
+          <h2>Tek kişiden kurumsal organizasyona kadar aynı ürün.</h2>
+          <p>
+            Ödeme altyapımız tamamlanma aşamasında. Şu an erken kullanıcılarla
+            birlikte plan ve fiyatları netleştiriyoruz; demo görüşmesinde
+            ihtiyacınıza göre güncel koşulları paylaşıyoruz.
+          </p>
+        </div>
+        <div className="pricing-grid">
+          {pricing.map((tier) => (
+            <article
+              key={tier.name}
+              className={tier.highlight ? "pricing-card featured" : "pricing-card"}
+            >
+              {tier.highlight && <span className="pricing-badge">En çok tercih edilen</span>}
+              <h3>{tier.name}</h3>
+              <p className="pricing-audience">{tier.audience}</p>
+              <ul>
+                {tier.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <a
+                className="marketing-secondary"
+                href={`mailto:kartvizyonapp@gmail.com?subject=KartVizyon%20${encodeURIComponent(tier.name)}%20plan%20bilgisi`}
+              >
+                Plan bilgisi al →
+              </a>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="marketing-section faq-section" id="sss">
+        <div className="section-heading">
+          <span>SIKÇA SORULAN SORULAR</span>
+          <h2>Merak edilenler</h2>
+        </div>
+        <div className="faq-list">
+          {faqs.map((faq) => (
+            <details key={faq.q}>
+              <summary>{faq.q}</summary>
+              <p>{faq.a}</p>
+            </details>
+          ))}
         </div>
       </section>
 
