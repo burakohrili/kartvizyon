@@ -24,10 +24,10 @@ Yani sıfırdan kurulum değil, eksik olan: **enforcement, ücretsiz katman, öd
 
 ### 1. İki ayrı satış kanalı, tek entitlement kaynağı
 
-| Kanal | Kim | Nasıl | Komisyon |
-| --- | --- | --- | --- |
-| **IAP** | Bireysel, mobilden gelen | Apple IAP / Google Play Billing | %15 (Small Business) |
-| **Web (iyzico)** | Bireysel web'den gelen + tüm kurumsal | app.kartvizyon.app checkout | %0 |
+| Kanal            | Kim                                   | Nasıl                           | Komisyon             |
+| ---------------- | ------------------------------------- | ------------------------------- | -------------------- |
+| **IAP**          | Bireysel, mobilden gelen              | Apple IAP / Google Play Billing | %15 (Small Business) |
+| **Web (iyzico)** | Bireysel web'den gelen + tüm kurumsal | app.kartvizyon.app checkout     | %0                   |
 
 Her iki kanal da aynı `workspace_subscriptions` satırını günceller. Uygulama tek yerden entitlement okur.
 
@@ -40,7 +40,7 @@ kind = 'personal'      → mobilde IAP paywall gösterilebilir
 kind = 'organization'  → mobilde HİÇBİR satın alma yüzeyi yok
 ```
 
-Kurumsal üye limite çarptığında yalnızca bilgilendirme görür: *"Planınız kurum yöneticiniz tarafından yönetiliyor."* Buton yok, link yok, fiyat yok. Kurumsal koltuklar yönetici tarafından web'de satın alınır; bu, Apple'ın kurumsal/multiplatform istisnası kapsamındadır.
+Kurumsal üye limite çarptığında yalnızca bilgilendirme görür: _"Planınız kurum yöneticiniz tarafından yönetiliyor."_ Buton yok, link yok, fiyat yok. Kurumsal koltuklar yönetici tarafından web'de satın alınır; bu, Apple'ın kurumsal/multiplatform istisnası kapsamındadır.
 
 **Değişmez kural:** mobil uygulamada `kartvizyon.app` fiyat sayfasına giden tıklanabilir hiçbir öğe bulunmaz.
 
@@ -89,11 +89,13 @@ Bu faz hiçbir dış hesap gerektirmez ve hemen başlayabilir.
    - `.down.sql` ile birlikte
 
 3. **`apps/web/src/lib/entitlements.ts`** — tek çözümleyici
+
    ```
    resolveEntitlement(supabase, workspaceId) → {
      planId, status, limits, trialActive, seatsPurchased, seatsUsed
    }
    ```
+
    Kurallar: `trialing` + `trial_ends_at > now()` → tam limit · `active` → plan limiti ·
    `past_due` → 7 gün ödemesiz devam · `cancelled` → `current_period_end`'e kadar · aksi → free
 
