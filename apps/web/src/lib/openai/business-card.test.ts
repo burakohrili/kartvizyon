@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { detectBusinessCardMimeType } from "./business-card";
+import {
+  detectBusinessCardMimeType,
+  validateBusinessCardExtraction,
+} from "./business-card";
 
 describe("detectBusinessCardMimeType", () => {
   it("detects camera JPEG bytes even when multipart MIME is missing", () => {
@@ -28,5 +31,41 @@ describe("detectBusinessCardMimeType", () => {
 
   it("rejects unsupported or spoofed files", () => {
     expect(detectBusinessCardMimeType(new Uint8Array([1, 2, 3, 4]))).toBeNull();
+  });
+});
+
+describe("validateBusinessCardExtraction", () => {
+  const baseOutput = {
+    firstName: "Ayşe",
+    lastName: "Yılmaz",
+    title: null,
+    companyName: "Örnek A.Ş.",
+    phone: null,
+    confidence: 0.9,
+    needsReview: true as const,
+  };
+
+  it("normalizes a domain without a scheme", () => {
+    expect(
+      validateBusinessCardExtraction({
+        ...baseOutput,
+        email: "ayse@example.com",
+        website: "example.com",
+      }),
+    ).toMatchObject({
+      email: "ayse@example.com",
+      website: "https://example.com",
+      needsReview: true,
+    });
+  });
+
+  it("keeps OCR review usable when contact formats are invalid", () => {
+    expect(
+      validateBusinessCardExtraction({
+        ...baseOutput,
+        email: "not-an-email",
+        website: "not a website",
+      }),
+    ).toMatchObject({ email: null, website: null, needsReview: true });
   });
 });

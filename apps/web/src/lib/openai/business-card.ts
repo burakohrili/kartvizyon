@@ -3,10 +3,51 @@ import {
   type BusinessCardExtraction,
 } from "@kartvizyon/contracts";
 import { zodTextFormat } from "openai/helpers/zod";
+import { z } from "zod";
 
 import { createOpenAiClient } from "./client";
 
 const MODEL = process.env.OPENAI_OCR_MODEL ?? "gpt-5.6-sol";
+
+const nullableText = (max: number) => z.string().trim().max(max).nullable();
+
+// OpenAI structured outputs reject JSON Schema `format: email` and
+// `format: uri`. Keep the model-facing schema format-free, then apply the
+// stricter public contract before returning data to the application.
+const businessCardOpenAiSchema = z.object({
+  firstName: nullableText(100),
+  lastName: nullableText(100),
+  title: nullableText(120),
+  companyName: nullableText(200),
+  phone: nullableText(40),
+  email: nullableText(320),
+  website: nullableText(2_048),
+  confidence: z.number().min(0).max(1),
+  needsReview: z.literal(true),
+});
+
+type BusinessCardOpenAiOutput = z.infer<typeof businessCardOpenAiSchema>;
+
+export function validateBusinessCardExtraction(
+  output: BusinessCardOpenAiOutput,
+): BusinessCardExtraction {
+  const email = output.email
+    ? (z.email().safeParse(output.email).data ?? null)
+    : null;
+  let website: string | null = null;
+  if (output.website) {
+    const direct = z.url().safeParse(output.website);
+    const withScheme = z.url().safeParse(`https://${output.website}`);
+    website = direct.data ?? withScheme.data ?? null;
+  }
+
+  return businessCardExtractionSchema.parse({
+    ...output,
+    email,
+    website,
+    needsReview: true,
+  });
+}
 
 export async function extractBusinessCard(
   imageDataUrl: string,
@@ -30,13 +71,13 @@ export async function extractBusinessCard(
     ],
     text: {
       format: zodTextFormat(
-        businessCardExtractionSchema,
+        businessCardOpenAiSchema,
         "business_card_extraction",
       ),
     },
   });
   if (!response.output_parsed) throw new Error("OCR_RESULT_EMPTY");
-  return businessCardExtractionSchema.parse(response.output_parsed);
+  return validateBusinessCardExtraction(response.output_parsed);
 }
 
 export const businessCardLimits = {
