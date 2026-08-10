@@ -1,6 +1,7 @@
 import { apiError } from "@/lib/api";
 import {
   businessCardLimits,
+  detectBusinessCardMimeType,
   extractBusinessCard,
 } from "@/lib/openai/business-card";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -30,16 +31,18 @@ export async function POST(request: Request) {
         { status: 413 },
       );
     }
-    if (!businessCardLimits.acceptedTypes.has(image.type)) {
+    const bytes = new Uint8Array(await image.arrayBuffer());
+    const detectedType = detectBusinessCardMimeType(bytes);
+    if (!detectedType) {
       return Response.json(
         { error: "Yalnızca JPEG, PNG veya WebP yükleyin." },
         { status: 415 },
       );
     }
 
-    const encoded = Buffer.from(await image.arrayBuffer()).toString("base64");
+    const encoded = Buffer.from(bytes).toString("base64");
     const extraction = await extractBusinessCard(
-      `data:${image.type};base64,${encoded}`,
+      `data:${detectedType};base64,${encoded}`,
     );
     return Response.json({ data: extraction });
   } catch (error) {
