@@ -16,7 +16,7 @@ class MobileConfig {
   factory MobileConfig.fromEnvironment() => const MobileConfig(
     apiBaseUrl: String.fromEnvironment(
       'KARTVIZYON_API_URL',
-      defaultValue: 'http://10.0.2.2:3000',
+      defaultValue: 'https://app.kartvizyon.app',
     ),
     supabaseUrl: String.fromEnvironment('SUPABASE_URL'),
     supabaseAnonKey: String.fromEnvironment('SUPABASE_ANON_KEY'),

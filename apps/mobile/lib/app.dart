@@ -62,7 +62,12 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
             services: services,
             onSignedIn: () async {
               authenticated = true;
-              await services.refreshContext();
+              try {
+                await services.refreshContext();
+              } catch (_) {
+                // Oturum geçerlidir; geçici ağ/API hatasında çevrimdışı açılışa
+                // izin ver ve sonraki eşitlemede bağlamı yeniden yükle.
+              }
               router.go('/');
             },
           ),

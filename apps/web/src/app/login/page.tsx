@@ -4,6 +4,8 @@ const messages: Record<string, string> = {
   config: "Supabase ortam değişkenleri henüz yapılandırılmadı.",
   credentials: "E-posta veya şifre hatalı.",
   signup: "Hesap oluşturulamadı. Bilgileri kontrol edin.",
+  verification:
+    "E-posta doğrulama bağlantısı geçersiz veya süresi dolmuş. Yeni bir doğrulama e-postası isteyin.",
 };
 
 export default async function LoginPage({

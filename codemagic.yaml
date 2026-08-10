@@ -38,6 +38,7 @@ workflows:
         script: |
           flutter build appbundle --release \
             --build-number=$PROJECT_BUILD_NUMBER \
+            --dart-define=KARTVIZYON_API_URL=https://app.kartvizyon.app \
             --dart-define=SUPABASE_URL=$SUPABASE_URL \
             --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \
             --dart-define=SENTRY_DSN=$SENTRY_DSN
@@ -87,6 +88,7 @@ workflows:
           flutter build ipa --release \
             --build-number=$PROJECT_BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist \
+            --dart-define=KARTVIZYON_API_URL=https://app.kartvizyon.app \
             --dart-define=SUPABASE_URL=$SUPABASE_URL \
             --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \
             --dart-define=SENTRY_DSN=$SENTRY_DSN
