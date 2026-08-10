@@ -111,6 +111,15 @@ class _LoginScreenState extends State<LoginScreen> {
             );
       final session = response.session;
       if (session == null) {
+        // Supabase intentionally returns an obfuscated user with no identities
+        // when sign-up is repeated for an existing address. Do not claim that
+        // another message was sent in that case.
+        if (register && (response.user?.identities?.isEmpty ?? false)) {
+          _showMessage(
+            'Bu e-posta zaten kayıtlı olabilir. “Hesabım var” ile giriş yapın veya şifrenizi yenileyin.',
+          );
+          return;
+        }
         _showMessage(
           'Hesabınız oluşturuldu. E-postanıza gönderdiğimiz bağlantıya dokunun; doğrulama tamamlanınca uygulama otomatik açılır.',
           confirmation: true,
