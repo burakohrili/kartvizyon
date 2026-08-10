@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+
 import '../../core/mobile_services.dart';
 
 class VisitsScreen extends StatefulWidget {
   const VisitsScreen({super.key, required this.services});
+
   final MobileServices services;
+
   @override
   State<VisitsScreen> createState() => _VisitsScreenState();
 }
 
 class _VisitsScreenState extends State<VisitsScreen> {
   late Future<List<Map<String, dynamic>>> visits;
+
   @override
   void initState() {
     super.initState();
@@ -19,22 +23,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
   }
 
   Future<List<Map<String, dynamic>>> load() async {
-    if (!widget.services.config.hasSupabase) {
-      return const [
-        {
-          'id': 'demo-draft',
-          'status': 'draft',
-          'purpose': 'Teknik demo',
-          'company': {'name': 'Atlas Medikal'},
-        },
-        {
-          'id': 'demo-approved',
-          'status': 'approved',
-          'purpose': 'Bakım sözleşmesi',
-          'company': {'name': 'Nova Otomasyon'},
-        },
-      ];
-    }
+    if (!widget.services.config.hasSupabase) return const [];
+    await widget.services.refreshContext();
     final result =
         await widget.services.api.get(
               '/api/visits?workspaceId=${widget.services.workspaceId}',
@@ -45,32 +35,25 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
   Future<void> createVisit() async {
     final purpose = TextEditingController();
-    var customers = <Map<String, dynamic>>[];
+    List<Map<String, dynamic>> customers;
     try {
-      if (widget.services.config.hasSupabase) {
-        final response =
-            await widget.services.api.get(
-                  '/api/customers?workspaceId=${widget.services.workspaceId}',
-                )
-                as Map<String, dynamic>;
-        customers = List<Map<String, dynamic>>.from(
-          response['data'] as List? ?? [],
-        );
-      } else {
-        customers = const [
-          {'id': 'demo-atlas', 'name': 'Atlas Medikal'},
-          {'id': 'demo-nova', 'name': 'Nova Otomasyon'},
-        ];
-      }
+      final response =
+          await widget.services.api.get(
+                '/api/customers?workspaceId=${widget.services.workspaceId}',
+              )
+              as Map<String, dynamic>;
+      customers = List<Map<String, dynamic>>.from(
+        response['data'] as List? ?? [],
+      );
     } on MobileApiException catch (error) {
       purpose.dispose();
       if (!mounted) return;
       final message = error.statusCode == 401
           ? 'Oturumunuzun süresi doldu. Lütfen yeniden giriş yapın.'
           : error.message;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       return;
     } catch (_) {
       purpose.dispose();
@@ -83,20 +66,28 @@ class _VisitsScreenState extends State<VisitsScreen> {
       return;
     }
     if (!mounted) return;
-    String? companyId = customers.isEmpty
-        ? null
-        : customers.first['id']?.toString();
+    if (customers.isEmpty) {
+      purpose.dispose();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ziyaret oluşturmadan önce bir müşteri ekleyin.'),
+        ),
+      );
+      context.go('/customers');
+      return;
+    }
+
+    String? companyId = customers.first['id']?.toString();
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Yeni ziyaret'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (customers.isNotEmpty)
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 DropdownButtonFormField<String>(
-                  // Keep compatibility with the current local Flutter SDK.
                   // ignore: deprecated_member_use
                   value: companyId,
                   decoration: const InputDecoration(labelText: 'Müşteri'),
@@ -109,15 +100,14 @@ class _VisitsScreenState extends State<VisitsScreen> {
                       )
                       .toList(),
                   onChanged: (value) => setDialogState(() => companyId = value),
-                )
-              else
-                const Text('Ziyaret için önce bir müşteri kaydı gerekir.'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: purpose,
-                decoration: const InputDecoration(labelText: 'Ziyaret amacı'),
-              ),
-            ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: purpose,
+                  decoration: const InputDecoration(labelText: 'Ziyaret amacı'),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -140,11 +130,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
     }
     final visitPurpose = purpose.text.trim();
     purpose.dispose();
-    if (!widget.services.config.hasSupabase) {
-      if (!mounted) return;
-      context.push('/visits/demo-new/debrief');
-      return;
-    }
+
     try {
       final response =
           await widget.services.api.post('/api/visits', {
@@ -160,6 +146,11 @@ class _VisitsScreenState extends State<VisitsScreen> {
       if (!mounted) return;
       setState(() => visits = load());
       context.push('/visits/${data['id']}/debrief');
+    } on MobileApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       await widget.services.queue.enqueueVisitCreate(
         ownerId: widget.services.ownerId,
@@ -177,6 +168,12 @@ class _VisitsScreenState extends State<VisitsScreen> {
         ),
       );
     }
+  }
+
+  Future<void> refresh() async {
+    final next = load();
+    setState(() => visits = next);
+    await next;
   }
 
   @override
@@ -202,7 +199,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                 children: [
                   Text(snapshot.error.toString(), textAlign: TextAlign.center),
                   TextButton(
-                    onPressed: () => setState(() => visits = load()),
+                    onPressed: refresh,
                     child: const Text('Tekrar dene'),
                   ),
                 ],
@@ -210,31 +207,76 @@ class _VisitsScreenState extends State<VisitsScreen> {
             ),
           );
         }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: snapshot.data!.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (_, index) {
-            final item = snapshot.data![index];
-            final company = item['company'] as Map? ?? {};
-            final status = item['status']?.toString() ?? 'draft';
-            return Card(
-              child: ListTile(
-                title: Text(company['name']?.toString() ?? 'Firma'),
-                subtitle: Text(item['purpose']?.toString() ?? 'Ziyaret'),
-                trailing: Chip(
-                  label: Text(
-                    status == 'approved'
-                        ? 'Onaylandı'
-                        : status == 'needs_review'
-                        ? 'İncele'
-                        : 'Not ekle',
+        final items = snapshot.data ?? [];
+        if (items.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.route_outlined, size: 52),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Henüz ziyaret yok',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                ),
-                onTap: () => context.push('/visits/${item['id']}/debrief'),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'İlk ziyaretinizi başlatmak için önce bir müşteri seçin.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: createVisit,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Yeni ziyaret'),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: refresh,
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, index) {
+              final item = items[index];
+              final company = item['company'] as Map? ?? {};
+              final status = item['status']?.toString() ?? 'draft';
+              return Card(
+                child: ListTile(
+                  title: Text(company['name']?.toString() ?? 'Firma'),
+                  subtitle: Text(item['purpose']?.toString() ?? 'Ziyaret'),
+                  trailing: Chip(
+                    label: Text(
+                      status == 'approved'
+                          ? 'Onaylandı'
+                          : status == 'needs_review'
+                          ? 'İncele'
+                          : 'Not ekle',
+                    ),
+                  ),
+                  onTap: () {
+                    if (status == 'needs_review') {
+                      context.push('/visits/${item['id']}/review');
+                      return;
+                    }
+                    final companyId = company['id']?.toString();
+                    if (status == 'approved' && companyId != null) {
+                      context.push('/briefings/$companyId');
+                      return;
+                    }
+                    context.push('/visits/${item['id']}/debrief');
+                  },
+                ),
+              );
+            },
+          ),
         );
       },
     ),

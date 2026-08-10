@@ -10,9 +10,12 @@ import 'features/home/home_screen.dart';
 import 'features/map/map_screen.dart';
 import 'features/more/more_screen.dart';
 import 'features/more/privacy_screen.dart';
+import 'features/more/workspace_module_screen.dart';
 import 'features/offline/offline_center_screen.dart';
 import 'features/tasks/tasks_screen.dart';
 import 'features/visits/debrief_screen.dart';
+import 'features/visits/briefing_screen.dart';
+import 'features/visits/review_screen.dart';
 import 'features/visits/visits_screen.dart';
 import 'l10n/app_localizations.dart';
 
@@ -93,6 +96,10 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
               builder: (_, __) => TasksScreen(services: services),
             ),
             GoRoute(
+              path: '/visits',
+              builder: (_, __) => VisitsScreen(services: services),
+            ),
+            GoRoute(
               path: '/more',
               builder: (_, __) => MoreScreen(
                 services: services,
@@ -105,14 +112,24 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
           ],
         ),
         GoRoute(
-          path: '/visits',
-          builder: (_, __) => VisitsScreen(services: services),
-        ),
-        GoRoute(
           path: '/visits/:id/debrief',
           builder: (_, state) => DebriefScreen(
             services: services,
             visitId: state.pathParameters['id']!,
+          ),
+        ),
+        GoRoute(
+          path: '/visits/:id/review',
+          builder: (_, state) => VisitReviewScreen(
+            services: services,
+            visitId: state.pathParameters['id']!,
+          ),
+        ),
+        GoRoute(
+          path: '/briefings/:companyId',
+          builder: (_, state) => BriefingScreen(
+            services: services,
+            companyId: state.pathParameters['companyId']!,
           ),
         ),
         GoRoute(
@@ -129,6 +146,23 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
         GoRoute(
           path: '/privacy',
           builder: (_, __) => PrivacyScreen(services: services),
+        ),
+        ...[
+          ('/calendar', WorkspaceModule.calendar),
+          ('/activity', WorkspaceModule.activity),
+          ('/reports', WorkspaceModule.reports),
+          ('/notifications', WorkspaceModule.notifications),
+          ('/opportunities', WorkspaceModule.opportunities),
+          ('/products', WorkspaceModule.products),
+          ('/orders', WorkspaceModule.orders),
+          ('/documents', WorkspaceModule.documents),
+          ('/forms', WorkspaceModule.forms),
+        ].map(
+          (entry) => GoRoute(
+            path: entry.$1,
+            builder: (_, __) =>
+                WorkspaceModuleScreen(services: services, module: entry.$2),
+          ),
         ),
       ],
     );
@@ -165,32 +199,12 @@ class _MobileShell extends StatelessWidget {
     final index = switch (location) {
       '/' => 0,
       String value when value.startsWith('/customers') => 1,
+      String value when value.startsWith('/visits') => 2,
       String value when value.startsWith('/tasks') => 3,
       _ => 4,
     };
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: AnimatedSwitcher(
-          duration: Duration(milliseconds: reduceMotion ? 120 : 280),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          transitionBuilder: (current, animation) => FadeTransition(
-            opacity: animation,
-            child: reduceMotion
-                ? current
-                : SlideTransition(
-                    position: Tween(
-                      begin: const Offset(0.025, 0),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: current,
-                  ),
-          ),
-          child: KeyedSubtree(key: ValueKey(location), child: child),
-        ),
-      ),
+      body: SafeArea(bottom: false, child: child),
       bottomNavigationBar: _FieldNavigation(
         selectedIndex: index,
         onSelected: (value) =>

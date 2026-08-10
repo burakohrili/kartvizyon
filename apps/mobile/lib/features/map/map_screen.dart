@@ -46,17 +46,9 @@ class _MapScreenState extends State<MapScreen> {
     if (!widget.services.config.hasSupabase) {
       setState(() {
         busy = false;
-        message = 'Demo konumu kullanılıyor; koordinat cihazda tutulmadı.';
-        candidates = [
-          {
-            'name': 'Atlas Medikal',
-            'address': 'Ümraniye, İstanbul',
-            'distanceKm': 2.4,
-            'latitude': 41.02,
-            'longitude': 29.12,
-            'priority': {'total': 78},
-          },
-        ];
+        message =
+            'Sunucu bağlantısı yapılandırılmadığı için müşteri aranamadı.';
+        candidates = const [];
       });
       return;
     }

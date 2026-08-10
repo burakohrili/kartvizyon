@@ -70,6 +70,13 @@ başvuru ve fiyatlar kesinleşmeden başlamaz.
 
 ## Bu turda kapatılanlar
 
+- ✅ Web–mobil özellik eşlemesi `docs/MOBILE_WEB_PARITY.md` ile tanımlandı;
+  mobil menüye Takvim, Aktivite, Rapor özeti, Bildirimler, Fırsatlar, Ürünler,
+  Siparişler, Belgeler ve Formlar gerçek API verileriyle eklendi.
+- ✅ Mobilde sahte yeni hesap özetleri kaldırıldı; manuel müşteri/ilgili kişi,
+  gerçek kartvizit kaydı, ziyaret brifingi ve AI özeti inceleme/onay akışları
+  tamamlandı.
+
 - ✅ Gradle/Java/Android build hatası — `org.gradle.java.home` ile JDK 21 sabitlendi;
   `flutter build apk --debug`, `flutter analyze` ve 5 mobil test geçiyor.
 - ✅ Marka logosu web (favicon, apple-icon, PWA manifest, sidebar, pazarlama başlığı),
