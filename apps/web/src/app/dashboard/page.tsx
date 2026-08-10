@@ -180,7 +180,11 @@ export default async function DashboardHome() {
                 <div className="brief-time">
                   {new Date(dashboard.nextVisit.plannedStartAt).toLocaleTimeString(
                     "tr-TR",
-                    { hour: "2-digit", minute: "2-digit" },
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      timeZone: "Europe/Istanbul",
+                    },
                   )}{" "}
                   <span>
                     {new Date(
@@ -188,6 +192,7 @@ export default async function DashboardHome() {
                     ).toLocaleDateString("tr-TR", {
                       day: "2-digit",
                       month: "short",
+                      timeZone: "Europe/Istanbul",
                     })}
                   </span>
                 </div>
