@@ -67,52 +67,49 @@ export async function loadDashboard() {
     overdueTasks,
     pendingReview,
     nextVisitResult,
-  ] =
-    await Promise.all([
-      supabase
-        .from("workspaces")
-        .select("name,organization_id")
-        .eq("id", workspaceId)
-        .single(),
-      supabase
-        .from("visits")
-        .select(
-          "id,approved_at,ai_summary,company:companies(name),representative:profiles!visits_representative_id_fkey(full_name)",
-        )
-        .eq("workspace_id", workspaceId)
-        .eq("status", "approved")
-        .order("approved_at", { ascending: false })
-        .limit(8),
-      supabase
-        .from("visits")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId)
-        .eq("status", "approved")
-        .gte("approved_at", today.toISOString())
-        .lt("approved_at", tomorrow.toISOString()),
-      supabase
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId)
-        .eq("status", "open")
-        .lt("due_at", new Date().toISOString()),
-      supabase
-        .from("visits")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId)
-        .eq("representative_id", user.id)
-        .eq("status", "needs_review"),
-      supabase
-        .from("visits")
-        .select(
-          "id,planned_start_at,company:companies!inner(id,name,address)",
-        )
-        .eq("workspace_id", workspaceId)
-        .gte("planned_start_at", new Date().toISOString())
-        .order("planned_start_at", { ascending: true })
-        .limit(1)
-        .maybeSingle(),
-    ]);
+  ] = await Promise.all([
+    supabase
+      .from("workspaces")
+      .select("name,organization_id")
+      .eq("id", workspaceId)
+      .single(),
+    supabase
+      .from("visits")
+      .select(
+        "id,approved_at,ai_summary,company:companies(name),representative:profiles!visits_representative_id_fkey(full_name)",
+      )
+      .eq("workspace_id", workspaceId)
+      .eq("status", "approved")
+      .order("approved_at", { ascending: false })
+      .limit(8),
+    supabase
+      .from("visits")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("status", "approved")
+      .gte("approved_at", today.toISOString())
+      .lt("approved_at", tomorrow.toISOString()),
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("status", "open")
+      .lt("due_at", new Date().toISOString()),
+    supabase
+      .from("visits")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("representative_id", user.id)
+      .eq("status", "needs_review"),
+    supabase
+      .from("visits")
+      .select("id,planned_start_at,company:companies!inner(id,name,address)")
+      .eq("workspace_id", workspaceId)
+      .gte("planned_start_at", new Date().toISOString())
+      .order("planned_start_at", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   const profile = await supabase
     .from("profiles")

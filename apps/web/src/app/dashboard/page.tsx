@@ -178,14 +178,13 @@ export default async function DashboardHome() {
             {dashboard.nextVisit ? (
               <>
                 <div className="brief-time">
-                  {new Date(dashboard.nextVisit.plannedStartAt).toLocaleTimeString(
-                    "tr-TR",
-                    {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      timeZone: "Europe/Istanbul",
-                    },
-                  )}{" "}
+                  {new Date(
+                    dashboard.nextVisit.plannedStartAt,
+                  ).toLocaleTimeString("tr-TR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: "Europe/Istanbul",
+                  })}{" "}
                   <span>
                     {new Date(
                       dashboard.nextVisit.plannedStartAt,
