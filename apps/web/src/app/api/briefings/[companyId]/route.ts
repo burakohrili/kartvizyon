@@ -2,11 +2,11 @@ import { apiError, serviceUnavailable } from "@/lib/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ companyId: string }> },
 ) {
   const { companyId } = await params;
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient(request);
   if (!supabase) return serviceUnavailable();
   const {
     data: { user },

@@ -46,6 +46,20 @@ export async function POST(request: Request) {
     );
     return Response.json({ data: extraction });
   } catch (error) {
+    const openAiError = error as { status?: number; code?: string };
+    if (
+      openAiError.status === 429 ||
+      openAiError.code === "credit_balance_exhausted"
+    ) {
+      console.error(error);
+      return Response.json(
+        {
+          error:
+            "Kartvizit tarama servisi kullanım limitine ulaştı. Lütfen daha sonra tekrar deneyin veya müşteriyi manuel ekleyin.",
+        },
+        { status: 503 },
+      );
+    }
     return apiError(error);
   }
 }
