@@ -1,16 +1,14 @@
 import { visitSummarySchema, type VisitSummary } from "@kartvizyon/contracts";
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
+
+import { createOpenAiClient } from "./client";
 
 const SUMMARY_MODEL = process.env.OPENAI_SUMMARY_MODEL ?? "gpt-5.6-sol";
 const TRANSCRIPTION_MODEL =
   process.env.OPENAI_TRANSCRIPTION_MODEL ?? "gpt-4o-transcribe";
 
 function client() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY_MISSING");
-  }
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return createOpenAiClient();
 }
 
 export async function transcribeVisitAudio(file: File) {

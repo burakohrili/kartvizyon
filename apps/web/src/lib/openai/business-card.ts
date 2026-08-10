@@ -2,16 +2,16 @@ import {
   businessCardExtractionSchema,
   type BusinessCardExtraction,
 } from "@kartvizyon/contracts";
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
+
+import { createOpenAiClient } from "./client";
 
 const MODEL = process.env.OPENAI_OCR_MODEL ?? "gpt-5.6-sol";
 
 export async function extractBusinessCard(
   imageDataUrl: string,
 ): Promise<BusinessCardExtraction> {
-  if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY_MISSING");
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = createOpenAiClient();
   const response = await openai.responses.parse({
     model: MODEL,
     input: [
