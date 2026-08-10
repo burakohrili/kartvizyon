@@ -175,24 +175,60 @@ export default async function DashboardHome() {
 
           <aside className="panel briefing">
             <span className="eyebrow">SIRADAKİ ZİYARET</span>
-            <div className="brief-time">
-              14:30 <span>Bugün</span>
-            </div>
-            <h3>Artemis Endüstri</h3>
-            <p className="location">📍 Ümraniye, İstanbul</p>
-            <div className="memory">
-              <strong>Müşteri hafıza kartı</strong>
-              <p>
-                Son görüşmede bakım paketi ve 3 yıllık garanti seçenekleri
-                konuşuldu. Satın alma müdürü revize teklifi bekliyor.
-              </p>
-              <ul>
-                <li>2 açık takip</li>
-                <li>Son ziyaret: 21 gün önce</li>
-              </ul>
-            </div>
-            <button className="secondary">Ziyaret brifingini aç</button>
-            <small className="source">3 onaylı kaynaktan hazırlandı</small>
+            {dashboard.nextVisit ? (
+              <>
+                <div className="brief-time">
+                  {new Date(dashboard.nextVisit.plannedStartAt).toLocaleTimeString(
+                    "tr-TR",
+                    { hour: "2-digit", minute: "2-digit" },
+                  )}{" "}
+                  <span>
+                    {new Date(
+                      dashboard.nextVisit.plannedStartAt,
+                    ).toLocaleDateString("tr-TR", {
+                      day: "2-digit",
+                      month: "short",
+                    })}
+                  </span>
+                </div>
+                <h3>{dashboard.nextVisit.company}</h3>
+                {dashboard.nextVisit.address ? (
+                  <p className="location">📍 {dashboard.nextVisit.address}</p>
+                ) : null}
+                <div className="memory">
+                  <strong>Müşteri hafıza kartı</strong>
+                  <p>
+                    {dashboard.nextVisit.memorySummary ??
+                      "Bu müşteri için henüz onaylı ziyaret özeti bulunmuyor."}
+                  </p>
+                  <ul>
+                    <li>{dashboard.nextVisit.openTasks} açık takip</li>
+                    <li>
+                      {dashboard.nextVisit.sourceCount} onaylı ziyaret kaynağı
+                    </li>
+                  </ul>
+                </div>
+                <Link
+                  className="secondary button-link"
+                  href={`/customers/${dashboard.nextVisit.companyId}`}
+                >
+                  Ziyaret brifingini aç
+                </Link>
+                <small className="source">
+                  {dashboard.nextVisit.sourceCount} onaylı kaynaktan hazırlandı
+                </small>
+              </>
+            ) : (
+              <>
+                <h3>Planlı ziyaret bulunmuyor</h3>
+                <p className="location">
+                  Takvime yeni bir ziyaret eklediğinizde brifing burada görünür.
+                </p>
+                <Link className="secondary button-link" href="/calendar">
+                  Ziyaret planla
+                </Link>
+              </>
+            )}
           </aside>
         </section>
 

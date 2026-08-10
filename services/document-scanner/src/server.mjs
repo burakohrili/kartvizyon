@@ -166,7 +166,7 @@ export function createAppServer() {
         {
           method: "POST",
           headers: {
-            authorization: `Bearer ${secret}`,
+            authorization: `Bearer ${process.env.DOCUMENT_SCAN_SECRET}`,
             "content-type": "application/json",
           },
           body: JSON.stringify({

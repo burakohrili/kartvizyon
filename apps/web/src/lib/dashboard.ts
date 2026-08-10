@@ -9,6 +9,17 @@ export type DashboardActivity = {
   approvedAt: string;
 };
 
+export type DashboardNextVisit = {
+  id: string;
+  companyId: string;
+  company: string;
+  address: string | null;
+  plannedStartAt: string;
+  memorySummary: string | null;
+  openTasks: number;
+  sourceCount: number;
+};
+
 const demoActivities: DashboardActivity[] = [
   {
     id: "demo-activity-1",
@@ -49,7 +60,14 @@ export async function loadDashboard() {
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const [workspace, activities, completedToday, overdueTasks, pendingReview] =
+  const [
+    workspace,
+    activities,
+    completedToday,
+    overdueTasks,
+    pendingReview,
+    nextVisitResult,
+  ] =
     await Promise.all([
       supabase
         .from("workspaces")
@@ -84,6 +102,16 @@ export async function loadDashboard() {
         .eq("workspace_id", workspaceId)
         .eq("representative_id", user.id)
         .eq("status", "needs_review"),
+      supabase
+        .from("visits")
+        .select(
+          "id,planned_start_at,company:companies!inner(id,name,address)",
+        )
+        .eq("workspace_id", workspaceId)
+        .gte("planned_start_at", new Date().toISOString())
+        .order("planned_start_at", { ascending: true })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
   const profile = await supabase
@@ -91,6 +119,43 @@ export async function loadDashboard() {
     .select("full_name")
     .eq("id", user.id)
     .single();
+
+  const nextCompany = nextVisitResult.data?.company as unknown as {
+    id?: string;
+    name?: string;
+    address?: string | null;
+  } | null;
+  let nextVisit: DashboardNextVisit | null = null;
+  if (
+    nextVisitResult.data?.id &&
+    nextVisitResult.data.planned_start_at &&
+    nextCompany?.id
+  ) {
+    const [memoryCard, openTasks] = await Promise.all([
+      supabase
+        .from("customer_memory_cards")
+        .select("summary,source_visit_ids")
+        .eq("workspace_id", workspaceId)
+        .eq("company_id", nextCompany.id)
+        .maybeSingle(),
+      supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("company_id", nextCompany.id)
+        .eq("status", "open"),
+    ]);
+    nextVisit = {
+      id: nextVisitResult.data.id,
+      companyId: nextCompany.id,
+      company: nextCompany.name ?? "Firma belirtilmedi",
+      address: nextCompany.address ?? null,
+      plannedStartAt: nextVisitResult.data.planned_start_at,
+      memorySummary: memoryCard.data?.summary ?? null,
+      openTasks: openTasks.count ?? 0,
+      sourceCount: memoryCard.data?.source_visit_ids?.length ?? 0,
+    };
+  }
 
   return {
     demo: false,
@@ -100,6 +165,7 @@ export async function loadDashboard() {
     completedToday: completedToday.count ?? 0,
     overdueTasks: overdueTasks.count ?? 0,
     pendingReview: pendingReview.count ?? 0,
+    nextVisit,
     activities: (activities.data ?? []).map((row) => {
       const company = row.company as unknown as { name?: string } | null;
       const representative = row.representative as unknown as {
@@ -125,6 +191,17 @@ function demoDashboard() {
     completedToday: 18,
     overdueTasks: 7,
     pendingReview: 3,
+    nextVisit: {
+      id: "demo-visit-next",
+      companyId: "demo-1",
+      company: "Artemis Endüstri",
+      address: "Ümraniye, İstanbul",
+      plannedStartAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      memorySummary:
+        "Son görüşmede bakım paketi ve 3 yıllık garanti seçenekleri konuşuldu. Satın alma müdürü revize teklifi bekliyor.",
+      openTasks: 2,
+      sourceCount: 3,
+    } satisfies DashboardNextVisit,
     activities: demoActivities,
   };
 }
