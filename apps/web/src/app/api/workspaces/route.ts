@@ -1,8 +1,8 @@
 import { serviceUnavailable, apiError } from "@/lib/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export async function GET() {
-  const supabase = await createSupabaseServerClient();
+export async function GET(request: Request) {
+  const supabase = await createSupabaseServerClient(request);
   if (!supabase)
     return Response.json({
       data: [
@@ -35,7 +35,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient(request);
   if (!supabase) return serviceUnavailable();
   const {
     data: { user },

@@ -40,8 +40,19 @@ class CustomerDetailScreen extends StatelessWidget {
     body: FutureBuilder<Map<String, dynamic>>(
       future: load(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                snapshot.error.toString(),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
         }
         final data = snapshot.data!;
         final company = data['company'] as Map? ?? {};

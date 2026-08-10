@@ -13,6 +13,11 @@ class _OfflineCenterScreenState extends State<OfflineCenterScreen> {
   String? message;
   Future<void> sync() async {
     setState(() => busy = true);
+    try {
+      await widget.services.refreshContext();
+    } catch (_) {
+      // SyncEngine aşağıda oturum/ağ durumunu sonuç nesnesine dönüştürür.
+    }
     final result = await widget.services.sync.run(
       ownerId: widget.services.ownerId,
     );

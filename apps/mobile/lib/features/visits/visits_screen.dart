@@ -46,20 +46,41 @@ class _VisitsScreenState extends State<VisitsScreen> {
   Future<void> createVisit() async {
     final purpose = TextEditingController();
     var customers = <Map<String, dynamic>>[];
-    if (widget.services.config.hasSupabase) {
-      final response =
-          await widget.services.api.get(
-                '/api/customers?workspaceId=${widget.services.workspaceId}',
-              )
-              as Map<String, dynamic>;
-      customers = List<Map<String, dynamic>>.from(
-        response['data'] as List? ?? [],
+    try {
+      if (widget.services.config.hasSupabase) {
+        final response =
+            await widget.services.api.get(
+                  '/api/customers?workspaceId=${widget.services.workspaceId}',
+                )
+                as Map<String, dynamic>;
+        customers = List<Map<String, dynamic>>.from(
+          response['data'] as List? ?? [],
+        );
+      } else {
+        customers = const [
+          {'id': 'demo-atlas', 'name': 'Atlas Medikal'},
+          {'id': 'demo-nova', 'name': 'Nova Otomasyon'},
+        ];
+      }
+    } on MobileApiException catch (error) {
+      purpose.dispose();
+      if (!mounted) return;
+      final message = error.statusCode == 401
+          ? 'Oturumunuzun süresi doldu. Lütfen yeniden giriş yapın.'
+          : error.message;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
       );
-    } else {
-      customers = const [
-        {'id': 'demo-atlas', 'name': 'Atlas Medikal'},
-        {'id': 'demo-nova', 'name': 'Nova Otomasyon'},
-      ];
+      return;
+    } catch (_) {
+      purpose.dispose();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Müşteriler yüklenemedi. Bağlantınızı kontrol edin.'),
+        ),
+      );
+      return;
     }
     if (!mounted) return;
     String? companyId = customers.isEmpty
@@ -169,8 +190,25 @@ class _VisitsScreenState extends State<VisitsScreen> {
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: visits,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(snapshot.error.toString(), textAlign: TextAlign.center),
+                  TextButton(
+                    onPressed: () => setState(() => visits = load()),
+                    child: const Text('Tekrar dene'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
         return ListView.separated(
           padding: const EdgeInsets.all(16),

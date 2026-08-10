@@ -70,6 +70,12 @@ class _DebriefScreenState extends State<DebriefScreen> {
       transcript: transcript.text.trim(),
       audioPath: audioPath,
     );
+    try {
+      await widget.services.refreshContext();
+    } catch (_) {
+      // Kayıt zaten güvenli çevrimdışı kuyrukta; oturum veya ağ yeniden
+      // kullanılabilir olduğunda eşitleme merkezinden tekrar gönderilir.
+    }
     final result = await widget.services.sync.run(
       ownerId: widget.services.ownerId,
     );

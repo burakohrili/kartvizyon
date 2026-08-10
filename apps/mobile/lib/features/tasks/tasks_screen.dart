@@ -65,8 +65,25 @@ class _TasksScreenState extends State<TasksScreen> {
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: tasks,
       builder: (_, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(snapshot.error.toString(), textAlign: TextAlign.center),
+                  TextButton(
+                    onPressed: () => setState(() => tasks = load()),
+                    child: const Text('Tekrar dene'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
         return ListView(
           padding: const EdgeInsets.all(16),
