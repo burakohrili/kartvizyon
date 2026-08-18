@@ -74,3 +74,25 @@ IPA üretilir ama TestFlight'a yüklenmez.** Yükleme istendiğinde build elle
 
 Bu bilinçli bir tercihtir; her push'un otomatik olarak TestFlight'a sürüm
 göndermesi test kullanıcılarını gereksiz bildirimle yorar.
+
+## Flutter sürümü sabittir
+
+`codemagic.yaml` daha önce `flutter: stable` kullanıyordu. `stable` kayan bir
+kanaldır ve `.github/workflows/ci.yml` 3.32.6'ya sabitlenmiş olduğu için
+**testlerin geçtiği sürüm ile mağazaya giden ikilinin sürümü ayrışıyordu** —
+release build'i hiç doğrulanmamış bir toolchain'le üretiliyordu.
+
+18 Ağustos 2026'da bu fiilen kırılmaya yol açtı: stable kanal Gradle 8.14+
+istemeye başladı, projenin wrapper'ı 8.12 olduğu için `bundleRelease` şu hatayla
+durdu:
+
+```
+Your project's Gradle version (8.12.0) is lower than Flutter's
+minimum supported version of 8.14.0.
+```
+
+Her iki workflow artık `flutter: 3.32.6` ile sabittir. Flutter yükseltmesi
+yapılacağında Gradle wrapper'ı (`apps/mobile/android/gradle/wrapper/gradle-wrapper.properties`,
+şu an 8.12) birlikte yükseltilmeli ve değişiklik `npm run check` ile
+doğrulandıktan sonra üç yerde birden (yerel, CI, Codemagic) aynı sürüme
+çekilmelidir.

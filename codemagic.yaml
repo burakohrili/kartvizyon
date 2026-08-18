@@ -30,7 +30,12 @@ workflows:
         - kartvizyon_upload
       vars:
         PACKAGE_NAME: app.kartvizyon.mobile
-      flutter: stable
+      # .github/workflows/ci.yml ile aynı sürüme sabitlenir. `stable` kayan bir
+      # kanaldır; testlerin geçtiği sürümle mağazaya giden ikilinin sürümü
+      # ayrışırsa release build'i hiç doğrulanmamış bir toolchain'le üretilir.
+      # Nitekim stable 8.14+ Gradle istemeye başlayınca build kırıldı.
+      # Flutter yükseltmesi ayrı ve test edilmiş bir değişiklik olmalıdır.
+      flutter: 3.32.6
       java: 17
     cache:
       cache_paths:
@@ -98,7 +103,12 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: app.kartvizyon.mobile
-      flutter: stable
+      # .github/workflows/ci.yml ile aynı sürüme sabitlenir. `stable` kayan bir
+      # kanaldır; testlerin geçtiği sürümle mağazaya giden ikilinin sürümü
+      # ayrışırsa release build'i hiç doğrulanmamış bir toolchain'le üretilir.
+      # Nitekim stable 8.14+ Gradle istemeye başlayınca build kırıldı.
+      # Flutter yükseltmesi ayrı ve test edilmiş bir değişiklik olmalıdır.
+      flutter: 3.32.6
       xcode: latest
       cocoapods: default
     cache:
