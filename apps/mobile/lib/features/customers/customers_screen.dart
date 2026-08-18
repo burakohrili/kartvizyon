@@ -18,6 +18,16 @@ class CustomersScreen extends StatefulWidget {
 class _CustomersScreenState extends State<CustomersScreen> {
   late Future<List<Map<String, dynamic>>> customers;
   bool saving = false;
+
+  /// Kartvizit okuma ayrı bir bayrak kullanır.
+  ///
+  /// `saving` ile paylaşılsaydı, OCR bittikten sonra açılan müşteri formunun
+  /// kendi kayıt yolu (`saveCustomer`, `if (saving) return;`) bayrağı hâlâ
+  /// açık bulup sessizce hiçbir şey yapmazdı.
+  bool scanning = false;
+
+  bool get busy => saving || scanning;
+
   final searchController = TextEditingController();
   String query = '';
 
@@ -79,14 +89,43 @@ class _CustomersScreenState extends State<CustomersScreen> {
   );
 
   Future<void> scanCard() async {
+    if (busy) return;
     final source = await _askImageSource();
     if (!mounted || source == null) return;
-    final image = await ImagePicker().pickImage(
-      source: source,
-      imageQuality: 88,
-      maxWidth: 1800,
-    );
+    // Kamera/galeri izni reddedilirse image_picker fırlatır; sarmalanmazsa bu
+    // yakalanmamış hata olarak uygulamayı çökertir.
+    final XFile? image;
+    try {
+      image = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 88,
+        maxWidth: 1800,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Görsel seçilemedi. Kamera veya fotoğraf izni verilmemiş olabilir.',
+          ),
+        ),
+      );
+      return;
+    }
     if (!mounted || image == null) return;
+
+    // OCR modelde saniyeler sürüyor. Daha önce bu süre boyunca ekranda
+    // hiçbir şey değişmiyor, düğmeler açık kalıyordu; kullanıcı ne olduğunu
+    // anlamayıp "hata varmış gibi hissettiriyor" dedi ve ikinci bir tarama
+    // başlatabiliyordu.
+    setState(() => scanning = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Kartvizit okunuyor…'),
+        duration: Duration(seconds: 30),
+      ),
+    );
+    _CustomerDraft? draft;
     try {
       final result =
           await widget.services.api.postFile(
@@ -96,24 +135,38 @@ class _CustomersScreenState extends State<CustomersScreen> {
               )
               as Map<String, dynamic>;
       final data = Map<String, dynamic>.from(result['data'] as Map);
-      await openCustomerForm(
-        initial: _CustomerDraft(
-          companyName: data['companyName']?.toString() ?? '',
-          firstName: data['firstName']?.toString() ?? '',
-          lastName: data['lastName']?.toString() ?? '',
-          title: data['title']?.toString() ?? '',
-          phone: data['phone']?.toString() ?? '',
-          email: data['email']?.toString() ?? '',
-          website: data['website']?.toString() ?? '',
-        ),
-        fromOcr: true,
+      draft = _CustomerDraft(
+        companyName: data['companyName']?.toString() ?? '',
+        firstName: data['firstName']?.toString() ?? '',
+        lastName: data['lastName']?.toString() ?? '',
+        title: data['title']?.toString() ?? '',
+        phone: data['phone']?.toString() ?? '',
+        email: data['email']?.toString() ?? '',
+        website: data['website']?.toString() ?? '',
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              error is MobileApiException
+                  ? error.message
+                  : 'Kartvizit okunamadı. Tekrar deneyin.',
+            ),
+          ),
+        );
+    } finally {
+      if (mounted) {
+        setState(() => scanning = false);
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
     }
+    // Form, `scanning` bırakıldıktan sonra açılır; aksi halde formun kendi
+    // kayıt yolu bayrağı açık bulur.
+    if (draft == null || !mounted) return;
+    await openCustomerForm(initial: draft, fromOcr: true);
   }
 
   Future<void> openCustomerForm({
@@ -188,16 +241,22 @@ class _CustomersScreenState extends State<CustomersScreen> {
       title: const Text('Müşteriler'),
       actions: [
         IconButton(
-          onPressed: saving ? null : () => openCustomerForm(),
+          onPressed: busy ? null : () => openCustomerForm(),
           tooltip: 'Manuel müşteri ekle',
           icon: const Icon(Icons.person_add_alt_1_outlined),
         ),
         IconButton(
-          onPressed: saving ? null : scanCard,
+          onPressed: busy ? null : scanCard,
           tooltip: 'Kartvizit tara',
           icon: const Icon(Icons.document_scanner_outlined),
         ),
       ],
+      bottom: scanning
+          ? const PreferredSize(
+              preferredSize: Size.fromHeight(4),
+              child: LinearProgressIndicator(minHeight: 4),
+            )
+          : null,
     ),
     body: Column(
       children: [
@@ -277,13 +336,13 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 ),
                 const SizedBox(height: 18),
                 FilledButton.icon(
-                  onPressed: saving ? null : () => openCustomerForm(),
+                  onPressed: busy ? null : () => openCustomerForm(),
                   icon: const Icon(Icons.person_add_alt_1),
                   label: const Text('Manuel müşteri ekle'),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
-                  onPressed: saving ? null : scanCard,
+                  onPressed: busy ? null : scanCard,
                   icon: const Icon(Icons.document_scanner_outlined),
                   label: const Text('Kartvizit tara'),
                 ),

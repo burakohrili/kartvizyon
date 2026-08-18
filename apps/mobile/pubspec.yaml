@@ -66,6 +66,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Kartvizit tarama testi galeri/kamera açmadan sahte bir seçici kurar;
+  # bunun için platform arayüzü doğrudan import edilir.
+  image_picker_platform_interface: ^2.11.0
+  plugin_platform_interface: ^2.1.8
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

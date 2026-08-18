@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -57,6 +58,30 @@ void main() {
         isA<MobileApiException>()
             .having((error) => error.statusCode, 'statusCode', 401)
             .having((error) => error.message, 'message', 'Oturum gerekli.'),
+      ),
+    );
+  });
+
+  test('yanıt gelmezse sonsuza kadar beklemez', () async {
+    // Zaman aşımı hiç yoktu: takılan istek, tamamen hareketsiz görünen bir
+    // ekran olarak sonsuza kadar bekliyordu.
+    final client = MobileApiClient(
+      baseUrl: Uri.parse('https://app.kartvizyon.app'),
+      sessions: const _EmptySessionStore(),
+      timeout: const Duration(milliseconds: 40),
+      client: MockClient((_) => Completer<http.Response>().future),
+    );
+
+    await expectLater(
+      client.get('/api/customers'),
+      throwsA(
+        isA<MobileApiException>()
+            .having((error) => error.statusCode, 'statusCode', 408)
+            .having(
+              (error) => error.message,
+              'message',
+              contains('zaman'),
+            ),
       ),
     );
   });

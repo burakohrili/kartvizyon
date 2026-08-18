@@ -39,6 +39,8 @@ class MobileApiClient {
     required this.sessions,
     this.accessTokenProvider,
     this.refreshAccessToken,
+    this.timeout = const Duration(seconds: 20),
+    this.fileTimeout = const Duration(seconds: 60),
     http.Client? client,
   }) : client = client ?? http.Client();
 
@@ -46,6 +48,17 @@ class MobileApiClient {
   final SecureSessionStore sessions;
   final Future<String?> Function()? accessTokenProvider;
   final Future<String?> Function()? refreshAccessToken;
+
+  /// Sıradan istek için üst sınır.
+  ///
+  /// Daha önce hiç zaman aşımı yoktu: takılan bir istek, tamamen hareketsiz
+  /// görünen bir ekran olarak sonsuza kadar bekliyordu. Kullanıcı bunu
+  /// "hiçbir şey olmuyor, hata var galiba" diye bildirdi.
+  final Duration timeout;
+
+  /// Dosya yüklemesi için ayrı ve daha uzun sınır; kartvizit OCR'ı ve ses
+  /// transkripsiyonu modelde gerçekten saniyeler sürer.
+  final Duration fileTimeout;
   final http.Client client;
 
   Future<String?> _accessToken() async {
@@ -64,20 +77,39 @@ class MobileApiClient {
   }
 
   Future<http.Response> _send(
-    Future<http.Response> Function(Map<String, String> headers) request,
-  ) async {
-    var response = await request(_headersFor(await _accessToken()));
+    String path,
+    Future<http.Response> Function(Map<String, String> headers) request, {
+    Duration? limit,
+  }) async {
+    Future<http.Response> attempt(Map<String, String> headers) =>
+        request(headers).timeout(
+          limit ?? timeout,
+          onTimeout: () {
+            const failure = MobileApiException(
+              408,
+              'Sunucu zamanında yanıt vermedi. Bağlantınızı kontrol edip '
+                  'tekrar deneyin.',
+            );
+            // Zaman aşımı yanıt üretmediği için `_decode` yolundan geçmez;
+            // bildirilmezse yavaş uç hiçbir yerde görünmez.
+            _capture(failure, path: path);
+            throw failure;
+          },
+        );
+
+    var response = await attempt(_headersFor(await _accessToken()));
     if (response.statusCode != 401 || refreshAccessToken == null) {
       return response;
     }
     final refreshedToken = await refreshAccessToken!.call();
     if (refreshedToken == null || refreshedToken.isEmpty) return response;
-    response = await request(_headersFor(refreshedToken));
+    response = await attempt(_headersFor(refreshedToken));
     return response;
   }
 
   Future<dynamic> get(String path) async {
     final response = await _send(
+      path,
       (headers) => client.get(baseUrl.resolve(path), headers: headers),
     );
     return _decode(response);
@@ -86,6 +118,7 @@ class MobileApiClient {
   Future<dynamic> post(String path, Map<String, dynamic> body) async {
     final encodedBody = jsonEncode(body);
     final response = await _send(
+      path,
       (headers) => client.post(
         baseUrl.resolve(path),
         headers: headers,
@@ -98,6 +131,7 @@ class MobileApiClient {
   Future<dynamic> patch(String path, Map<String, dynamic> body) async {
     final encodedBody = jsonEncode(body);
     final response = await _send(
+      path,
       (headers) => client.patch(
         baseUrl.resolve(path),
         headers: headers,
@@ -119,7 +153,7 @@ class MobileApiClient {
       return http.Response.fromStream(await client.send(request));
     }
 
-    final response = await _send(sendFile);
+    final response = await _send(path, sendFile, limit: fileTimeout);
     return _decode(response);
   }
 
@@ -149,21 +183,27 @@ class MobileApiClient {
   ///
   /// Yalnız yol ve durum kodu gönderilir; istek gövdesi, sorgu değerleri ve
   /// yanıt içeriği gönderilmez (bkz. sunucudaki sentry-scrub deseni).
-  void _report(http.Response response, MobileApiException failure) {
+  void _report(http.Response response, MobileApiException failure) => _capture(
+    failure,
+    path: response.request?.url.path,
+    method: response.request?.method,
+  );
+
+  void _capture(MobileApiException failure, {String? path, String? method}) {
     // 401 oturum yenilemesinin normal parçasıdır; gürültü yapmasın.
-    if (response.statusCode == 401) return;
-    final path = response.request?.url.path ?? 'bilinmiyor';
+    if (failure.statusCode == 401) return;
+    final safePath = path ?? 'bilinmiyor';
     Sentry.captureException(
       failure,
       stackTrace: StackTrace.current,
       withScope: (scope) {
         scope.level = SentryLevel.error;
-        scope.setTag('api.path', path);
-        scope.setTag('api.status', response.statusCode.toString());
+        scope.setTag('api.path', safePath);
+        scope.setTag('api.status', failure.statusCode.toString());
         scope.setContexts('api', {
-          'path': path,
-          'status': response.statusCode,
-          'method': response.request?.method,
+          'path': safePath,
+          'status': failure.statusCode,
+          'method': method,
         });
       },
     );
