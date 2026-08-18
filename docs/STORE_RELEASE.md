@@ -59,6 +59,8 @@ Kimlik bilgileri App Store Connect ve Play Console’un reviewer alanına girili
 - [x] Google Play Data safety formu (9 politika beyanı tamamlandı)
 - [x] iOS gerçek cihaz testi (TestFlight build 11–12 kuruldu ve çalıştırıldı)
 - [x] Bireysel abonelik fiyat kararı (ADR-0005) ve kota uygulaması
+- [x] İzin denetimi: yalnız fiilen kullanılan izinler beyan ediliyor, testle sabit
+- [x] Otomatik yayın hattı: `main`'e push → iOS TestFlight, Android kapalı test
 - [ ] Production hesap silme worker akışının uçtan uca doğrulanması
 - [ ] App Store Connect App Privacy formunun konsolda gönderilmesi
 - [ ] iPhone 6.5" ekran görüntüleri (iPad artık gerekmiyor; cihaz ailesi yalnız iPhone)
@@ -67,7 +69,16 @@ Kimlik bilgileri App Store Connect ve Play Console’un reviewer alanına girili
 - [ ] Android düşük/orta segment regresyon testi
 - [ ] Mağaza içi satın alma (ADR-0004 Faz C) — bu sürümde kapsam dışı
 
-Apple hesap oluşturan uygulamalarda uygulama içinden hesap silme başlatmayı ve etkin demo hesabı ister. Google Play ilk AAB yüklemesinin manuel yapılmasını gerektirir; sonraki sürümler Codemagic servis hesabıyla internal track’e gönderilebilir.
+Apple hesap oluşturan uygulamalarda uygulama içinden hesap silme başlatmayı ve etkin
+demo hesabı ister.
+
+Google Play ilk AAB yüklemesinin manuel yapılmasını istiyordu; bu adım 9 Ağustos 2026'da
+tamamlandı. 18 Ağustos 2026'dan itibaren yayın otomatiktir: `codemagic-play-publisher`
+service account'u (yalnız KartVizyon'un sürüm iznine sahip) ile her build kapalı test
+kanalına doğrudan düşer. Ayrıntı: `docs/CODEMAGIC_TRIGGERS.md`.
+
+Yürürlükteki sürümler: iOS TestFlight **build 29**, Android kapalı test
+**versionCode 28** — ikisi de commit `0409cf4`.
 
 Resmi kontrol kaynakları: [Apple App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/), [Apple hesap silme](https://developer.apple.com/support/offering-account-deletion-in-your-app/), [Google Play hesap silme](https://support.google.com/googleplay/android-developer/answer/13327111), [Google Play Data safety](https://support.google.com/googleplay/android-developer/answer/10787469), [Codemagic iOS signing](https://docs.codemagic.io/yaml-code-signing/signing-ios/) ve [Codemagic Android signing](https://docs.codemagic.io/yaml-code-signing/signing-android/).
 
