@@ -2,6 +2,23 @@ workflows:
   kartvizyon-android-release:
     name: KartVizyon Android signed AAB
     max_build_duration: 60
+    # main'e push edildiğinde otomatik çalışır. Bunun için GitHub deposunda
+    # https://api.codemagic.io/hooks/<appId> adresine bakan bir webhook bulunmalıdır;
+    # webhook yoksa Codemagic push'tan haberdar olmaz ve tetikleyici sessizce çalışmaz.
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+      cancel_previous_builds: true
+    # Yalnız mobil uygulamayı veya CI tanımını etkileyen commit'lerde derle;
+    # doküman ve web değişiklikleri mobil build dakikası harcamasın.
+    when:
+      changeset:
+        includes:
+          - "apps/mobile"
+          - "codemagic.yaml"
     # Personal accounts receive free build minutes on the macOS M2 runner.
     # Linux X2 requires billing even for Android-only workflows.
     instance_type: mac_mini_m2
@@ -50,6 +67,22 @@ workflows:
   kartvizyon-ios-testflight:
     name: KartVizyon iOS signed IPA / TestFlight
     max_build_duration: 90
+    # Otomatik tetiklemede `inputs` varsayılanları uygulanır; submitToTestFlight
+    # varsayılan olarak false olduğu için push ile yalnız imzalı IPA üretilir,
+    # TestFlight'a yükleme yapılmaz. Yükleme için build elle veya API ile
+    # submitToTestFlight=true verilerek başlatılır.
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+      cancel_previous_builds: true
+    when:
+      changeset:
+        includes:
+          - "apps/mobile"
+          - "codemagic.yaml"
     instance_type: mac_mini_m2
     working_directory: apps/mobile
     inputs:
