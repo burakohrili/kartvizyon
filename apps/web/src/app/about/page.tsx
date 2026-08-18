@@ -32,8 +32,8 @@ export default function AboutPage() {
       </p>
       <h2>İşletme</h2>
       <p>
-        Noesis Social - Burak OHRİLİ · Ege Vergi Dairesi · VKN 35509755908 ·
-        Gazi Osmanpaşa Mahallesi 5499/1 Sokak No:9 Bornova / İzmir
+        Noesis Social - Burak OHRİLİ · Ege Vergi Dairesi · VKN 6360302767 · Gazi
+        Osmanpaşa Mahallesi 5499/1 Sokak No:9 Bornova / İzmir
       </p>
     </LegalPage>
   );

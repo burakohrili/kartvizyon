@@ -23,7 +23,7 @@ export function LegalPage({
       </article>
       <footer>
         Noesis Social - Burak OHRİLİ · Gazi Osmanpaşa Mah. 5499/1 Sok. No:9
-        Bornova / İzmir · Ege VD. 35509755908
+        Bornova / İzmir · Ege VD. 6360302767 · +90 532 744 94 34
       </footer>
     </main>
   );

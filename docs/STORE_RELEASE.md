@@ -11,7 +11,7 @@
 - Gizlilik: `https://kartvizyon.app/privacy`
 - Destek: `https://kartvizyon.app/support`
 - Hesap silme: `https://kartvizyon.app/account-deletion`
-- Sağlayıcı: Noesis Social - Burak OHRİLİ, Ege VD. 35509755908
+- Sağlayıcı: Noesis Social - Burak OHRİLİ, Ege VD. 6360302767
 
 ## Diğer uygulamaları koruma ilkesi
 

@@ -15,7 +15,7 @@ Uygulama sırası ve kabul kriterleri için `docs/ROADMAP.md` dosyasını kullan
 
 ## Production kararları
 
-- İşletme: Noesis Social - Burak OHRİLİ, Gazi Osmanpaşa Mah. 5499/1 Sok. No:9 Bornova / İzmir, Ege VD. 35509755908.
+- İşletme: Noesis Social - Burak OHRİLİ, Gazi Osmanpaşa Mah. 5499/1 Sok. No:9 Bornova / İzmir, Ege Vergi Dairesi VKN 6360302767, telefon +90 532 744 94 34.
 - Bireysel ve kurumsal satış birlikte desteklenecektir; ödeme entegrasyonu ayrı karar tamamlanana kadar kapalıdır.
 - Public yüzey `kartvizyon.app`, authenticated uygulama `app.kartvizyon.app`, mobil kimlik `app.kartvizyon.mobile`.
 - Harici production kararları için ADR-0002; mobil UX için `docs/DESIGN.md`; mağaza kapısı için `docs/STORE_RELEASE.md` bağlayıcıdır.

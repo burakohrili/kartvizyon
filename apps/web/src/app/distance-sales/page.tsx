@@ -24,8 +24,9 @@ export default function DistanceSalesPage() {
       </p>
       <h2>Satıcı / hizmet sağlayıcı</h2>
       <p>
-        Noesis Social - Burak OHRİLİ · Ege Vergi Dairesi · VKN 35509755908 ·
-        Gazi Osmanpaşa Mahallesi 5499/1 Sokak No:9 Bornova / İzmir ·{" "}
+        Noesis Social - Burak OHRİLİ · Ege Vergi Dairesi · VKN 6360302767 · Gazi
+        Osmanpaşa Mahallesi 5499/1 Sokak No:9 Bornova / İzmir ·{" "}
+        <a href="tel:+905327449434">+90 532 744 94 34</a> ·{" "}
         <a href="mailto:kartvizyonapp@gmail.com">kartvizyonapp@gmail.com</a>
       </p>
       <h2>Hizmet ve sözleşmenin kurulması</h2>

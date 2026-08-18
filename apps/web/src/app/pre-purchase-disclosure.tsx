@@ -102,8 +102,8 @@ export function PrePurchaseDisclosure({
         <div>
           <dt>Satıcı</dt>
           <dd>
-            Noesis Social - Burak OHRİLİ · Ege VD. 35509755908 · Gazi Osmanpaşa
-            Mah. 5499/1 Sok. No:9 Bornova / İzmir
+            Noesis Social - Burak OHRİLİ · Ege VD. 6360302767 · +90 532 744 94
+            34 · Gazi Osmanpaşa Mah. 5499/1 Sok. No:9 Bornova / İzmir
           </dd>
         </div>
       </dl>

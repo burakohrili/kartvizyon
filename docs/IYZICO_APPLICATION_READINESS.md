@@ -1,6 +1,6 @@
 # iyzico başvuru hazırlık denetimi
 
-Son denetim: 18 Ağustos 2026
+Son denetim: 18 Ağustos 2026 (işletme bilgileri alındı)
 
 Bu belge iyzico hesabı açmaz, başvuru göndermez ve ödeme entegrasyonunu etkinleştirmez.
 Amaç, `kartvizyon.app` sitesini iyzico'nun yayımladığı üye işyeri başvuru koşullarına
@@ -30,17 +30,32 @@ Resmî kaynaklar:
 | iyzico ile Öde, Visa, Mastercard işaretleri                   | **Başvuru/marka paketi sonrası** | Resmî logo paketi kullanılarak checkout ve uygun site alanına eklenmeli               |
 | Faaliyete özel lisans/belge                                   | Değerlendirilmeli                | SaaS faaliyeti için mali müşavir/avukat teyidi                                        |
 
-## Kullanıcıdan zorunlu bilgiler
+## İşletme bilgileri (alındı)
 
-Bunlar uydurulamaz; başvuru öncesi işletme sahibinden alınmalıdır.
+| Alan          | Değer                                                |
+| ------------- | ---------------------------------------------------- |
+| Unvan         | Noesis Social - Burak OHRİLİ                         |
+| Vergi dairesi | Ege Vergi Dairesi                                    |
+| **VKN**       | **6360302767**                                       |
+| Telefon       | +90 532 744 94 34                                    |
+| Adres         | Gazi Osmanpaşa Mah. 5499/1 Sok. No:9 Bornova / İzmir |
+| E-posta       | kartvizyonapp@gmail.com                              |
 
-1. Başvuruda ve sitede yayımlanacak **telefon numarası**.
-2. **KEP adresi**.
-3. Kayıtlı olunan **meslek odası** ve ilgili davranış kurallarının çevrimiçi bağlantısı.
-4. **Vergi levhası**, imza beyannamesi/sirküleri, kimlik ve işletme adına **IBAN** kanıtı.
-5. e-Fatura/e-Arşiv mükellefiyet durumu ve kullanılacak entegratör.
+> **Düzeltme:** Site ve dokümanlar daha önce VKN alanında `35509755908`
+> gösteriyordu; bu değer **TC kimlik numarasıdır**, vergi numarası değildir.
+> Tüm public yüzeylerde `6360302767` ile değiştirildi. TC kimlik numarası
+> kişisel veridir ve public sitede yayımlanmaz; yalnız başvuru evrakında
+> iyzico'ya doğrudan verilir.
 
-Bu beş kalem tamamlanmadan "başvuruya tamamen hazır" sonucu verilemez.
+## Hâlâ kullanıcıdan gereken bilgiler
+
+1. **KEP adresi** (Kayıtlı Elektronik Posta).
+2. Kayıtlı olunan **meslek odası** ve davranış kurallarının çevrimiçi bağlantısı.
+3. **Vergi levhası**, imza beyannamesi/sirküleri, kimlik ve işletme adına **IBAN** kanıtı
+   (bunlar siteye konmaz, başvuru sırasında iyzico'ya yüklenir).
+4. e-Fatura/e-Arşiv mükellefiyet durumu ve kullanılacak entegratör.
+
+Bu dört kalem tamamlanmadan "başvuruya tamamen hazır" sonucu verilemez.
 
 ## Fiyat ve ürün tanımı (iyzico Subscription için)
 

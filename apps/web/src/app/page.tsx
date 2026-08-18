@@ -551,11 +551,17 @@ export default function MarketingHome() {
           <article>
             <h3>İşletme</h3>
             <p>Noesis Social - Burak OHRİLİ</p>
-            <p>Ege Vergi Dairesi · VKN 35509755908</p>
+            <p>Ege Vergi Dairesi · VKN 6360302767</p>
           </article>
           <article>
             <h3>Adres</h3>
             <p>Gazi Osmanpaşa Mahallesi 5499/1 Sokak No:9 Bornova / İzmir</p>
+          </article>
+          <article>
+            <h3>Telefon</h3>
+            <p>
+              <a href="tel:+905327449434">+90 532 744 94 34</a>
+            </p>
           </article>
           <article>
             <h3>E-posta</h3>

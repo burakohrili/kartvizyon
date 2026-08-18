@@ -8,10 +8,11 @@ bu süreç iyzico canlıya alındığı gün yürürlüğe girer.
 ## Satıcı bilgileri
 
 - Unvan: Noesis Social - Burak OHRİLİ
-- Vergi dairesi / VKN: Ege VD. 35509755908
+- Vergi dairesi / VKN: Ege Vergi Dairesi · 6360302767
 - Adres: Gazi Osmanpaşa Mah. 5499/1 Sok. No:9 Bornova / İzmir
 - E-posta: `kartvizyonapp@gmail.com` (kalıcı adres `support@kartvizyon.app` mailbox alındığında geçerli olur)
-- Telefon / KEP: **kullanıcıdan alınacak** — bkz. `docs/IYZICO_APPLICATION_READINESS.md`
+- Telefon: +90 532 744 94 34
+- KEP: **kullanıcıdan alınacak** — bkz. `docs/IYZICO_APPLICATION_READINESS.md`
 
 ## Fatura
 
