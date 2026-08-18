@@ -76,6 +76,40 @@ void main() {
     });
   });
 
+  test(
+    'konum izni reddedilirse belgelenen alternatifler koda karsilik gelir',
+    () {
+      // docs/STORE_RELEASE.md izin tablosu: konumun alternatifi "müşteri arama
+      // ve manuel adres", kameranınki "galeri veya manuel giriş". Alternatif
+      // koda karşılık gelmezse hem reviewer hem kullanıcı çıkmazda kalır.
+      final customers = File(
+        'lib/features/customers/customers_screen.dart',
+      ).readAsStringSync();
+
+      expect(
+        customers.contains('q=') ||
+            customers.contains('Uri.encodeQueryComponent'),
+        isTrue,
+        reason: 'Konum alternatifi olarak beyan edilen müşteri araması yok.',
+      );
+      expect(
+        customers.contains('ImageSource.gallery'),
+        isTrue,
+        reason: 'Kamera alternatifi olarak beyan edilen galeri seçimi yok.',
+      );
+
+      // Mikrofon alternatifi metin notudur.
+      final debrief = File(
+        'lib/features/visits/debrief_screen.dart',
+      ).readAsStringSync();
+      expect(
+        debrief.contains('TextField'),
+        isTrue,
+        reason: 'Mikrofon alternatifi olarak beyan edilen metin notu yok.',
+      );
+    },
+  );
+
   test('Android arka plan konum izni istemez', () {
     final manifest = File(
       'android/app/src/main/AndroidManifest.xml',

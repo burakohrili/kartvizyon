@@ -29,7 +29,7 @@
 | Kamera              | Kullanıcının seçtiği kartvizit/belgeyi yakalama      | Galeri veya manuel kişi girişi |
 | Fotoğraf            | Seçili kartvizit/belge yükleme                       | Kamera veya manuel giriş       |
 | Mikrofon            | Ziyaret sonrası kullanıcının başlattığı debrief      | Metin notu                     |
-| Konum (kullanırken) | Kullanıcının istediği anda yakındaki müşteri/ziyaret | Arama ve manuel adres          |
+| Konum (kullanırken) | Kullanıcının istediği anda yakındaki müşteri/ziyaret | Müşteri arama ve manuel adres  |
 
 Arka plan konumu, rehber, SMS, reklam kimliği ve izleme izni kullanılmaz. İzinler onboarding’de topluca değil, özellik ilk kez kullanıldığında istenir.
 

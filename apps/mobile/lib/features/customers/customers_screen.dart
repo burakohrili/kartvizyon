@@ -17,6 +17,14 @@ class CustomersScreen extends StatefulWidget {
 class _CustomersScreenState extends State<CustomersScreen> {
   late Future<List<Map<String, dynamic>>> customers;
   bool saving = false;
+  final searchController = TextEditingController();
+  String query = '';
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -27,9 +35,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
   Future<List<Map<String, dynamic>>> load() async {
     if (!widget.services.config.hasSupabase) return const [];
     await widget.services.refreshContext();
+    final search = query.isEmpty ? '' : '&q=${Uri.encodeQueryComponent(query)}';
     final result =
         await widget.services.api.get(
-              '/api/customers?workspaceId=${widget.services.workspaceId}',
+              '/api/customers?workspaceId=${widget.services.workspaceId}$search',
             )
             as Map<String, dynamic>;
     return List<Map<String, dynamic>>.from(result['data'] as List? ?? []);
@@ -189,87 +198,131 @@ class _CustomersScreenState extends State<CustomersScreen> {
         ),
       ],
     ),
-    body: FutureBuilder<List<Map<String, dynamic>>>(
-      future: customers,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return _ErrorView(
-            message: snapshot.error.toString(),
-            retry: () => setState(() => customers = load()),
-          );
-        }
-        final items = snapshot.data ?? [];
-        if (items.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.apartment_outlined, size: 54),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Henüz müşteri yok',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Bilgileri elle girebilir veya kartvizit tarayabilirsiniz.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: saving ? null : () => openCustomerForm(),
-                    icon: const Icon(Icons.person_add_alt_1),
-                    label: const Text('Manuel müşteri ekle'),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: saving ? null : scanCard,
-                    icon: const Icon(Icons.document_scanner_outlined),
-                    label: const Text('Kartvizit tara'),
-                  ),
-                ],
-              ),
+    body: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: TextField(
+            controller: searchController,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: 'Firma, adres veya e-posta ara',
+              border: const OutlineInputBorder(),
+              suffixIcon: query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: 'Aramayı temizle',
+                      onPressed: () {
+                        searchController.clear();
+                        setState(() {
+                          query = '';
+                          customers = load();
+                        });
+                      },
+                    ),
             ),
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: () async {
-            final next = load();
-            setState(() => customers = next);
-            await next;
-          },
-          child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (_, index) {
-              final item = items[index];
-              final name = item['name']?.toString() ?? 'Firma';
-              final initials = name.isEmpty
-                  ? 'M'
-                  : name.substring(0, name.length < 2 ? name.length : 2);
-              return Card(
-                child: ListTile(
-                  leading: CircleAvatar(child: Text(initials.toUpperCase())),
-                  title: Text(name),
-                  subtitle: Text(
-                    item['address']?.toString() ?? 'Adres belirtilmedi',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/customers/${item['id']}'),
+            onSubmitted: (value) => setState(() {
+              query = value.trim();
+              customers = load();
+            }),
+          ),
+        ),
+        Expanded(child: _buildList()),
+      ],
+    ),
+  );
+
+  Widget _buildList() => FutureBuilder<List<Map<String, dynamic>>>(
+    future: customers,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (snapshot.hasError) {
+        return _ErrorView(
+          message: snapshot.error.toString(),
+          retry: () => setState(() => customers = load()),
+        );
+      }
+      final items = snapshot.data ?? [];
+      if (items.isEmpty) {
+        // Arama kutusu eklendikten sonra klavye açıkken dar ekranda taşıyordu;
+        // boş durum da kaydırılabilir olmalı.
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  query.isEmpty ? Icons.apartment_outlined : Icons.search_off,
+                  size: 54,
                 ),
-              );
-            },
+                const SizedBox(height: 12),
+                Text(
+                  query.isEmpty
+                      ? 'Henüz müşteri yok'
+                      : 'Aramaya uygun müşteri yok',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  query.isEmpty
+                      ? 'Bilgileri elle girebilir veya kartvizit tarayabilirsiniz.'
+                      : '"$query" için sonuç bulunamadı. Aramayı temizleyip listeye dönebilirsiniz.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: saving ? null : () => openCustomerForm(),
+                  icon: const Icon(Icons.person_add_alt_1),
+                  label: const Text('Manuel müşteri ekle'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: saving ? null : scanCard,
+                  icon: const Icon(Icons.document_scanner_outlined),
+                  label: const Text('Kartvizit tara'),
+                ),
+              ],
+            ),
           ),
         );
-      },
-    ),
+      }
+      return RefreshIndicator(
+        onRefresh: () async {
+          final next = load();
+          setState(() => customers = next);
+          await next;
+        },
+        child: ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (_, index) {
+            final item = items[index];
+            final name = item['name']?.toString() ?? 'Firma';
+            final initials = name.isEmpty
+                ? 'M'
+                : name.substring(0, name.length < 2 ? name.length : 2);
+            return Card(
+              child: ListTile(
+                leading: CircleAvatar(child: Text(initials.toUpperCase())),
+                title: Text(name),
+                subtitle: Text(
+                  item['address']?.toString() ?? 'Adres belirtilmedi',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/customers/${item['id']}'),
+              ),
+            );
+          },
+        ),
+      );
+    },
   );
 }
 

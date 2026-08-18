@@ -49,8 +49,8 @@ const features = [
       "Rapor yazma süresini kısaltır; taslak kullanıcı onaylamadan kurumsal kayda geçmez.",
   },
   {
-    title: "Kartvizit ve belge OCR",
-    how: "Kamerayla taranan kartvizit veya belge otomatik olarak kişi/şirket alanlarına dönüşür.",
+    title: "Kartvizit OCR ve belge arşivi",
+    how: "Kamerayla veya galeriden seçilen kartvizit otomatik olarak kişi/şirket alanlarına dönüşür; belgeler web panelinden yüklenir ve sahada durumu görülür.",
     value: "Manuel veri girişini ortadan kaldırır, saha temposunu bozmaz.",
   },
   {
@@ -59,10 +59,10 @@ const features = [
     value: "Kırsalda veya bodrum katta bile veri kaybı yaşanmaz.",
   },
   {
-    title: "Bağlamsal konum hatırlatması",
-    how: "Kullanıcı yakın müşteriye geldiğinde tek seferlik öneri gösterir.",
+    title: "Yakındaki müşteriyi tek dokunuşla bul",
+    how: "Saha haritasında konumunuzu sorduğunuzda yakındaki müşteriler önceliğe göre listelenir.",
     value:
-      "Unutulan ziyaretleri azaltır; sürekli arka plan takibi hiç yapılmaz.",
+      "Unutulan ziyaretleri azaltır; uygulama arka planda konumunuzu izlemediği için pil ve gizlilik maliyeti yoktur.",
   },
   {
     title: "Belge karantina ve zararlı yazılım taraması",

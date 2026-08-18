@@ -58,9 +58,11 @@ void main() {
     await tester.tap(find.byIcon(Icons.person_add_alt_1_outlined));
     await tester.pumpAndSettle();
 
-    final closedHeight = tester
-        .getRect(find.byType(SingleChildScrollView).last)
-        .height;
+    final dialogScroll = find.descendant(
+      of: find.byType(Dialog),
+      matching: find.byType(SingleChildScrollView),
+    );
+    final closedHeight = tester.getRect(dialogScroll).height;
     expect(closedHeight, greaterThan(200));
 
     // Klavye açılır. Dialog klavye boşluğunu kendisi uyguladığı için form
@@ -68,9 +70,7 @@ void main() {
     tester.view.viewInsets = const FakeViewPadding(bottom: 1000);
     await tester.pumpAndSettle();
 
-    final openedHeight = tester
-        .getRect(find.byType(SingleChildScrollView).last)
-        .height;
+    final openedHeight = tester.getRect(dialogScroll).height;
     expect(
       openedHeight,
       greaterThan(200),

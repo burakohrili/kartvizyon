@@ -30,7 +30,7 @@ Ziyaretten önce son görüşmeleri, açık sözleri ve kritik notları tek brif
 - Ziyaret planlama ve saha debrief akışı
 - İnsan onaylı AI özetleri ve takip önerileri
 - Görev, fırsat, ürün ve sipariş taslağı görünümü
-- Kartvizit OCR ve belge karantinası
+- Kartvizit OCR ve belge karantina durumu
 - Çevrimdışı taslak ve güvenli senkronizasyon
 - Rol ve çalışma alanı bazlı kurumsal erişim
 - KVKK rıza, veri dışa aktarma ve hesap silme merkezi

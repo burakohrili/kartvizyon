@@ -8,11 +8,28 @@ export async function GET(request: Request) {
   const context = await getApiContext(request);
   if (!context.ok) return context.response;
 
-  const { data, error } = await context.supabase
+  // Konum izni reddedilen kullanıcının belgelenen alternatifi arama ve manuel
+  // adrestir (docs/STORE_RELEASE.md izin tablosu). Liste 100 kayıtla sınırlı
+  // olduğu için arama olmadan bu alternatif fiilen çalışmıyordu.
+  const query = new URL(request.url).searchParams.get("q")?.trim();
+
+  let builder = context.supabase
     .from("companies")
-    .select("id,name,phone,email,address,assigned_to,updated_at")
+    .select(
+      "id,name,phone,email,address,assigned_to,updated_at,latitude,longitude,location_source",
+    )
     .eq("workspace_id", context.workspaceId)
-    .is("archived_at", null)
+    .is("archived_at", null);
+
+  if (query) {
+    // `%` ve `_` PostgREST desenini bozmasın diye kaçırılır.
+    const escaped = query.replace(/[%_]/g, (char) => `\${char}`);
+    builder = builder.or(
+      `name.ilike.%${escaped}%,address.ilike.%${escaped}%,email.ilike.%${escaped}%`,
+    );
+  }
+
+  const { data, error } = await builder
     .order("updated_at", { ascending: false })
     .limit(100);
   if (error) return apiError(error);
