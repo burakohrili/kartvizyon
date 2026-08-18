@@ -68,6 +68,15 @@ workflows:
       - build/app/outputs/bundle/release/*.aab
       - build/app/outputs/mapping/release/mapping.txt
       - flutter_drive.log
+    # iOS tarafı TestFlight'a kendi gidiyordu ama Android AAB elle indirilip
+    # yükleniyordu. Play service account'u (yalnız KartVizyon'un sürüm iznine
+    # sahip) bağlandığı için artık kapalı test kanalına doğrudan düşer.
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: alpha
+        # Sürüm taslak değil, doğrudan test kullanıcılarına açılır.
+        submit_as_draft: false
 
   kartvizyon-ios-testflight:
     name: KartVizyon iOS signed IPA / TestFlight
