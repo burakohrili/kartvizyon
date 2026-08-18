@@ -30,6 +30,12 @@ when:
 Yalnız `apps/mobile` altını veya `codemagic.yaml`'ı değiştiren commit'ler build
 başlatır. Doküman, web ve veritabanı değişiklikleri mobil derleme tetiklemez.
 
+**Önemli ayrıntı:** Codemagic changeset'i son push'a göre değil, o workflow'un
+**son başarılı build'inden bu yana** biriken commit'lere göre değerlendirir. Bu
+yüzden başarılı bir build yokken doküman commit'i de build başlatabilir; aradaki
+commit'lerden biri `apps/mobile`'a dokunmuştur. Bir kez başarılı build oluştuktan
+sonra doküman commit'leri tetikleme yapmaz.
+
 `cancel_previous_builds: true` olduğu için arka arkaya push'larda yalnız en son
 commit derlenir.
 
