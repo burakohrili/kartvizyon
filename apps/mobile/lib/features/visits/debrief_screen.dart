@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/mobile_services.dart';
 
 class DebriefScreen extends StatefulWidget {
@@ -20,8 +22,17 @@ class DebriefScreen extends StatefulWidget {
 class _DebriefScreenState extends State<DebriefScreen> {
   final recorder = AudioRecorder();
   final transcript = TextEditingController();
+
+  /// Not başına tek kimlik. Daha önce her gönderimde yenisi üretiliyordu;
+  /// kullanıcı "gönderildi" yazısını görüp düğmeye bir kez daha bastığında
+  /// kuyruğa ikinci bir kayıt giriyor ve aynı ziyaret iki kez işleniyordu.
+  final clientMutationId = const Uuid().v4();
+
   bool recording = false;
   bool busy = false;
+
+  /// Not bir kez kuyruğa alındıktan sonra ekran yeniden gönderim kabul etmez.
+  bool submitted = false;
   String? audioPath;
   String? message;
 
@@ -58,6 +69,7 @@ class _DebriefScreenState extends State<DebriefScreen> {
   }
 
   Future<void> save() async {
+    if (busy || submitted) return;
     if (recording) audioPath = await recorder.stop();
     setState(() {
       busy = true;
@@ -69,7 +81,9 @@ class _DebriefScreenState extends State<DebriefScreen> {
       visitId: widget.visitId,
       transcript: transcript.text.trim(),
       audioPath: audioPath,
+      clientMutationId: clientMutationId,
     );
+    submitted = true;
     try {
       await widget.services.refreshContext();
     } catch (_) {
@@ -80,11 +94,21 @@ class _DebriefScreenState extends State<DebriefScreen> {
       ownerId: widget.services.ownerId,
     );
     if (!mounted) return;
+    if (result.synced > 0) {
+      // Gönderim başarılıysa kullanıcı burada bekletilmez; sunucu ziyareti
+      // `needs_review` yapıp inceleme adresini döndürüyor. Önce ekranda tek
+      // satırlık bir mesaj yazıp duruyorduk ve kullanıcı ne olduğunu
+      // anlamıyordu.
+      transcript.clear();
+      audioPath = null;
+      context.pushReplacement('/visits/${widget.visitId}/review');
+      return;
+    }
     setState(() {
       busy = false;
-      message = result.synced > 0
-          ? 'Not gönderildi; AI özeti kullanıcı incelemesine hazırlandığında görünecek.'
-          : 'Not cihazda güvenle kuyruklandı. Bağlantı gelince otomatik gönderilecek.';
+      message =
+          'Not cihazda güvenle kuyruklandı. Bağlantı gelince gönderilecek; '
+          'durumunu Eşitleme merkezinden izleyebilirsiniz.';
     });
   }
 
@@ -147,7 +171,9 @@ class _DebriefScreenState extends State<DebriefScreen> {
         const SizedBox(height: 14),
         FilledButton(
           onPressed:
-              busy || (transcript.text.trim().isEmpty && audioPath == null)
+              busy ||
+                  submitted ||
+                  (transcript.text.trim().isEmpty && audioPath == null)
               ? null
               : save,
           child: Text(
@@ -158,6 +184,16 @@ class _DebriefScreenState extends State<DebriefScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 14),
             child: Text(message!),
+          ),
+        // Kuyrukta kalan not için çıkış yolu. Önce ekranda tek bir cümle
+        // kalıyor ve kullanıcı sistem geri tuşunu bulmak zorundaydı.
+        if (submitted)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: OutlinedButton(
+              onPressed: () => context.go('/visits'),
+              child: const Text('Ziyaretlere dön'),
+            ),
           ),
         if (audioPath != null)
           TextButton(

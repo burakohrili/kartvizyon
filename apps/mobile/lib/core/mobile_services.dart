@@ -190,6 +190,26 @@ class MobileServices {
     required this.sync,
   });
 
+  /// Testlerde bellek içi bir veritabanı ve sahte istemcilerle kurmak için.
+  ///
+  /// `MobileServices.create` gerçek `AppDatabase()` açar ve o da
+  /// path_provider'a bağlıdır; widget testinde kuyruk sorgulanır sorgulanmaz
+  /// patlar. `AppDatabase.forTesting` ile aynı gerekçe.
+  factory MobileServices.forTesting({
+    required MobileConfig config,
+    required AppDatabase database,
+    required MobileApiClient api,
+    required SyncEngine sync,
+    SecureSessionStore sessions = const SecureSessionStore(),
+  }) => MobileServices._(
+    config: config,
+    database: database,
+    sessions: sessions,
+    api: api,
+    queue: SyncQueueRepository(database),
+    sync: sync,
+  );
+
   factory MobileServices.create(MobileConfig config) {
     final database = AppDatabase();
     const sessions = SecureSessionStore();

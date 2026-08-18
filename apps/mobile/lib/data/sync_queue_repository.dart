@@ -37,14 +37,19 @@ class SyncQueueRepository {
     return mutationId;
   }
 
+  /// [clientMutationId] verilirse aynı not için tekrar çağrıldığında kuyrukta
+  /// ikinci bir kayıt oluşmaz ve sunucudaki
+  /// `unique(user_id, client_mutation_id)` sayesinde çift işleme de olmaz.
+  /// Verilmezse her çağrı yeni bir not sayılır.
   Future<String> enqueueVisitDebrief({
     required String ownerId,
     required String workspaceId,
     required String visitId,
     required String transcript,
     String? audioPath,
+    String? clientMutationId,
   }) async {
-    final mutationId = _uuid.v4();
+    final mutationId = clientMutationId ?? _uuid.v4();
     await database.enqueue(
       SyncQueueItemsCompanion.insert(
         id: _uuid.v4(),

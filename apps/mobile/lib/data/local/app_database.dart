@@ -41,6 +41,19 @@ class AppDatabase extends _$AppDatabase {
     syncQueueItems,
   )..where((row) => row.clientMutationId.equals(mutationId))).go();
 
+  /// Kalıcı hata işaretini kaldırır ki kayıt yeniden denenebilsin.
+  ///
+  /// Deneme sayacı da sıfırlanır; kullanıcı "tekrar dene" dediğinde ekranda
+  /// eski denemelerin sayısını görmesi kafa karıştırıyor.
+  Future<int> clearFailure(String mutationId) => (update(
+    syncQueueItems,
+  )..where((row) => row.clientMutationId.equals(mutationId))).write(
+    const SyncQueueItemsCompanion(
+      lastError: Value(null),
+      attempts: Value(0),
+    ),
+  );
+
   Future<int> markFailure(String mutationId, String error) async {
     final current =
         await (select(syncQueueItems)
