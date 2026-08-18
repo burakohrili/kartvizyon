@@ -2872,6 +2872,65 @@ nav a.active {
   color: #657087;
   line-height: 1.7;
 }
+/* İletişim kartları persona-grid'i paylaşıyordu: 3 sütunluk grid'e dört kart
+   girince dördüncüsü tek başına alt satıra düşüyor, 240px min-height de iki
+   satırlık bilgi için devasa boşluk bırakıyordu. */
+.contact-grid {
+  display: grid;
+  /* Dört kart için auto-fit kullanılmaz: ara genişliklerde üç sütuna düşüp
+     dördüncü kartı yine tek başına alt satıra bırakıyor. Sabit basamaklar
+     4 → 2 → 1 sırasını garanti eder. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+.contact-grid article {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 26px 24px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 12px 45px rgba(20, 31, 57, 0.07);
+}
+.contact-grid h3 {
+  margin: 0 0 2px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--mk-blue);
+}
+.contact-grid p {
+  margin: 0;
+  color: #3c455c;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.contact-grid a {
+  color: var(--mk-ink);
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.contact-grid a:hover {
+  text-decoration: underline;
+}
+.contact-grid .contact-hint {
+  margin-top: auto;
+  color: #7b8499;
+  font-size: 13.5px;
+}
+.contact-all {
+  display: inline-block;
+  margin-top: 20px;
+  color: var(--mk-blue);
+  font-weight: 700;
+  text-decoration: none;
+}
+.contact-all:hover {
+  text-decoration: underline;
+}
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
@@ -3085,10 +3144,34 @@ nav a.active {
 .marketing-footer {
   padding: 60px max(20px, calc((100% - 1180px) / 2));
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 30px;
+  /* Marka sütunu okunabilir kalsın; `auto` verilen menü onu daraltıyordu. */
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
+  gap: 40px 60px;
   color: white;
   background: #08122c;
+}
+.footer-brand p {
+  margin: 10px 0 0;
+}
+.footer-brand a {
+  color: white;
+  text-decoration: none;
+}
+.footer-brand a:hover {
+  text-decoration: underline;
+}
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.footer-col h4 {
+  margin: 0 0 4px;
+  color: #8d9ab8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .marketing-footer strong {
   font-size: 24px;
@@ -3099,9 +3182,9 @@ nav a.active {
   line-height: 1.6;
 }
 .marketing-footer nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 30px;
 }
 .marketing-footer nav a {
   color: white;
@@ -3241,11 +3324,24 @@ nav a.active {
   .persona-grid {
     grid-template-columns: 1fr;
   }
+  .contact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .marketing-footer {
     grid-template-columns: 1fr;
   }
+  .marketing-footer nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 26px;
+  }
 }
 @media (max-width: 560px) {
+  .contact-grid {
+    grid-template-columns: 1fr;
+  }
+  .marketing-footer nav {
+    grid-template-columns: 1fr;
+  }
   .marketing-nav {
     width: calc(100% - 28px);
   }

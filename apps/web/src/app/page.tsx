@@ -547,7 +547,7 @@ export default function MarketingHome() {
             ulaşabilirsiniz.
           </p>
         </div>
-        <div className="persona-grid">
+        <div className="contact-grid">
           <article>
             <h3>İşletme</h3>
             <p>Noesis Social - Burak OHRİLİ</p>
@@ -555,13 +555,18 @@ export default function MarketingHome() {
           </article>
           <article>
             <h3>Adres</h3>
-            <p>Gazi Osmanpaşa Mahallesi 5499/1 Sokak No:9 Bornova / İzmir</p>
+            <p>
+              Gazi Osmanpaşa Mahallesi 5499/1 Sokak No:9
+              <br />
+              Bornova / İzmir
+            </p>
           </article>
           <article>
             <h3>Telefon</h3>
             <p>
               <a href="tel:+905327449434">+90 532 744 94 34</a>
             </p>
+            <p className="contact-hint">Hafta içi 09:00–18:00</p>
           </article>
           <article>
             <h3>E-posta</h3>
@@ -570,30 +575,46 @@ export default function MarketingHome() {
                 kartvizyonapp@gmail.com
               </a>
             </p>
-            <Link href="/contact">Tüm iletişim bilgileri →</Link>
+            <p className="contact-hint">Ürün, destek ve veri hakları</p>
           </article>
         </div>
+        <Link className="contact-all" href="/contact">
+          Tüm iletişim bilgileri →
+        </Link>
       </section>
 
       <footer className="marketing-footer">
-        <div>
+        <div className="footer-brand">
           <strong>KartVizyon</strong>
           <p>
             Noesis Social - Burak OHRİLİ
             <br />
             Bornova / İzmir · Türkiye
           </p>
+          <p>
+            <a href="tel:+905327449434">+90 532 744 94 34</a>
+          </p>
         </div>
-        <nav aria-label="Yasal bağlantılar">
-          <Link href="/about">Hakkımızda</Link>
-          <Link href="/contact">İletişim</Link>
-          <Link href="/privacy">Gizlilik</Link>
-          <Link href="/kvkk">KVKK Aydınlatma</Link>
-          <Link href="/terms">Kullanım Koşulları</Link>
-          <Link href="/distance-sales">Mesafeli Satış</Link>
-          <Link href="/delivery-refund">Teslim, İptal ve İade</Link>
-          <Link href="/account-deletion">Hesap Silme</Link>
-          <Link href="/support">Destek</Link>
+        {/* Dokuz bağlantı tek sırada okunmuyordu; konuya göre gruplandı. */}
+        <nav aria-label="Alt bilgi bağlantıları">
+          <div className="footer-col">
+            <h4>Kurumsal</h4>
+            <Link href="/about">Hakkımızda</Link>
+            <Link href="/contact">İletişim</Link>
+            <Link href="/support">Destek</Link>
+          </div>
+          <div className="footer-col">
+            <h4>Yasal</h4>
+            <Link href="/privacy">Gizlilik</Link>
+            <Link href="/kvkk">KVKK Aydınlatma</Link>
+            <Link href="/terms">Kullanım Koşulları</Link>
+          </div>
+          <div className="footer-col">
+            <h4>Satış ve haklar</h4>
+            <Link href="/distance-sales">Mesafeli Satış</Link>
+            <Link href="/delivery-refund">Teslim, İptal ve İade</Link>
+            <Link href="/account-deletion">Hesap Silme</Link>
+          </div>
         </nav>
         <small>
           © {new Date().getFullYear()} Noesis Social - Burak OHRİLİ. Tüm hakları
