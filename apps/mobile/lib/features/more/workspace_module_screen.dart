@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
@@ -180,6 +181,32 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         : widget.module.path;
     final response =
         await widget.services.api.get(path) as Map<String, dynamic>;
+
+    // Fiyat listesi ayrı bir ekran değil, ürün kataloğunun devamı. Sahada
+    // salt okunurdur; yükleme web çalışma alanında yapılır (ADR-0007).
+    final priceLists = <_ModuleItem>[];
+    if (widget.module == WorkspaceModule.products) {
+      try {
+        final documents =
+            await widget.services.api.get('/api/documents?purpose=price_list')
+                as Map<String, dynamic>;
+        priceLists.addAll(
+          _list(documents['data']).map(
+            (item) => _ModuleItem(
+              title: item['file_name']?.toString() ?? 'Fiyat listesi',
+              subtitle: item['scan_status']?.toString() == 'clean'
+                  ? _parts([_date(item['created_at']), 'Açmak için dokunun'])
+                  : 'Güvenlik taraması sürüyor; henüz açılamaz',
+              icon: Icons.picture_as_pdf_outlined,
+              raw: item,
+            ),
+          ),
+        );
+      } catch (_) {
+        // Fiyat listesi getirilemezse ürün kataloğu yine de gösterilir;
+        // katalog asıl içeriktir.
+      }
+    }
     return switch (widget.module) {
       WorkspaceModule.calendar => [
         ..._list(response['visits']).map(
@@ -245,19 +272,19 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
               ),
             )
             .toList(),
-      WorkspaceModule.products =>
-        _list(response['data'])
-            .map(
-              (item) => _ModuleItem(
-                title: item['name']?.toString() ?? 'Ürün',
-                subtitle: _parts([
-                  item['sku'],
-                  _money(item['list_price'], item['currency']),
-                ]),
-                icon: Icons.inventory_2_outlined,
-              ),
-            )
-            .toList(),
+      WorkspaceModule.products => [
+        ...priceLists,
+        ..._list(response['data']).map(
+          (item) => _ModuleItem(
+            title: item['name']?.toString() ?? 'Ürün',
+            subtitle: _parts([
+              item['sku'],
+              _money(item['list_price'], item['currency']),
+            ]),
+            icon: Icons.inventory_2_outlined,
+          ),
+        ),
+      ],
       WorkspaceModule.orders =>
         _list(response['data'])
             .map(
@@ -320,6 +347,38 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  bool _isOpenablePriceList(_ModuleItem item) =>
+      widget.module == WorkspaceModule.products &&
+      item.raw?['scan_status']?.toString() == 'clean';
+
+  /// Temiz çıkmış fiyat listesini kısa ömürlü imzalı bağlantıyla açar.
+  ///
+  /// Karantinadaki dosya doğrudan sunulmaz; sunucu tarama sonucu `clean`
+  /// değilse bağlantı üretmez.
+  Future<void> openPriceList(_ModuleItem item) async {
+    final id = item.raw?['id']?.toString();
+    if (id == null) return;
+    try {
+      final result =
+          await widget.services.api.get('/api/documents/$id/download')
+              as Map<String, dynamic>;
+      final url = result['url']?.toString();
+      if (url == null || url.isEmpty) throw StateError('boş bağlantı');
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is MobileApiException
+                ? error.message
+                : 'Fiyat listesi açılamadı. Tekrar deneyin.',
+          ),
+        ),
+      );
     }
   }
 
@@ -409,6 +468,8 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                   subtitle: item.subtitle.isEmpty ? null : Text(item.subtitle),
                   onTap: widget.module == WorkspaceModule.notifications
                       ? () => markNotificationRead(item)
+                      : _isOpenablePriceList(item)
+                      ? () => openPriceList(item)
                       : null,
                 ),
               );

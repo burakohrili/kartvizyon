@@ -204,6 +204,67 @@ export function ProductWorkbench({
   );
 }
 
+/**
+ * Fiyat listesi PDF'i yükler ve mevcut listeleri gösterir.
+ *
+ * Ayrı bir hat kurulmaz: belge karantinası, imza doğrulaması ve ClamAV
+ * taraması `documents` üzerinde zaten çalışıyor. Fiyat listesi bunların
+ * hepsine ihtiyaç duyar (ADR-0007).
+ */
+export function PriceListWorkbench({
+  initialItems,
+}: {
+  initialItems: Array<Record<string, unknown>>;
+}) {
+  const [items, setItems] = useState(initialItems);
+  const [message, setMessage] = useState("");
+  async function upload(formData: FormData) {
+    formData.set("purpose", "price_list");
+    setMessage("Fiyat listesi doğrulanıyor ve karantinaya yükleniyor…");
+    const response = await fetch("/api/documents", {
+      method: "POST",
+      body: formData,
+    });
+    const result = await response.json();
+    if (response.ok) {
+      setItems((current) => [result.data, ...current]);
+      setMessage(result.message);
+    } else setMessage(result.error ?? "Fiyat listesi yüklenemedi.");
+  }
+  return (
+    <div className="operations-grid">
+      <form action={upload} className="operation-form">
+        <h2>Fiyat listesi yükle</h2>
+        <p>PDF · en fazla 20 MB · tarama temiz çıkana kadar indirilemez</p>
+        <input name="file" type="file" required accept=".pdf" />
+        <button className="primary">Karantinaya yükle</button>
+        {message && (
+          <p className="form-message" role="status">
+            {message}
+          </p>
+        )}
+      </form>
+      <section className="operation-list">
+        {items.map((item) => (
+          <article key={String(item.id)}>
+            <div>
+              <strong>{String(item.file_name)}</strong>
+              <small>
+                {new Date(String(item.created_at)).toLocaleDateString("tr-TR")}
+              </small>
+            </div>
+            {item.scan_status === "clean" ? (
+              <a href={`/api/documents/${String(item.id)}/download`}>İndir</a>
+            ) : (
+              <span>{String(item.scan_status)}</span>
+            )}
+          </article>
+        ))}
+      </section>
+    </div>
+  );
+}
+
 export function OrderWorkbench({
   workspaceId,
   initialItems,

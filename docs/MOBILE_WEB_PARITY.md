@@ -19,7 +19,7 @@ akışına, web uygulaması ise geniş ekran ve yönetici işlemlerine öncelik 
 | Raporlar    | Raporlar         | Rapor özeti          | Müşteri, onay, inceleme ve açık görev göstergeleri      |
 | Bildirimler | Bildirimler      | Bildirimler          | Listeleme ve okundu işaretleme                          |
 | Fırsatlar   | Fırsatlar        | Fırsatlar            | Saha için salt okunur pipeline görünümü                 |
-| Ürünler     | Ürün ve Fiyatlar | Ürün ve fiyatlar     | Saha için aktif katalog görünümü                        |
+| Ürünler     | Ürün ve Fiyatlar | Ürün ve fiyatlar     | Saha için aktif katalog ve PDF fiyat listesi (okuma)    |
 | Siparişler  | Siparişler       | Sipariş taslakları   | Durum ve tutar görünümü                                 |
 | Formlar     | Formlar          | Saha formları        | Aktif şablonlar ve gönderimler                          |
 | Belgeler    | Belgeler         | Belgeler             | Dosya ve zararlı yazılım tarama durumu                  |
@@ -39,6 +39,7 @@ akışına, web uygulaması ise geniş ekran ve yönetici işlemlerine öncelik 
 - Paket, kullanım kotası ve ödeme yönetimi
 - Entegrasyon kurulumu ve secret yönetimi
 - Toplu müşteri içe aktarma ve geri alma
+- PDF fiyat listesi yükleme (sahada yalnız okunur, bkz. ADR-0007)
 - PDF/XLSX rapor dışa aktarma ve paylaşım bağlantıları
 - Çalışma alanı oluşturma/değiştirme
 

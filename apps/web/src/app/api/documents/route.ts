@@ -30,14 +30,19 @@ export async function GET(request: Request) {
   try {
     const context = await getApiContext(request);
     if (!context.ok) return context.response;
-    const { data, error } = await context.supabase
+    // `purpose=price_list` ile yalnız fiyat listeleri istenebilir; ürün ve
+    // fiyatlar ekranı bunu kullanır.
+    const purpose = new URL(request.url).searchParams.get("purpose");
+    let query = context.supabase
       .from("documents")
       .select(
-        "id,file_name,mime_type,size_bytes,scan_status,company_id,visit_id,created_at",
+        "id,file_name,mime_type,size_bytes,scan_status,company_id,visit_id,purpose,created_at",
       )
       .eq("workspace_id", context.workspaceId)
       .order("created_at", { ascending: false })
       .limit(200);
+    if (purpose) query = query.eq("purpose", purpose);
+    const { data, error } = await query;
     if (error) throw error;
     return Response.json({ data });
   } catch (error) {
@@ -62,6 +67,16 @@ export async function POST(request: Request) {
         { error: "Dosya tipi veya boyutu desteklenmiyor." },
         { status: 400 },
       );
+    // Fiyat listesi ayrı bir hat değil, aynı karantina hattının bir amacı.
+    const purposeInput = form.get("purpose")?.toString() ?? "general";
+    if (purposeInput !== "general" && purposeInput !== "price_list")
+      return Response.json({ error: "Belge amacı geçersiz." }, { status: 400 });
+    if (purposeInput === "price_list" && file.type !== "application/pdf")
+      return Response.json(
+        { error: "Fiyat listesi PDF olmalıdır." },
+        { status: 415 },
+      );
+    const documentPurpose = purposeInput;
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (!signatureMatches(bytes, file.type))
       return Response.json(
@@ -104,8 +119,9 @@ export async function POST(request: Request) {
         sha256: metadata.sha256,
         storage_path: metadata.storagePath,
         scan_status: "pending",
+        purpose: documentPurpose,
       })
-      .select("id,file_name,scan_status,created_at")
+      .select("id,file_name,scan_status,purpose,created_at")
       .single();
     if (error) {
       await context.supabase.storage
