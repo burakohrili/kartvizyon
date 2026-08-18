@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -31,14 +32,44 @@ class _DebriefScreenState extends State<DebriefScreen> {
   bool recording = false;
   bool busy = false;
 
+  /// Kayıt süresi. Ekran "60–90 saniyelik debrief" diyor ama sayaç yoktu;
+  /// kullanıcı 20. saniyede mi 5. dakikada mı olduğunu bilemiyor, sunucudaki
+  /// 25 MB sınırına ancak gönderirken çarpıyordu.
+  Duration elapsed = Duration.zero;
+  Timer? _tick;
+
+  /// Hangi ziyaret için not yazıldığı; başlık yalnız "Ziyaret sonrası not"
+  /// diyordu ve iki ziyaret açıkken ayırt edilemiyordu.
+  String? companyName;
+
   /// Not bir kez kuyruğa alındıktan sonra ekran yeniden gönderim kabul etmez.
   bool submitted = false;
   String? audioPath;
   String? message;
 
+  @override
+  void initState() {
+    super.initState();
+    loadCompany();
+  }
+
+  Future<void> loadCompany() async {
+    try {
+      final response =
+          await widget.services.api.get('/api/visits/${widget.visitId}')
+              as Map<String, dynamic>;
+      final company = (response['data'] as Map?)?['company'] as Map?;
+      if (!mounted) return;
+      setState(() => companyName = company?['name']?.toString());
+    } catch (_) {
+      // Ad gösterilemezse not almaya engel değil; başlık genel kalır.
+    }
+  }
+
   Future<void> toggleRecording() async {
     if (recording) {
       audioPath = await recorder.stop();
+      _tick?.cancel();
       setState(() => recording = false);
       return;
     }
@@ -61,11 +92,23 @@ class _DebriefScreenState extends State<DebriefScreen> {
       ),
       path: path,
     );
+    _tick?.cancel();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => elapsed += const Duration(seconds: 1));
+    });
     setState(() {
       recording = true;
       audioPath = path;
+      elapsed = Duration.zero;
       message = null;
     });
+  }
+
+  static String _clock(Duration value) {
+    final minutes = value.inMinutes.toString().padLeft(2, '0');
+    final seconds = (value.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   Future<void> save() async {
@@ -114,6 +157,7 @@ class _DebriefScreenState extends State<DebriefScreen> {
 
   @override
   void dispose() {
+    _tick?.cancel();
     recorder.dispose();
     transcript.dispose();
     super.dispose();
@@ -121,7 +165,18 @@ class _DebriefScreenState extends State<DebriefScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Ziyaret sonrası not')),
+    appBar: AppBar(
+      title: const Text('Ziyaret sonrası not'),
+      bottom: companyName == null
+          ? null
+          : PreferredSize(
+              preferredSize: const Size.fromHeight(28),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(companyName!),
+              ),
+            ),
+    ),
     body: ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -141,11 +196,20 @@ class _DebriefScreenState extends State<DebriefScreen> {
                 const SizedBox(height: 8),
                 Text(
                   recording
-                      ? 'Kayıt sürüyor'
+                      ? 'Kayıt sürüyor · ${_clock(elapsed)}'
                       : audioPath != null
-                      ? 'Sesli not hazır'
+                      ? 'Sesli not hazır · ${_clock(elapsed)}'
                       : '60–90 saniyelik debrief',
                 ),
+                // Uzun kayıt sunucunun 25 MB sınırına takılır; kullanıcı bunu
+                // gönderdikten sonra değil, kaydederken öğrenmeli.
+                if (recording && elapsed.inMinutes >= 5)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Text(
+                      'Kayıt uzuyor. Beş dakikayı aşan notlar gönderilemeyebilir.',
+                    ),
+                  ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
                   onPressed: busy ? null : toggleRecording,

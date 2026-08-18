@@ -74,8 +74,16 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
         },
       });
       if (!mounted) return;
+      final createdTasks = selectedFollowUps.length;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ziyaret onaylandı ve hafızaya eklendi.')),
+        SnackBar(
+          content: Text(
+            createdTasks == 0
+                ? 'Ziyaret onaylandı ve hafızaya eklendi.'
+                : 'Ziyaret onaylandı. Seçtiğiniz $createdTasks takip '
+                      'Görevler ekranına eklendi.',
+          ),
+        ),
       );
       context.go('/visits');
     } catch (error) {
@@ -83,6 +91,61 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  /// AI özeti işe yaramazsa ziyareti reddeder.
+  ///
+  /// Tek çıkış "Onayla ve hafızaya ekle" idi; kötü bir özetle karşılaşan
+  /// kullanıcının yapabileceği bir şey yoktu ve ziyaret sonsuza kadar
+  /// inceleme kuyruğunda kalıyordu. Reddedilen ziyaret silinmez, yalnız
+  /// kurumsal hafızaya girmez.
+  Future<void> reject() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('AI özeti reddedilsin mi?'),
+        content: const Text(
+          'Ziyaret kurumsal hafızaya eklenmez ve takip görevi oluşmaz. '
+          'Notunuz ve ses kaydınız silinmez.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Reddet'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => busy = true);
+    try {
+      await widget.services.api.post(
+        '/api/visits/${widget.visitId}/reject',
+        const {},
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Özet reddedildi; hafızaya eklenmedi.')),
+      );
+      context.go('/visits');
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is MobileApiException
+                ? error.message
+                : 'Reddedilemedi. Tekrar deneyin.',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -130,6 +193,21 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
             const Text(
               'AI çıktısı siz onaylamadan kurumsal hafızaya eklenmez.',
             ),
+            // Uyarı listenin dibinde duruyordu; onay düğmesine inen kullanıcı
+            // görmeden geçebiliyordu.
+            if (sensitive) ...[
+              const SizedBox(height: 12),
+              Card(
+                color: Theme.of(context).colorScheme.errorContainer,
+                child: const Padding(
+                  padding: EdgeInsets.all(14),
+                  child: Text(
+                    'Hassas kişisel veri olasılığı var. Onaylamadan önce '
+                    'özeti düzenleyin.',
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 18),
             TextField(
               controller: summaryController,
@@ -173,6 +251,10 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
                   contentPadding: EdgeInsets.zero,
                   value: selectedFollowUps.contains(index),
                   title: Text(followUps[index]['title']?.toString() ?? 'Takip'),
+                  // Tarih ve sorumlu ipucu gösterilmiyordu; onaylanan takip
+                  // veritabanı trigger'ı ile bu tarihten göreve yazılıyor,
+                  // yani kullanıcı görmediği bir tarihi onaylıyordu.
+                  subtitle: Text(_followUpDetail(followUps[index])),
                   onChanged: busy
                       ? null
                       : (selected) => setState(() {
@@ -184,24 +266,57 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
                         }),
                 ),
               ),
-            if (sensitive)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(14),
-                  child: Text(
-                    'Hassas kişisel veri olasılığı var. Onaylamadan önce özeti düzenleyin.',
+            // Özetin kaynağı. Karşılaştıracak metin olmadan yapılan onay,
+            // onay değil kabuldür.
+            if ((data['transcript']?.toString() ?? '').isNotEmpty) ...[
+              const SizedBox(height: 18),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text('Kayıt metni'),
+                subtitle: const Text('Özeti kaynağıyla karşılaştırın'),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(data['transcript'].toString()),
                   ),
-                ),
+                ],
               ),
+            ],
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: busy ? null : approve,
               icon: const Icon(Icons.verified_outlined),
               label: Text(busy ? 'Onaylanıyor…' : 'Onayla ve hafızaya ekle'),
             ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: busy ? null : reject,
+              icon: const Icon(Icons.block_outlined),
+              label: const Text('Özeti reddet'),
+            ),
           ],
         );
       },
     ),
   );
+
+  /// Takip önerisinin tarihi ve sorumlu ipucu.
+  static String _followUpDetail(Map<String, dynamic> followUp) {
+    final parts = <String>[];
+    final due = followUp['dueDate']?.toString();
+    if (due != null && due.isNotEmpty) {
+      final parsed = DateTime.tryParse(due);
+      parts.add(
+        parsed == null
+            ? 'Son tarih $due'
+            : 'Son tarih ${parsed.day.toString().padLeft(2, '0')}.'
+                  '${parsed.month.toString().padLeft(2, '0')}.${parsed.year}',
+      );
+    } else {
+      parts.add('Tarihsiz');
+    }
+    final owner = followUp['ownerHint']?.toString();
+    if (owner != null && owner.isNotEmpty) parts.add(owner);
+    return parts.join(' · ');
+  }
 }

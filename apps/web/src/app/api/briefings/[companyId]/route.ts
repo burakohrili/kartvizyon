@@ -21,7 +21,7 @@ export async function GET(
   ] = await Promise.all([
     supabase
       .from("companies")
-      .select("id,name,address")
+      .select("id,name,address,latitude,longitude")
       .eq("id", companyId)
       .single(),
     supabase
