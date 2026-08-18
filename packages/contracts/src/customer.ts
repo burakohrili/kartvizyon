@@ -8,6 +8,25 @@ const optionalText = (max: number) =>
     .optional()
     .transform((value) => value || undefined);
 
+/**
+ * Kullanıcı "firma.com" yazdığında şema bunu reddediyordu ve müşteri hiç
+ * kaydedilemiyordu. Kartvizit OCR yolu şemayı çağırmadan önce zaten
+ * `https://` deneyerek bu düzeltmeyi yapıyordu; manuel giriş yapmıyordu.
+ * Normalizasyon şemaya alınarak her iki yol da aynı davranışı gösterir.
+ */
+const optionalWebsite = z
+  .string()
+  .trim()
+  .max(300)
+  .optional()
+  .transform((value) => {
+    if (!value) return undefined;
+    return /^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`;
+  })
+  .refine((value) => value === undefined || z.url().safeParse(value).success, {
+    message: "Geçerli bir web adresi girin (örnek: firma.com)",
+  });
+
 export const companyCreateSchema = z.object({
   workspaceId: z.uuid(),
   organizationId: z.uuid().nullable(),
@@ -17,10 +36,7 @@ export const companyCreateSchema = z.object({
     .union([z.email(), z.literal("")])
     .optional()
     .transform((value) => value || undefined),
-  website: z
-    .union([z.url(), z.literal("")])
-    .optional()
-    .transform((value) => value || undefined),
+  website: optionalWebsite,
   address: optionalText(500),
   clientMutationId: z.uuid().optional(),
 });

@@ -301,3 +301,51 @@ describe("etkileşim ve belge sözleşmeleri", () => {
     ).toBe(false);
   });
 });
+
+describe("müşteri web sitesi normalizasyonu", () => {
+  // Kullanıcı "firma.com" yazdığında müşteri hiç kaydedilemiyor ve yalnız
+  // "Geçersiz istek." görüyordu. Şema artık şemasız adresi tamamlar.
+  const base = {
+    workspaceId: "00000000-0000-4000-8000-000000000001",
+    organizationId: null,
+    name: "Atlas Medikal",
+  };
+
+  it("şemasız adrese https ekler", () => {
+    const parsed = companyCreateSchema.parse({
+      ...base,
+      website: "atlasmedikal.com",
+    });
+    expect(parsed.website).toBe("https://atlasmedikal.com");
+  });
+
+  it("www ile başlayan adresi de tamamlar", () => {
+    expect(
+      companyCreateSchema.parse({ ...base, website: "www.atlasmedikal.com" })
+        .website,
+    ).toBe("https://www.atlasmedikal.com");
+  });
+
+  it("zaten şemalı adrese dokunmaz", () => {
+    expect(
+      companyCreateSchema.parse({
+        ...base,
+        website: "https://atlasmedikal.com",
+      }).website,
+    ).toBe("https://atlasmedikal.com");
+  });
+
+  it("boş alanı sorun etmez", () => {
+    expect(companyCreateSchema.parse({ ...base, website: "" }).website).toBe(
+      undefined,
+    );
+    expect(companyCreateSchema.parse(base).website).toBe(undefined);
+  });
+
+  it("gerçekten geçersiz adresi reddeder", () => {
+    expect(
+      companyCreateSchema.safeParse({ ...base, website: "bozuk deger" })
+        .success,
+    ).toBe(false);
+  });
+});
