@@ -24,14 +24,24 @@
 
 ## İzin gerekçeleri
 
-| İzin                | Kullanım                                             | Alternatif                     |
-| ------------------- | ---------------------------------------------------- | ------------------------------ |
-| Kamera              | Kullanıcının seçtiği kartvizit/belgeyi yakalama      | Galeri veya manuel kişi girişi |
-| Fotoğraf            | Seçili kartvizit/belge yükleme                       | Kamera veya manuel giriş       |
-| Mikrofon            | Ziyaret sonrası kullanıcının başlattığı debrief      | Metin notu                     |
-| Konum (kullanırken) | Kullanıcının istediği anda yakındaki müşteri/ziyaret | Müşteri arama ve manuel adres  |
+| İzin                | Kullanım                                                      | Alternatif                     |
+| ------------------- | ------------------------------------------------------------- | ------------------------------ |
+| Kamera              | Kullanıcının seçtiği kartvizit/belgeyi yakalama               | Galeri veya manuel kişi girişi |
+| Fotoğraf            | Seçili kartvizit/belge yükleme                                | Kamera veya manuel giriş       |
+| Mikrofon            | Ziyaret sonrası kullanıcının başlattığı debrief               | Metin notu                     |
+| Konum (kullanırken) | Kullanıcının istediği anda yakındaki müşteri/ziyaret          | Müşteri arama ve manuel adres  |
+| Konum (saha modu)   | Kullanıcının başlattığı vardiya boyunca yakınlık hatırlatması | Saha modunu hiç açmamak        |
+| Bildirim            | Saha modu yakınlık hatırlatması                               | Saha modu kapalıyken istenmez  |
 
-Arka plan konumu, rehber, SMS, reklam kimliği ve izleme izni kullanılmaz. İzinler onboarding’de topluca değil, özellik ilk kez kullanıldığında istenir.
+Rehber, SMS, reklam kimliği ve izleme izni kullanılmaz. İzinler onboarding'de
+topluca değil, özellik ilk kez kullanıldığında istenir.
+
+**Arka plan konumu:** `ACCESS_BACKGROUND_LOCATION` ve
+`NSLocationAlwaysAndWhenInUseUsageDescription` **istenmez**. Saha modu açıkken
+konum arka planda alınır ama bu, kullanıcının başlattığı ve görünür çalışan bir
+oturumdur: Android'de kalıcı sistem bildirimi, iOS'ta mavi konum çubuğu görünür,
+oturum 8 saat sonra veya 21:00'de kendiliğinden kapanır. Uygulama kapalıyken
+konum izlenmez. Gerekçe: `docs/product/decisions/0006-field-mode.md`.
 
 ## İnceleme hesabı
 

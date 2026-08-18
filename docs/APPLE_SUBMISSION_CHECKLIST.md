@@ -144,7 +144,7 @@ KartVizyon, saha satış görüşmelerini kullanıcı onaylı müşteri hafızas
 4. Ziyaretler bölümünde demo debrief akışını açın; AI taslağı "incelemede" durumundadır ve onaylanmadan kurumsal kayda geçmez.
 5. Daha Fazla → KVKK ve veri hakları altında veri dışa aktarma ve hesap silme talebi başlatılabilir.
 
-Kamera, mikrofon veya konum izni reddedilebilir; uygulama manuel yollarla çalışmaya devam eder. Arka plan konumu kullanılmaz. Bu sürümde uygulama tamamen ücretsizdir: hiçbir platformda ücretli abonelik, uygulama içi satın alma veya ödeme akışı bulunmaz ve tüm hesaplar ücretsiz kullanır. Backend inceleme boyunca açık tutulacaktır.
+Kamera, mikrofon veya konum izni reddedilebilir; uygulama manuel yollarla çalışmaya devam eder. Arka plan konumu yalnız kullanıcının başlattığı saha modu süresince ve görünür göstergeyle (Android kalıcı bildirim, iOS mavi konum çubuğu) alınır; uygulama kapalıyken konum izlenmez. Bu sürümde uygulama tamamen ücretsizdir: hiçbir platformda ücretli abonelik, uygulama içi satın alma veya ödeme akışı bulunmaz ve tüm hesaplar ücretsiz kullanır. Backend inceleme boyunca açık tutulacaktır.
 ```
 
 ---
@@ -166,12 +166,19 @@ Beyan edilen her izin kodda fiilen kullanılmalıdır; kullanılmayan izin
 "gereksiz veri toplama" sayılır ve reddedilir. `apps/mobile/test/store_compliance_test.dart`
 bunu her build'de doğrular.
 
-| Anahtar                               | Kullanım                                 | Alternatif (reddedilirse)     |
-| ------------------------------------- | ---------------------------------------- | ----------------------------- |
-| `NSCameraUsageDescription`            | Kartvizit fotoğrafı çekme                | Galeriden seçme, manuel giriş |
-| `NSPhotoLibraryUsageDescription`      | Galeriden kartvizit seçme                | Kamera, manuel giriş          |
-| `NSMicrophoneUsageDescription`        | Kullanıcının başlattığı sesli debrief    | Metin notu                    |
-| `NSLocationWhenInUseUsageDescription` | Yakındaki müşteri önerisi (tek seferlik) | Arama, manuel adres           |
+| Anahtar                               | Kullanım                               | Alternatif (reddedilirse)     |
+| ------------------------------------- | -------------------------------------- | ----------------------------- |
+| `NSCameraUsageDescription`            | Kartvizit fotoğrafı çekme              | Galeriden seçme, manuel giriş |
+| `NSPhotoLibraryUsageDescription`      | Galeriden kartvizit seçme              | Kamera, manuel giriş          |
+| `NSMicrophoneUsageDescription`        | Kullanıcının başlattığı sesli debrief  | Metin notu                    |
+| `NSLocationWhenInUseUsageDescription` | Yakındaki müşteri önerisi ve saha modu | Müşteri arama, manuel adres   |
+| `UIBackgroundModes: location`         | Saha modu açıkken arka planda konum    | Saha modunu hiç açmamak       |
+
+**Saha modu `Always` yetkisi istemez.** Arka planda konum alınır ama oturum
+kullanıcı tarafından başlatılır, mavi konum göstergesi açık kalır
+(`showBackgroundLocationIndicator: true`) ve oturum kendiliğinden kapanır.
+Reviewer bunu Bugün ekranındaki "Saha modunu başlat" düğmesiyle görebilir;
+"Saha modunu bitir" ile durdurulur. Ayrıntı: ADR-0006.
 
 **`NSLocationAlwaysAndWhenInUseUsageDescription` bilinçli olarak yoktur.** Bu
 anahtar bulunduğunda `geolocator` iOS'ta _Always_ yetkisi ister; ürün sözü ise

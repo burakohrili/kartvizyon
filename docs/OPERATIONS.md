@@ -89,6 +89,25 @@ kayıt anında bir kez yapılır. Google Geocoding ücreti ~$5/1000 istektir.
 
 Anahtar Cloud Console'da **yalnız Geocoding API'ye kısıtlanmış** olmalıdır.
 
+## Saha modu
+
+Yakınlık hatırlatması yalnız kullanıcının başlattığı saha modu açıkken çalışır;
+uygulama kapalıyken bildirim gönderilmez (ADR-0006).
+
+| Ayar              | Değer             | Neden                                             |
+| ----------------- | ----------------- | ------------------------------------------------- |
+| Hareket eşiği     | 250 m             | Her metrede sunucuya gidilmez                     |
+| Bildirim yarıçapı | 1,5 km            | Harita ekranı 25 km listeler; bildirim dar olmalı |
+| Oturum sınırı     | 8 saat veya 21:00 | Unutulan oturum gece boyu pil yakmasın            |
+| Tekrar kilidi     | 24 saat           | `geofence_events`, kullanıcı × müşteri bazında    |
+
+Kullandığı uçlar: `/api/geofence/candidates` (aday listesi, `maxDistanceKm`
+parametresiyle daraltılır) ve `/api/geofence/events` (`shown`,
+`briefing_opened` sonucu yazılır — tekrar kilidi bu kayıtlara dayanır).
+
+`geofence_events` kullanıcının enlem/boylamını **saklamaz**; yalnız firma
+kimliği, mesafe, öncelik puanı ve sonuç tutulur.
+
 ## Domain ve e-posta
 
 - `kartvizyon.app`: public site ve legal/store URL’leri

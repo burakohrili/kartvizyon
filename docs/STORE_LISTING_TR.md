@@ -57,7 +57,7 @@ KartVizyon, saha satış görüşmelerini kullanıcı onaylı müşteri hafızas
 4. Ziyaretler bölümünde demo debrief akışını açın.
 5. KVKK bölümünde veri dışa aktarma ve hesap silme talebi görülebilir.
 
-Kamera, mikrofon veya konum izni reddedilebilir; uygulama manuel yollarla çalışmaya devam eder. Arka plan konumu kullanılmaz. Backend inceleme boyunca açık tutulacaktır. Parola yalnız mağaza reviewer kimlik alanına girilir.
+Kamera, mikrofon veya konum izni reddedilebilir; uygulama manuel yollarla çalışmaya devam eder. Arka plan konumu yalnız kullanıcının başlattığı saha modu süresince ve görünür göstergeyle (Android kalıcı bildirim, iOS mavi konum çubuğu) alınır; uygulama kapalıyken konum izlenmez. Backend inceleme boyunca açık tutulacaktır. Parola yalnız mağaza reviewer kimlik alanına girilir.
 
 ## Ekran görüntüsü planı
 

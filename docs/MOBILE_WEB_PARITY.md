@@ -26,6 +26,13 @@ akışına, web uygulaması ise geniş ekran ve yönetici işlemlerine öncelik 
 | KVKK        | KVKK             | KVKK ve veri hakları | Rıza, dışa aktarma ve silme talebi                      |
 | Güvenlik    | Hesap Güvenliği  | Menü                 | Tüm cihazlardan çıkış                                   |
 
+## Yalnız mobilde bulunan işlevler
+
+- **Saha modu** — kullanıcının başlattığı vardiya boyunca yakınlık hatırlatması.
+  Webde karşılığı yoktur; cihaz konumu gerektirir. Bkz. ADR-0006.
+- **Müşteri konumunu sahada sabitleme** — müşterinin kapısındayken koordinatı
+  kaydeder ve adresten üretilen tahmini ezer.
+
 ## Yalnız web yönetim alanında kalan işlevler
 
 - Organizasyon yapısı, ekip daveti ve rol yönetimi

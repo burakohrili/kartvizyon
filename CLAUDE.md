@@ -6,7 +6,7 @@
 - AI çıktıları `needs_review` durumunda başlar; kullanıcı onayı olmadan kurumsal kayda veya yönetici akışına girmez.
 - Kurumsal sorgular `organizationId` ile izole edilir ve yetkilendirme testi olmadan tamamlanmış sayılmaz.
 - Offline kullanım temel gereksinimdir. AI çalışmasa dahi manuel ziyaret kaydı devam eder.
-- Ham ses varsayılan olarak yöneticilere açılmaz; sürekli GPS takibi yapılmaz.
+- Ham ses varsayılan olarak yöneticilere açılmaz; sürekli GPS takibi yapılmaz. Saha modu bu ilkenin istisnası değildir: kullanıcı başlatır, görünür çalışır, kendiliğinden kapanır ve kullanıcı konumu saklanmaz (ADR-0006).
 - Türkçe ana ürün dilidir. Kritik işlemler audit log üretmeye elverişli olmalıdır.
 - Kapsam genişlemesi önce `docs/product/decisions/` altında ADR gerektirir.
 - Şema değişikliği migration ve rollback; AI sözleşmesi Zod/JSON Schema doğrulaması gerektirir.
