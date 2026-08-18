@@ -96,6 +96,13 @@ const entitlementsDownSql = await readFile(
   resolve(import.meta.dirname, "../migrations/0021_entitlements.down.sql"),
   "utf8",
 );
+const locationSourceSql = await readFile(
+  resolve(
+    import.meta.dirname,
+    "../migrations/0022_company_location_source.up.sql",
+  ),
+  "utf8",
+);
 
 describe("temel veri güvenliği", () => {
   it.each([
@@ -444,6 +451,25 @@ describe("plan hakları ve kota", () => {
     expect(entitlementsDownSql).not.toContain("Koltuk sayısı doldu");
     expect(entitlementsDownSql).toContain(
       "drop table if exists public.workspace_ai_topups",
+    );
+  });
+});
+
+describe("müşteri konum kaynağı", () => {
+  it("konumun nereden geldiğini ayırt eder", () => {
+    expect(locationSourceSql).toContain("location_source");
+    expect(locationSourceSql).toContain("in ('geocoded', 'pinned')");
+  });
+
+  it("mevcut koordinatlı kayıtları tahmin olarak işaretler", () => {
+    // Sahada sabitlenmiş sayılırsa kullanıcı yanlış bilgi görür.
+    expect(locationSourceSql).toContain("set location_source = 'geocoded'");
+  });
+
+  it("yakınlık sorgusunu hızlandıran kısmi indeks ekler", () => {
+    expect(locationSourceSql).toContain("companies_workspace_location_idx");
+    expect(locationSourceSql).toContain(
+      "where latitude is not null and longitude is not null",
     );
   });
 });
