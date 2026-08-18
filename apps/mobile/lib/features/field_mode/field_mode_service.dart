@@ -55,7 +55,14 @@ class FieldModeService {
 
   DateTime? get startedAt => _startedAt;
 
-  DateTime? get endsAt => _startedAt?.add(sessionLimit);
+  /// Karttaki "… kapanacak" saati. Oturum akşam kapanışında da bitebildiği
+  /// için sekiz saatlik sınırı doğrudan yazmak yanlış saat gösterir: 16:00'da
+  /// başlayan oturum gerçekte 21:00'de kapanırken kart 00:00 diyordu.
+  DateTime? get endsAt {
+    final startedAt = _startedAt;
+    if (startedAt == null) return null;
+    return startedAt.add(_remainingSessionTime(from: startedAt));
+  }
 
   Future<void> initialise() async {
     const settings = InitializationSettings(
@@ -170,8 +177,8 @@ class FieldModeService {
   }
 
   /// Sekiz saatlik sınır ile akşam kapanışından hangisi önce geliyorsa o.
-  Duration _remainingSessionTime() {
-    final now = DateTime.now();
+  Duration _remainingSessionTime({DateTime? from}) {
+    final now = from ?? DateTime.now();
     final limit = now.add(sessionLimit);
     final evening = DateTime(now.year, now.month, now.day, autoStopHour);
     final stopAt = evening.isAfter(now) && evening.isBefore(limit)
