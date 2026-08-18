@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/local/app_database.dart';
 import '../data/secure_session_store.dart';
@@ -128,12 +129,44 @@ class MobileApiClient {
         : jsonDecode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final message = data is Map ? data['error']?.toString() : null;
-      throw MobileApiException(
+      final failure = MobileApiException(
         response.statusCode,
         message ?? 'İşlem tamamlanamadı.',
       );
+      _report(response, failure);
+      throw failure;
     }
     return data;
+  }
+
+  /// Yakalanan API hatasını Sentry'ye bildirir.
+  ///
+  /// Ekranlar bu hatayı yakalayıp kullanıcıya gösterdiği için Sentry'nin
+  /// yakalanmamış hata kancası devreye girmiyordu: test kullanıcısı
+  /// "İşlem tamamlanamadı." görüyor, biz hiçbir yerde göremiyorduk.
+  /// 18 Ağustos 2026'da iOS testçilerinin bildirdiği arıza böyle görünmez
+  /// kalmıştı.
+  ///
+  /// Yalnız yol ve durum kodu gönderilir; istek gövdesi, sorgu değerleri ve
+  /// yanıt içeriği gönderilmez (bkz. sunucudaki sentry-scrub deseni).
+  void _report(http.Response response, MobileApiException failure) {
+    // 401 oturum yenilemesinin normal parçasıdır; gürültü yapmasın.
+    if (response.statusCode == 401) return;
+    final path = response.request?.url.path ?? 'bilinmiyor';
+    Sentry.captureException(
+      failure,
+      stackTrace: StackTrace.current,
+      withScope: (scope) {
+        scope.level = SentryLevel.error;
+        scope.setTag('api.path', path);
+        scope.setTag('api.status', response.statusCode.toString());
+        scope.setContexts('api', {
+          'path': path,
+          'status': response.statusCode,
+          'method': response.request?.method,
+        });
+      },
+    );
   }
 }
 
