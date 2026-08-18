@@ -23,8 +23,6 @@
 	<string>Ziyaret sonrası kişisel sesli debrief kaydetmek için mikrofon kullanılır.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Yakındaki gecikmiş müşterileri yalnızca siz istediğinizde hesaplamak için konum kullanılır; sürekli takip yapılmaz.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Konum yalnızca uygulamayı kullanırken ve yalnızca sizin isteğinizle alınır. KartVizyon arka planda veya siz kullanmazken konumunuzu takip etmez.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Kartvizit veya ziyaret belgesi seçebilmek için fotoğraf arşimine erişilir.</string>
 	<key>CFBundleExecutable</key>

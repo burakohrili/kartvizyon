@@ -35,9 +35,44 @@ class _CustomersScreenState extends State<CustomersScreen> {
     return List<Map<String, dynamic>>.from(result['data'] as List? ?? []);
   }
 
+  /// Kartvizit kaynağını sorar.
+  ///
+  /// Mağaza izin gerekçelerinde kameranın alternatifi galeri olarak beyan
+  /// edilir; kamera izni reddedilen kullanıcı buradan devam edebilmelidir.
+  /// Alternatif sunulmadan fotoğraf izni istemek App Review 5.1.1 kapsamında
+  /// gereksiz izin sayılır.
+  Future<ImageSource?> _askImageSource() => showModalBottomSheet<ImageSource>(
+    context: context,
+    builder: (sheetContext) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_camera_outlined),
+            title: const Text('Kamera ile çek'),
+            onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Galeriden seç'),
+            subtitle: const Text('Kamera izni vermek istemiyorsanız'),
+            onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+          ),
+          ListTile(
+            leading: const Icon(Icons.close),
+            title: const Text('Vazgeç'),
+            onTap: () => Navigator.pop(sheetContext),
+          ),
+        ],
+      ),
+    ),
+  );
+
   Future<void> scanCard() async {
+    final source = await _askImageSource();
+    if (!mounted || source == null) return;
     final image = await ImagePicker().pickImage(
-      source: ImageSource.camera,
+      source: source,
       imageQuality: 88,
       maxWidth: 1800,
     );

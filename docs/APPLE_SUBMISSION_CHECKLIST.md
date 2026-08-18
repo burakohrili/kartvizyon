@@ -33,7 +33,7 @@ yetişkin içerik **yok**. Beklenen sonuç: **4+**.
 
 ## 2. Pricing and Availability
 
-- Price: **Free** (abonelik bağlanana kadar; ADR-0003 gereği satın alma yalnız web'de)
+- Price: **Free** — bu sürümde hiçbir kanalda ücretli satış yoktur
 - Availability: tüm ülkeler/bölgeler
 - Tax Category: **Software / SaaS** (uygulama içi satın alma yoktur)
 
@@ -91,7 +91,7 @@ Ziyaretten önce son görüşmeleri, açık sözleri ve kritik notları tek brif
 
 KartVizyon sürekli konum takibi yapmaz. Kamera, mikrofon ve konum yalnız ilgili özelliği siz başlattığınızda istenir; reddedildiğinde manuel alternatifler kullanılabilir.
 
-Bireysel saha profesyonelleri ve kurumsal satış ekipleri için tasarlanmıştır. Abonelik yönetimi web üzerinden yapılır; bu sürümde uygulama içi satın alma bulunmaz.
+Bireysel saha profesyonelleri ve kurumsal satış ekipleri için tasarlanmıştır.
 ```
 
 **Keywords (100)**
@@ -144,7 +144,7 @@ KartVizyon, saha satış görüşmelerini kullanıcı onaylı müşteri hafızas
 4. Ziyaretler bölümünde demo debrief akışını açın; AI taslağı "incelemede" durumundadır ve onaylanmadan kurumsal kayda geçmez.
 5. Daha Fazla → KVKK ve veri hakları altında veri dışa aktarma ve hesap silme talebi başlatılabilir.
 
-Kamera, mikrofon veya konum izni reddedilebilir; uygulama manuel yollarla çalışmaya devam eder. Arka plan konumu kullanılmaz. Uygulama içi satın alma yoktur; abonelik yönetimi yalnızca web üzerinde yapılır. Backend inceleme boyunca açık tutulacaktır.
+Kamera, mikrofon veya konum izni reddedilebilir; uygulama manuel yollarla çalışmaya devam eder. Arka plan konumu kullanılmaz. Bu sürümde uygulama tamamen ücretsizdir: hiçbir platformda ücretli abonelik, uygulama içi satın alma veya ödeme akışı bulunmaz ve tüm hesaplar ücretsiz kullanır. Backend inceleme boyunca açık tutulacaktır.
 ```
 
 ---
@@ -160,9 +160,51 @@ Kamera, mikrofon veya konum izni reddedilebilir; uygulama manuel yollarla çalı
 - [ ] App Review sign-in bilgileri ve notlar girildi
 - [ ] `Add for Review` → gönderildi
 
-## 8. Bu sürümde bilinçli olarak yapılmayanlar
+## 8. İzin beyanı — App Review 5.1.1
+
+Beyan edilen her izin kodda fiilen kullanılmalıdır; kullanılmayan izin
+"gereksiz veri toplama" sayılır ve reddedilir. `apps/mobile/test/store_compliance_test.dart`
+bunu her build'de doğrular.
+
+| Anahtar                               | Kullanım                                 | Alternatif (reddedilirse)     |
+| ------------------------------------- | ---------------------------------------- | ----------------------------- |
+| `NSCameraUsageDescription`            | Kartvizit fotoğrafı çekme                | Galeriden seçme, manuel giriş |
+| `NSPhotoLibraryUsageDescription`      | Galeriden kartvizit seçme                | Kamera, manuel giriş          |
+| `NSMicrophoneUsageDescription`        | Kullanıcının başlattığı sesli debrief    | Metin notu                    |
+| `NSLocationWhenInUseUsageDescription` | Yakındaki müşteri önerisi (tek seferlik) | Arama, manuel adres           |
+
+**`NSLocationAlwaysAndWhenInUseUsageDescription` bilinçli olarak yoktur.** Bu
+anahtar bulunduğunda `geolocator` iOS'ta _Always_ yetkisi ister; ürün sözü ise
+"sürekli GPS takibi yapılmaz". Anahtar 18 Ağustos 2026'da kaldırıldı.
+
+> Not: bu anahtar daha önce `ITMS-90683` uyarısı nedeniyle eklenmişti. O uyarı
+> eklentinin arka plan konum API'lerine referans vermesinden kaynaklanır ve
+> yükleme engelleyici değildir. Uyarı tekrar gelirse anahtarı geri eklemek
+> yerine ürün duruşu korunur.
+
+Reviewer izinleri reddederek test edebilir; uygulama her üç yolda da manuel
+alternatifle çalışmaya devam eder.
+
+## 9. Ödeme ifadeleri hakkında uyarı
+
+Reviewer notunda ve açıklamada **"abonelik web üzerinden yönetilir"** benzeri bir
+ifade kullanılmaz. İki sebep:
+
+1. **Doğru değil.** Bu sürümde web'de de checkout yok; iyzico bağlanmadı, hiçbir
+   kanalda ücretli abonelik satılmıyor. Tüm hesaplar deneme veya ücretsiz katmanda.
+2. **Reddedilme riski.** ADR-0004'ün açıkça belirttiği gibi Apple, dışarıda satın
+   alınmış aboneliğe giriş yapılan uygulamaları App Review Guidelines **3.1.1**
+   kapsamında düzenli olarak reddediyor. Reviewer'a "abonelik web'de satılıyor"
+   demek, bu maddeyi kendi elimizle davet etmek olur.
+
+Doğru ifade: **bu sürümde hiçbir platformda ücretli satış yoktur.** Ödeme akışı
+(ADR-0005 fiyatları, iyzico checkout ve mobil IAP) devreye girdiğinde bu metinler
+ADR-0004'teki kanal ayrımına göre yeniden yazılır.
+
+## 10. Bu sürümde bilinçli olarak yapılmayanlar
 
 - Uygulama içi satın alma ve abonelik ürünü (ADR-0004 Faz C; AAB/IPA'ya önce
   ödeme kütüphanesi eklenmeli)
 - iPad desteği (`TARGETED_DEVICE_FAMILY = "1"`)
+- Arka plan konumu — ürün ilkesi gereği hiç istenmez
 - Apple Silicon Mac ve Vision Pro dağıtımı

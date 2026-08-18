@@ -37,7 +37,7 @@ Ziyaretten önce son görüşmeleri, açık sözleri ve kritik notları tek brif
 
 KartVizyon sürekli konum takibi yapmaz. Kamera, mikrofon ve konum yalnız ilgili özelliği siz başlattığınızda istenir; reddedildiğinde manuel alternatifler kullanılabilir.
 
-Bireysel saha profesyonelleri ve kurumsal satış ekipleri için tasarlanmıştır. Abonelik/ödeme özellikleri mağaza içi satın alma kararı tamamlanana kadar bu sürümde satışa açılmaz.
+Bireysel saha profesyonelleri ve kurumsal satış ekipleri için tasarlanmıştır.
 
 ## Anahtar kelimeler (App Store)
 

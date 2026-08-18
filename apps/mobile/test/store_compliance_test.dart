@@ -44,6 +44,45 @@ void main() {
     );
   });
 
+  test('iOS yalnız fiilen kullanılan izinleri beyan eder', () {
+    final plist = File('ios/Runner/Info.plist').readAsStringSync();
+    final sources = dartSources.map((f) => f.readAsStringSync()).join();
+
+    // Arka plan/"Always" konum anahtarı, geolocator'ın iOS'ta Always yetkisi
+    // istemesine yol açar. Ürün sözü "sürekli GPS takibi yapılmaz" olduğu için
+    // bu anahtar bulunmamalıdır (App Review 5.1.1).
+    expect(
+      plist.contains('NSLocationAlwaysAndWhenInUseUsageDescription'),
+      isFalse,
+      reason:
+          'Uygulama arka plan konumu kullanmıyor; Always anahtarı beyan edilmemeli.',
+    );
+
+    // Beyan edilen her izin kodda fiilen kullanılmalıdır.
+    final kullanim = {
+      'NSCameraUsageDescription': 'ImageSource.camera',
+      'NSPhotoLibraryUsageDescription': 'ImageSource.gallery',
+      'NSMicrophoneUsageDescription': 'record',
+      'NSLocationWhenInUseUsageDescription': 'Geolocator',
+    };
+    kullanim.forEach((anahtar, iz) {
+      if (plist.contains(anahtar)) {
+        expect(
+          sources.contains(iz),
+          isTrue,
+          reason: '$anahtar beyan edilmiş ama kodda $iz kullanımı yok.',
+        );
+      }
+    });
+  });
+
+  test('Android arka plan konum izni istemez', () {
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+    expect(manifest.contains('ACCESS_BACKGROUND_LOCATION'), isFalse);
+  });
+
   test('mobil kaynaklarda pazarlama sitesine yönlendirme yoktur', () {
     final violations = <String>[];
     for (final file in dartSources) {
@@ -51,7 +90,9 @@ void main() {
       // API tabanı `app.kartvizyon.app` meşrudur; yasak olan public pazarlama
       // sitesine (fiyat sayfası dahil) tıklanabilir yönlendirmedir.
       final matches = RegExp(
-        r'https://(?!app\.)kartvizyon\.app[^\s"' r"'" r']*',
+        r'https://(?!app\.)kartvizyon\.app[^\s"'
+        r"'"
+        r']*',
       ).allMatches(content);
       for (final match in matches) {
         violations.add('${file.path}: ${match.group(0)}');
