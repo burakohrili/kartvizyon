@@ -4,7 +4,8 @@
 
 - Ad: KartVizyon AI
 - Android applicationId: `app.kartvizyon.mobile`
-- iOS bundle ID: `app.kartvizyon.mobile`
+- iOS bundle ID: `app.kartvizyon.mobile` (Apple ID 6797552440, SKU `KARTVIZYON-IOS-001`)
+- iOS cihaz ailesi: yalnız iPhone (`TARGETED_DEVICE_FAMILY = "1"`); iPad sonraki sürüme bırakıldı
 - Web: `https://kartvizyon.app`
 - Uygulama yönetimi: `https://app.kartvizyon.app`
 - Gizlilik: `https://kartvizyon.app/privacy`
@@ -53,11 +54,18 @@ Kimlik bilgileri App Store Connect ve Play Console’un reviewer alanına girili
 - [x] Reviewer hesabı, production Supabase oturumu ve demo verisi
 - [x] 1024×1024 opak mağaza ikon kaynağı
 - [x] Sentry web/mobil SDK kodu ve kişisel veri maskeleme varsayılanları
-- [ ] Production hesap silme worker’ının uçtan uca doğrulanması
-- [ ] App Privacy / Data safety formlarının gerçek SDK envanteriyle doldurulması
-- [ ] Launcher icon set üretimi, telefon/tablet ekran görüntüleri ve Play feature graphic
-- [ ] iOS gerçek cihaz + Android düşük/orta segment regresyon testi
-- [ ] Bireysel dijital abonelik ödeme kararı ve mağaza içi satın alma uyumu
+- [x] Launcher icon set üretimi (22 iOS AppIcon, 5 Android mipmap)
+- [x] Play feature graphic ve telefon/tablet ekran görüntüleri (mağaza girişi "Canlı")
+- [x] Google Play Data safety formu (9 politika beyanı tamamlandı)
+- [x] iOS gerçek cihaz testi (TestFlight build 11–12 kuruldu ve çalıştırıldı)
+- [x] Bireysel abonelik fiyat kararı (ADR-0005) ve kota uygulaması
+- [ ] Production hesap silme worker akışının uçtan uca doğrulanması
+- [ ] App Store Connect App Privacy formunun konsolda gönderilmesi
+- [ ] iPhone 6.5" ekran görüntüleri (iPad artık gerekmiyor; cihaz ailesi yalnız iPhone)
+- [ ] Play içerik derecelendirme anketi
+- [ ] Play üretim erişimi: 12 test kullanıcısı × 14 gün kapalı test
+- [ ] Android düşük/orta segment regresyon testi
+- [ ] Mağaza içi satın alma (ADR-0004 Faz C) — bu sürümde kapsam dışı
 
 Apple hesap oluşturan uygulamalarda uygulama içinden hesap silme başlatmayı ve etkin demo hesabı ister. Google Play ilk AAB yüklemesinin manuel yapılmasını gerektirir; sonraki sürümler Codemagic servis hesabıyla internal track’e gönderilebilir.
 
@@ -76,7 +84,11 @@ Resmi kontrol kaynakları: [Apple App Review Guidelines](https://developer.apple
 
 Mağaza beyanı SDK envanteriyle birebir aynı tutulur: Supabase Auth/Database, OpenAI sunucu tarafı, Sentry, `image_picker`, `record`, `geolocator`, `connectivity_plus`, secure storage ve Drift. Uygulama reklam kimliği, ATT, arka plan konumu, rehber veya SMS istemez.
 
-## Codemagic kurulum sırası
+## Codemagic kurulum sırası (tamamlandı)
+
+Aşağıdaki adımlar 10 Ağustos 2026 tarihinde uygulanmış ve her iki workflow da
+başarıyla çalışmıştır. Güncel ve düzeltilmiş sıra için
+`docs/EXTERNAL_SETUP_RUNBOOK.md` §3 esas alınır.
 
 1. GitHub reposunu Codemagic’e ekle.
 2. `mobile_runtime` grubuna `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SENTRY_DSN` secret değerlerini gir.

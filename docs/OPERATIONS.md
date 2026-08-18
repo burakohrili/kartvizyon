@@ -2,7 +2,7 @@
 
 ## Ortam değişkenleri
 
-Kök `.env.example` dosyasını temel alın; yerel web değerlerini `apps/web/.env.local` içine kaydedin ve gizli değerleri depoya eklemeyin. Web için Supabase URL/publishable anahtarı ve AI için `OPENAI_API_KEY` gerekir. Mobil değerler `--dart-define` ile verilir:
+Yerel web değerlerini `apps/web/.env.local` içine kaydedin ve gizli değerleri depoya eklemeyin. `.gitignore` içindeki `.env*` kuralı gereği depoda örnek env dosyası tutulmaz; gerekli değişkenlerin tam listesi `docs/EXTERNAL_SETUP_RUNBOOK.md` §2 içindedir. Web için Supabase URL/publishable anahtarı ve AI için `OPENAI_API_KEY` gerekir. Mobil değerler `--dart-define` ile verilir:
 
 ```powershell
 flutter run --dart-define=KARTVIZYON_API_URL=https://app.kartvizyon.app --dart-define=SUPABASE_URL=https://project.supabase.co --dart-define=SUPABASE_ANON_KEY=... --dart-define=SENTRY_DSN=...
@@ -25,12 +25,35 @@ Vercel cronları aşağıdaki uçlara `GET` gönderir; rotalar aynı işleyiciyi
 - `GET|POST /api/internal/privacy/process` — 10 dakikada bir, `CRON_SECRET` veya `PRIVACY_WORKER_SECRET`
 - `GET|POST /api/internal/webhooks/deliver` — 5 dakikada bir, `CRON_SECRET` veya `WEBHOOK_WORKER_SECRET`
 - `GET|POST /api/internal/documents/dispatch` — 5 dakikada bir, `CRON_SECRET`; private ClamAV servisini çağırır
+- `GET|POST /api/internal/subscriptions/expire-trials` — günlük 03:30 UTC, `CRON_SECRET`; süresi dolan 14 günlük denemeleri ücretsiz katmana düşürür (ADR-0005)
 - `POST /api/internal/documents/scan-jobs` — tarayıcı iş sahiplenme, `DOCUMENT_SCAN_SECRET`
 - `POST /api/internal/documents/scan-result` — ClamAV callback, `DOCUMENT_SCAN_SECRET`
 
 Belge tarayıcı `services/document-scanner` container’ıdır. `/health` public olabilir; `/scan` daima bearer secret ister. Callback hedefi istekten değil yalnız `APP_BASE_URL=https://app.kartvizyon.app` ortam değişkeninden okunur. Production deploy sonrası URL `DOCUMENT_SCAN_SERVICE_URL` olarak Vercel’e eklenir. EICAR test dosyası `blocked`, temiz PDF `clean`, bozuk/erişilemeyen dosya `failed` vermeden yayın kapısı geçmez. Cloud Run komutları `services/document-scanner/README.md` içindedir.
 
 Webhook sırları `INTEGRATION_ENCRYPTION_KEY` ile AES-256-GCM şifrelenir. Bu anahtar 32 rastgele baytın Base64 karşılığı olmalı, secret manager dışında tutulmamalı ve kaybedilmemelidir.
+
+## AI model ve bütçe
+
+Varsayılan modeller ve gerekçeleri `docs/product/decisions/0005-pricing.md` içindedir.
+Üçü de ortam değişkeniyle override edilir:
+
+| Değişken                     | Varsayılan          | İş                 |
+| ---------------------------- | ------------------- | ------------------ |
+| `OPENAI_SUMMARY_MODEL`       | `gpt-5.6-terra`     | Ziyaret özeti      |
+| `OPENAI_OCR_MODEL`           | `gpt-5.6-luna`      | Kartvizit OCR      |
+| `OPENAI_TRANSCRIPTION_MODEL` | `gpt-4o-transcribe` | Ses transkripsiyon |
+
+OpenAI hesabında aylık **$50 hard limit** ve $30'da e-posta uyarısı tanımlı olmalıdır.
+Kota tükendiğinde uygulama manuel ziyaret kaydına düşer; AI olmadan da çalışır.
+
+## Plan limitleri
+
+`apps/web/src/lib/entitlements.ts` tek doğruluk kaynağıdır. Limit aşımı `402` ve
+`code: "quota_exceeded"` döndürür; mobil istemci bu koda göre bilgilendirme
+gösterir. Koltuk limiti `accept_invitation` fonksiyonunda uygulanır — API
+katmanındaki kontrol anon anahtarla RPC çağrısıyla atlatılabileceği için
+veritabanı seviyesinde tutulur.
 
 ## Mobil doğrulama
 

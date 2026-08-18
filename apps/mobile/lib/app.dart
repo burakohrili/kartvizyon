@@ -232,44 +232,51 @@ class _FieldNavigation extends StatelessWidget {
       shadowColor: KartVizyonTheme.navy.withValues(alpha: 0.22),
       borderRadius: BorderRadius.circular(28),
       clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: 72,
-        child: Row(
-          children: [
-            _NavItem(
-              index: 0,
-              selected: selectedIndex == 0,
-              icon: Icons.today_outlined,
-              selectedIcon: Icons.today,
-              label: 'Bugün',
-              onTap: onSelected,
-            ),
-            _NavItem(
-              index: 1,
-              selected: selectedIndex == 1,
-              icon: Icons.apartment_outlined,
-              selectedIcon: Icons.apartment,
-              label: 'Müşteriler',
-              onTap: onSelected,
-            ),
-            _VisitAction(onTap: () => onSelected(2)),
-            _NavItem(
-              index: 3,
-              selected: selectedIndex == 3,
-              icon: Icons.task_alt_outlined,
-              selectedIcon: Icons.task_alt,
-              label: 'Görevler',
-              onTap: onSelected,
-            ),
-            _NavItem(
-              index: 4,
-              selected: selectedIndex == 4,
-              icon: Icons.grid_view_outlined,
-              selectedIcon: Icons.grid_view_rounded,
-              label: 'Menü',
-              onTap: onSelected,
-            ),
-          ],
+      // Alt çubuk sabit yükseklikli bir kapsül. Sistem yazı tipi ölçeği 2x
+      // yapıldığında etiketler bu yüksekliği taşırıyordu; Material'ın önerdiği
+      // yaklaşım kompakt navigasyonda ölçeği sınırlamaktır. Uygulamanın geri
+      // kalanı tam erişilebilirlik ölçeğini uygulamaya devam eder.
+      child: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.3,
+        child: SizedBox(
+          height: 72,
+          child: Row(
+            children: [
+              _NavItem(
+                index: 0,
+                selected: selectedIndex == 0,
+                icon: Icons.today_outlined,
+                selectedIcon: Icons.today,
+                label: 'Bugün',
+                onTap: onSelected,
+              ),
+              _NavItem(
+                index: 1,
+                selected: selectedIndex == 1,
+                icon: Icons.apartment_outlined,
+                selectedIcon: Icons.apartment,
+                label: 'Müşteriler',
+                onTap: onSelected,
+              ),
+              _VisitAction(onTap: () => onSelected(2)),
+              _NavItem(
+                index: 3,
+                selected: selectedIndex == 3,
+                icon: Icons.task_alt_outlined,
+                selectedIcon: Icons.task_alt,
+                label: 'Görevler',
+                onTap: onSelected,
+              ),
+              _NavItem(
+                index: 4,
+                selected: selectedIndex == 4,
+                icon: Icons.grid_view_outlined,
+                selectedIcon: Icons.grid_view_rounded,
+                label: 'Menü',
+                onTap: onSelected,
+              ),
+            ],
+          ),
         ),
       ),
     ),
@@ -312,6 +319,7 @@ class _NavItem extends StatelessWidget {
             Text(
               label,
               maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: selected ? Colors.white : Colors.white70,
                 fontSize: 10,
@@ -355,6 +363,8 @@ class _VisitAction extends StatelessWidget {
             const SizedBox(height: 2),
             const Text(
               'Ziyaret',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 10,

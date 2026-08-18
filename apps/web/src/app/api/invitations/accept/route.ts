@@ -18,6 +18,21 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.rpc("accept_invitation", {
     invitation_token: token,
   });
-  if (error) return apiError(error);
+  if (error) {
+    // Koltuk limiti veritabanı fonksiyonunda uygulanır (0021_entitlements);
+    // istemcinin doğru ekranı gösterebilmesi için kota hatasını ayırt et.
+    if (error.message?.includes("Koltuk sayısı doldu")) {
+      return Response.json(
+        {
+          error:
+            "Satın alınan koltuk sayısı doldu. Yöneticiniz koltuk eklemeden katılamazsınız.",
+          code: "quota_exceeded",
+          quota: "seats",
+        },
+        { status: 402 },
+      );
+    }
+    return apiError(error);
+  }
   return Response.json({ data: { organizationId: data } });
 }

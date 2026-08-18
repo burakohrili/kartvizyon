@@ -43,6 +43,45 @@ void main() {
     expect(find.text('Müşteriyi kaydet'), findsOneWidget);
   });
 
+  testWidgets('Manuel müşteri formu klavye açıkken görünür kalır', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const KartVizyonApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Müşteriler'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.person_add_alt_1_outlined));
+    await tester.pumpAndSettle();
+
+    final closedHeight = tester
+        .getRect(find.byType(SingleChildScrollView).last)
+        .height;
+    expect(closedHeight, greaterThan(200));
+
+    // Klavye açılır. Dialog klavye boşluğunu kendisi uyguladığı için form
+    // alanı daralır ama kaydırılabilir yüksekliğini korumalıdır.
+    tester.view.viewInsets = const FakeViewPadding(bottom: 1000);
+    await tester.pumpAndSettle();
+
+    final openedHeight = tester
+        .getRect(find.byType(SingleChildScrollView).last)
+        .height;
+    expect(
+      openedHeight,
+      greaterThan(200),
+      reason:
+          'Klavye boşluğu iki kez uygulanırsa form yüksekliği sıfıra iner ve '
+          'kullanıcı boş bir kutu görür.',
+    );
+    expect(find.text('Firma adı *'), findsOneWidget);
+    expect(find.text('Müşteriyi kaydet'), findsOneWidget);
+  });
+
   testWidgets('Görevler boş durumu ve manuel görev CTA gösterir', (
     tester,
   ) async {

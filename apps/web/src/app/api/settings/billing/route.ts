@@ -1,5 +1,6 @@
 import { apiError } from "@/lib/api";
 import { getApiContext } from "@/lib/api-context";
+import { resolveEntitlement } from "@/lib/entitlements";
 
 export async function GET(request: Request) {
   try {
@@ -43,11 +44,26 @@ export async function GET(request: Request) {
       },
       {},
     );
+    // Çözümlenmiş hak, kotayı uygulayan `assertQuota` ile aynı kaynaktan gelir;
+    // ekranda gösterilen limitle fiilen uygulanan limit ayrışamaz.
+    const entitlement = await resolveEntitlement(
+      context.supabase,
+      context.workspaceId,
+    );
+
+    const { data: topUpPackages } = await context.supabase
+      .from("ai_topup_packages")
+      .select("id,name,price_try,ai_minutes,ocr_count")
+      .eq("active", true)
+      .order("price_try");
+
     return Response.json({
       plans: plans.data,
       subscription: subscription.data,
       usage: totals,
       seatsUsed: members.count ?? 0,
+      entitlement,
+      topUpPackages: topUpPackages ?? [],
     });
   } catch (error) {
     return apiError(error);

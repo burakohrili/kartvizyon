@@ -44,27 +44,37 @@ Aşağıdaki değişkenlerin `app.kartvizyon.app` projesinde (Production scope) 
 
 Değişkenler girildikten sonra yeni bir production deploy tetikle.
 
-## 3. Codemagic
+## 3. Codemagic — TAMAMLANDI
+
+Repo bağlı, keystore yüklü ve her iki workflow da başarıyla çalışıyor
+(Android AAB #7 / versionCode 13, iOS IPA #6 / build 12 — commit `bf20b2a`).
+
+Yeniden kurulum gerekirse doğru sıra:
 
 1. codemagic.io → GitHub hesabıyla giriş, `burakohrili/kartvizyon` reposunu bağla.
-2. Team → Code signing identities → Android keystore yükle: `apps/mobile/android/kartvizyon-upload.jks`
-   (parola/alias'ı `key.properties` şablonundaki isimlerle eşleştir; dosyayı repoya asla ekleme).
-3. Environment variables grubu oluştur (`kartvizyon_upload`): `CM_KEYSTORE_PATH`, `CM_KEYSTORE_PASSWORD`,
-   `CM_KEY_ALIAS`, `CM_KEY_PASSWORD`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SENTRY_DSN`.
-4. Apple entegrasyonu: Codemagic → Team integrations → App Store Connect → yeni API key
-   (adım 4'te oluşturacağın App Store Connect API anahtarı ile).
-5. `codemagic.yaml`'daki workflow adlarının (`kartvizyon_upload`, `kartvizyon_app_store`) env group adlarıyla
-   birebir eştiğini doğrula.
-6. İlk yapı: Android workflow'unu manuel tetikle, üretilen AAB'yi indir, `apps/mobile/README.md`'deki
-   yerel doğrulama adımlarıyla karşılaştır.
+2. Team → Code signing identities → Android keystore yükle:
+   `apps/mobile/android/kartvizyon-upload.jks`, referans adı **`kartvizyon_upload`**.
+   Dosyayı repoya asla ekleme; şifreli offline yedeğini ayrı sakla.
+   Upload sertifikası SHA-256: `DF:C8:E6:A5:F1:44:5C:E2:0C:0D:77:C6:74:FE:4A:2B:B4:91:2A:76:C2:DB:E9:DE:51:91:ED:65:36:A2:63:11`
+3. **`mobile_runtime`** adlı environment group oluştur ve içine yalnız şunları gir:
+   `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SENTRY_DSN`.
+   `CM_KEYSTORE_PATH`, `CM_KEYSTORE_PASSWORD`, `CM_KEY_ALIAS`, `CM_KEY_PASSWORD`
+   **elle girilmez** — Codemagic bunları `android_signing: kartvizyon_upload`
+   tanımından otomatik enjekte eder (`codemagic.yaml`).
+4. Apple entegrasyonu: Team integrations → App Store Connect → API key,
+   entegrasyon adı **`kartvizyon_app_store`**.
+5. `codemagic.yaml` içindeki `groups`, `android_signing` ve `integrations`
+   adlarının konsoldaki adlarla birebir eştiğini doğrula.
+6. iOS workflow'u `submitToTestFlight=true` girdisiyle çalıştırınca IPA doğrudan
+   TestFlight'a yüklenir.
 
 ## 4. App Store Connect
 
 1. developer.apple.com → Certificates, Identifiers & Profiles → yeni App ID: `app.kartvizyon.mobile`.
    - Capabilities: Push Notifications (varsa), Associated Domains (deep link için).
 2. App Store Connect → yeni uygulama kaydı: Bundle ID `app.kartvizyon.mobile`, birincil dil Türkçe.
-3. `docs/STORE_LISTING_TR.md` içeriğini kopyala: başlık, alt başlık, açıklama, anahtar kelimeler.
-4. Privacy → App Privacy formunu `docs/STORE_RELEASE.md`'deki matrikse göre doldur.
+3. Tüm alan değerleri kopyala-yapıştır sırasıyla `docs/APPLE_SUBMISSION_CHECKLIST.md` içindedir.
+4. Privacy → App Privacy formunu aynı belgedeki matrikse göre doldur.
 5. TestFlight → dahili test grubu oluştur, reviewer hesabını (aşağıda) ekle.
 6. Sürüm notlarına reviewer giriş bilgilerini ve demo veri açıklamasını ekle.
 

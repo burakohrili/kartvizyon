@@ -88,6 +88,14 @@ const documentScanJobsSql = await readFile(
   resolve(import.meta.dirname, "../migrations/0018_document_scan_jobs.up.sql"),
   "utf8",
 );
+const entitlementsSql = await readFile(
+  resolve(import.meta.dirname, "../migrations/0021_entitlements.up.sql"),
+  "utf8",
+);
+const entitlementsDownSql = await readFile(
+  resolve(import.meta.dirname, "../migrations/0021_entitlements.down.sql"),
+  "utf8",
+);
 
 describe("temel veri güvenliği", () => {
   it.each([
@@ -367,6 +375,75 @@ describe("belge zararlı yazılım tarama kuyruğu", () => {
   it("kuyruk fonksiyonunu yalnız servis rolüne açar", () => {
     expect(documentScanJobsSql).toContain(
       "grant execute on function public.claim_document_scan_jobs(integer) to service_role",
+    );
+  });
+});
+
+describe("plan hakları ve kota", () => {
+  it("ADR-0005 plan fiyatlarını tohumlar", () => {
+    expect(entitlementsSql).toContain("'individual', 'Bireysel', 349");
+    expect(entitlementsSql).toContain("'team', 'Ekip', 279");
+    expect(entitlementsSql).toContain("monthly_price_try = 449");
+  });
+
+  it("eski sabit fiyatlı planları kapatır ama satırlarını korur", () => {
+    expect(entitlementsSql).toContain(
+      "update public.subscription_plans set active = false where id in ('starter', 'growth')",
+    );
+    expect(entitlementsSql).not.toContain(
+      "delete from public.subscription_plans where id in ('starter'",
+    );
+  });
+
+  it("sınırsız limitleri null ile ifade eder", () => {
+    expect(entitlementsSql).toContain(
+      "max_companies is null or max_companies >= 0",
+    );
+    expect(entitlementsSql).toContain("max_ocr is null or max_ocr >= 0");
+  });
+
+  it("OCR tüketimini ölçülebilir metrik olarak ekler", () => {
+    expect(entitlementsSql).toContain(
+      "check (metric in ('audio_seconds', 'input_tokens', 'output_tokens', 'storage_bytes', 'ocr'))",
+    );
+  });
+
+  it("koltuk limitini security definer fonksiyonunda uygular", () => {
+    // API katmanındaki kontrol anon anahtarla doğrudan RPC çağrısıyla
+    // atlatılabilirdi; kapı veritabanında olmalıdır.
+    expect(entitlementsSql).toContain(
+      "create or replace function public.accept_invitation",
+    );
+    expect(entitlementsSql).toContain("Koltuk sayısı doldu");
+    expect(entitlementsSql).toContain("least(ws.seat_quantity, sp.seat_limit)");
+  });
+
+  it("mevcut üyenin daveti yeniden kabul etmesini koltuk saymaz", () => {
+    expect(entitlementsSql).toContain("already_member");
+  });
+
+  it("ek AI paketi kredisini istemci yazımına kapatır", () => {
+    expect(entitlementsSql).toContain(
+      "create policy topups_admin_no_client_write on public.workspace_ai_topups",
+    );
+    expect(entitlementsSql).toContain(
+      "for all using (false) with check (false)",
+    );
+  });
+
+  it("ek paket satın almasını sağlayıcı referansıyla idempotent tutar", () => {
+    expect(entitlementsSql).toContain(
+      "create unique index workspace_ai_topups_provider_reference_idx",
+    );
+  });
+
+  it("rollback koltuk kontrolsüz fonksiyonu geri yükler", () => {
+    expect(entitlementsDownSql).toContain(
+      "create or replace function public.accept_invitation",
+    );
+    expect(entitlementsDownSql).not.toContain("Koltuk sayısı doldu");
+    expect(entitlementsDownSql).toContain(
+      "drop table if exists public.workspace_ai_topups",
     );
   });
 });

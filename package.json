@@ -15,7 +15,8 @@
     "migration:validate": "npm run migration:validate --workspace @kartvizyon/database",
     "format:check": "prettier --check .",
     "mobile:check": "cd apps/mobile && flutter analyze && flutter test",
-    "check": "npm run format:check && npm run migration:validate && npm run lint && npm run typecheck && npm run test && npm run build && npm run mobile:check"
+    "check": "npm run format:check && npm run migration:validate && npm run lint && npm run typecheck && npm run test && npm run build && npm run verify:secrets && npm run mobile:check",
+    "verify:secrets": "npm run verify:secrets --workspace @kartvizyon/web"
   },
   "devDependencies": {
     "prettier": "^3.6.2"

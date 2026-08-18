@@ -20,6 +20,10 @@
     {
       "path": "/api/internal/documents/dispatch",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/internal/subscriptions/expire-trials",
+      "schedule": "30 3 * * *"
     }
   ]
 }

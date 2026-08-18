@@ -1,20 +1,27 @@
 import { apiError } from "@/lib/api";
+import { getApiContext } from "@/lib/api-context";
+import { assertQuota } from "@/lib/entitlements";
 import {
   businessCardLimits,
+  businessCardModel,
   detectBusinessCardMimeType,
   extractBusinessCard,
 } from "@/lib/openai/business-card";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseConfig } from "@/lib/supabase/config";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createSupabaseServerClient(request);
-    if (supabase) {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user)
-        return Response.json({ error: "Oturum gerekli." }, { status: 401 });
+    // Supabase yapılandırılmamış yerel/demo kurulumda OCR denenebilir kalır;
+    // production'da oturum, kota ve ölçüm zorunludur.
+    const configured = getSupabaseConfig() !== null;
+    const context = configured ? await getApiContext(request) : null;
+    if (context && !context.ok) return context.response;
+
+    if (context?.ok) {
+      const quotaDenied = await assertQuota(context, "ocr");
+      if (quotaDenied) return quotaDenied;
     }
 
     const form = await request.formData();
@@ -44,6 +51,21 @@ export async function POST(request: Request) {
     const extraction = await extractBusinessCard(
       `data:${detectedType};base64,${encoded}`,
     );
+
+    if (context?.ok) {
+      // Kota sayacı yalnız başarılı tarama için ilerler.
+      await context.supabase.from("usage_records").insert({
+        workspace_id: context.workspaceId,
+        organization_id: context.organizationId,
+        user_id: context.user.id,
+        metric: "ocr",
+        quantity: 1,
+        unit: "card",
+        provider: "openai",
+        model: businessCardModel,
+      });
+    }
+
     return Response.json({ data: extraction });
   } catch (error) {
     const openAiError = error as { status?: number; code?: string };

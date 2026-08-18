@@ -1,4 +1,10 @@
 import type { Metadata } from "next";
+import {
+  formatTry,
+  PUBLIC_PLANS,
+  TOP_UP_PACKAGES,
+  TRIAL_DAYS,
+} from "@/lib/pricing";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -81,47 +87,6 @@ const features = [
   },
 ];
 
-type PricingTier = {
-  name: string;
-  audience: string;
-  highlight?: boolean;
-  items: string[];
-};
-
-const pricing: PricingTier[] = [
-  {
-    name: "Bireysel",
-    audience: "Tek başına saha çalışan profesyoneller için",
-    items: [
-      "Sınırsız müşteri ve ziyaret kaydı",
-      "AI destekli debrief ve kartvizit OCR",
-      "Offline mobil kullanım",
-      "Kişisel takip ve hatırlatmalar",
-    ],
-  },
-  {
-    name: "Ekip",
-    audience: "Büyüyen saha satış ekipleri için",
-    highlight: true,
-    items: [
-      "Bireysel plandaki her şey",
-      "Rol bazlı yetkilendirme ve ekip davetleri",
-      "Fırsat, sipariş taslağı ve ürün/fiyat listesi",
-      "Yönetici raporları ve paylaşılabilir bağlantılar",
-    ],
-  },
-  {
-    name: "Kurumsal",
-    audience: "Bölge/takım yapısı olan organizasyonlar için",
-    items: [
-      "Ekip plandaki her şey",
-      "Bölge/takım yönetimi ve entegrasyon webhookları",
-      "Genişletilmiş audit log ve veri saklama politikaları",
-      "Öncelikli destek ve kurulum danışmanlığı",
-    ],
-  },
-];
-
 const faqs = [
   {
     q: "KartVizyon bir kartvizit arşivi mi, yoksa tam bir CRM mi?",
@@ -145,7 +110,16 @@ const faqs = [
   },
   {
     q: "Fiyatlandırma nasıl işliyor?",
-    a: "Hem bireysel hem kurumsal kullanım için plan yapıyoruz. Ödeme altyapımız tamamlanma aşamasında; güncel fiyat ve plan detayları için demo talebiyle bize ulaşabilirsiniz.",
+    // Rakamlar tek kaynaktan türetilir; ADR-0005 güncellenince SSS de güncellenir.
+    a: `${PUBLIC_PLANS.map((plan) =>
+      plan.monthlyTry === null
+        ? `${plan.name} plan teklif usulüdür`
+        : `${plan.name} plan ${formatTry(plan.monthlyTry)}${
+            plan.perSeat ? " / koltuk" : ""
+          } aylık${plan.minSeats > 1 ? ` (en az ${plan.minSeats} koltuk)` : ""}`,
+    ).join(
+      ", ",
+    )}. Yıllık ödemede iki ay bedavadır ve fiyatlar KDV hariçtir. Her hesap ${TRIAL_DAYS} gün tam erişimli ücretsiz denemeyle başlar; deneme bitince ücretsiz katmana geçilir ve veriler silinmez.`,
   },
   {
     q: "Belgelerim yüklenirken güvende mi?",
@@ -465,13 +439,13 @@ export default function MarketingHome() {
           <span>FİYATLANDIRMA</span>
           <h2>Tek kişiden kurumsal organizasyona kadar aynı ürün.</h2>
           <p>
-            Ödeme altyapımız tamamlanma aşamasında. Şu an erken kullanıcılarla
-            birlikte plan ve fiyatları netleştiriyoruz; demo görüşmesinde
-            ihtiyacınıza göre güncel koşulları paylaşıyoruz.
+            Tüm planlar 14 gün tam erişimli ücretsiz denemeyle başlar; kredi
+            kartı istenmez. Deneme bitince hesabınız ücretsiz katmana geçer,
+            verileriniz silinmez. Fiyatlar KDV hariçtir.
           </p>
         </div>
         <div className="pricing-grid">
-          {pricing.map((tier) => (
+          {PUBLIC_PLANS.map((tier) => (
             <article
               key={tier.name}
               className={
@@ -483,6 +457,23 @@ export default function MarketingHome() {
               )}
               <h3>{tier.name}</h3>
               <p className="pricing-audience">{tier.audience}</p>
+              <p className="pricing-amount">
+                <strong>
+                  {tier.monthlyTry === null
+                    ? "Teklif usulü"
+                    : formatTry(tier.monthlyTry)}
+                </strong>
+                {tier.monthlyTry !== null && (
+                  <span>{tier.perSeat ? " / koltuk / ay" : " / ay"}</span>
+                )}
+              </p>
+              {tier.annualTry !== null && (
+                <p className="pricing-annual">
+                  Yıllık {formatTry(tier.annualTry)}
+                  {tier.perSeat ? " / koltuk" : ""} — iki ay bedava
+                </p>
+              )}
+              {tier.note && <p className="pricing-note">{tier.note}</p>}
               <ul>
                 {tier.items.map((item) => (
                   <li key={item}>{item}</li>
@@ -497,6 +488,26 @@ export default function MarketingHome() {
             </article>
           ))}
         </div>
+        <div className="pricing-topups">
+          <h3>Ek AI paketleri</h3>
+          <p>
+            Aylık AI kotanız biterse çalışmanız durmaz. Tek seferlik paketler
+            süresizdir ve aylık kota tükendikten sonra kullanılır.
+          </p>
+          <ul>
+            {TOP_UP_PACKAGES.map((pack) => (
+              <li key={pack.name}>
+                <strong>{pack.name}</strong> — {pack.detail} ·{" "}
+                {formatTry(pack.priceTry)}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="pricing-footnote">
+          Abonelik satın alma yalnızca <strong>app.kartvizyon.app</strong>{" "}
+          üzerinden yapılır. Ödeme altyapısı bağlanana kadar planlar erken
+          erişim görüşmesiyle açılıyor.
+        </p>
       </section>
 
       <section className="marketing-section faq-section" id="sss">

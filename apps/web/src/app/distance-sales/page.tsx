@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  formatTry,
+  PUBLIC_PLANS,
+  TOP_UP_PACKAGES,
+  TRIAL_DAYS,
+} from "@/lib/pricing";
 import { LegalPage } from "../legal-page";
 
 export const metadata: Metadata = {
@@ -30,6 +36,55 @@ export default function DistanceSalesPage() {
         yöntemi kullanıcı siparişi onaylamadan önce ayrıca gösterilir. Kullanıcı
         ön bilgilendirme ve sözleşmeyi onayladığında sözleşme elektronik ortamda
         kurulur.
+      </p>
+
+      <h2>Plan, dönem ve bedel</h2>
+      <p>
+        Aşağıdaki bedeller KDV hariç liste fiyatlarıdır. Vergiler dâhil tahsil
+        edilecek toplam tutar, seçtiğiniz koltuk sayısı ve dönemle birlikte
+        siparişi onaylamadan önce ödeme ekranında ayrıca gösterilir.
+      </p>
+      <table className="legal-table">
+        <thead>
+          <tr>
+            <th>Plan</th>
+            <th>Aylık</th>
+            <th>Yıllık</th>
+            <th>En az koltuk</th>
+          </tr>
+        </thead>
+        <tbody>
+          {PUBLIC_PLANS.map((plan) => (
+            <tr key={plan.id}>
+              <td>{plan.name}</td>
+              <td>
+                {plan.monthlyTry === null
+                  ? "Teklif usulü"
+                  : `${formatTry(plan.monthlyTry)}${plan.perSeat ? " / koltuk" : ""}`}
+              </td>
+              <td>
+                {plan.annualTry === null
+                  ? "Teklif usulü"
+                  : `${formatTry(plan.annualTry)}${plan.perSeat ? " / koltuk" : ""}`}
+              </td>
+              <td>{plan.minSeats}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p>
+        Aylık AI kotası dolduğunda kullanım durmaz; tek seferlik ek paketler
+        alınabilir:{" "}
+        {TOP_UP_PACKAGES.map(
+          (pack) => `${pack.name} (${pack.detail}) ${formatTry(pack.priceTry)}`,
+        ).join(" · ")}
+        . Ek paketlerin süresi yoktur ve aylık kota tükendikten sonra
+        kullanılır.
+      </p>
+      <p>
+        Her hesap {TRIAL_DAYS} gün tam erişimli ücretsiz denemeyle başlar.
+        Deneme süresi içinde iptal edilirse ücret tahsil edilmez; süre sonunda
+        hesap ücretsiz katmana geçer ve mevcut veriler silinmez.
       </p>
       <h2>İfa, süre ve yenileme</h2>
       <p>

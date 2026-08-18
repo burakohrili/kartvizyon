@@ -25,44 +25,39 @@
 
 ## Production durumu
 
+Son doğrulama: 18 Ağustos 2026, konsollar canlı okunarak.
+
 ### Tamamlandı
 
-- Supabase production projesi ve 18 uygulanmış migration; Auth redirect URL’leri. 19. migration yerelde hazır ve güvenlik denetimi nedeniyle production uygulaması bekliyor.
-- Hostinger DNS: root Vercel, `app` Vercel CNAME, Resend DKIM/SPF/MX/DMARC.
-- Resend sending-only API key, Supabase custom SMTP, Türkçe markalı Auth şablonları ve güvenlik bildirimleri.
-- Vercel root ve `app` domain doğrulaması; web production build ve public mağaza URL’leri.
-- ClamAV servis kodu, production tarama migration’ı, callback/cron ve retry mimarisi.
-- Mobil production kimliği, deep link, release signing güvenlik kapısı, KartVizyon'a özel Android upload keystore'u ve Codemagic yapılandırması.
-- Reviewer production hesabı ve demo verisi; web giriş/panel akışı doğrulandı.
-- Sentry Next.js ve Flutter SDK entegrasyonu; DSN/proje/alarm oluşturma bekliyor.
-- Modern mobil kapsül navigasyon, hareket azaltma desteği ve güncel tasarım tokenları.
+- **Web:** `kartvizyon.app` ve `app.kartvizyon.app` yayında; production deployment
+  commit `bf20b2a`, `/api/health` veri tabanı, AI ve admin yapılandırmasını doğruluyor.
+- **Vercel secret'ları** girili (ClamAV `DOCUMENT_SCAN_SERVICE_URL` dahil); cron uçları
+  yetkisiz çağrıda 401 döndürüyor.
+- **Codemagic:** Android ve iOS workflow'ları çalışıyor — imzalı AAB (versionCode 13)
+  ve IPA (build 12), her ikisi de `bf20b2a` commit'inden.
+- **Apple:** uygulama kaydı (Apple ID 6797552440) ve TestFlight'ta 5 build; dahili test
+  grubu kurulu, build 11–12 gerçek cihazda çalıştırıldı.
+- **Google Play:** versionCode 13 kapalı testte (%100), mağaza girişi "Canlı",
+  9 politika beyanı tamamlandı.
+- **Ticari model:** ADR-0005 fiyatları, `0021_entitlements` plan tohumları,
+  `entitlements.ts` kota uygulaması, 14 gün deneme ve deneme bitiş cron'u.
+- **AI maliyeti:** özet Terra, OCR Luna; kullanıcı başı aylık maliyet 64 ₺ → 34 ₺.
+- **iyzico site koşulları:** mesafeli satış, teslim/iptal/iade, fatura süreci ve
+  ödeme öncesi bilgilendirme bileşeni hazır.
+- **Kalite kapısı:** `npm run check` yerelde tam yeşil (CRLF sorunu `.gitattributes`
+  ile giderildi).
 
-### Dış hesap/son doğrulama bekliyor
+### Kalan
 
-- Resend domain durumu DNS doğru olmasına rağmen sağlayıcıda `pending`; gönderim testi doğrulama sonrası.
-- ClamAV container’ın Cloud Run’a deploy’u ve `DOCUMENT_SCAN_SERVICE_URL` Vercel secret’ı.
-- Sentry hesabı henüz oluşmadı; kullanıcı onayı sonrası projeler/DSN ve 5xx/cron alarm hedefi.
-- Codemagic hesabına repo ve üretilmiş KartVizyon keystore'unun yüklenmesi; App Store API key ve provisioning profile eklenmesi.
-- App Store Connect/Play Console listing, Data Safety/App Privacy formlarının konsolda gönderimi, ekran görüntüleri ve signed gerçek cihaz testleri.
-- `0019_account_deletion` migration'ının Supabase'e uygulanması ve worker'ın production uçtan uca testi.
-- 15 saha çalışanı + 5 satış müdürü görüşmesi, 3 şirket pilotu ve gerçek veri doğruluk ölçümleri.
-
-### Ödeme (ADR-0003 ile kararlaştırıldı)
-
-Model kesinleşti: iyzico Subscription, TRY, aylık/yıllık; bireysel ve kurumsal plan birlikte;
-satın alma yalnız `app.kartvizyon.app` üzerinde; mobilde satın alma ve ödeme CTA'sı yok.
-Detay ve gerekçe için `docs/product/decisions/0003-commerce-and-store-distribution.md`.
-
-Uygulanacaklar:
-
-- iyzico sandbox hesabı ve ürün/plan tanımları.
-- `subscriptions` / `entitlements` migration'ı ve plan limiti kontrolü.
-- iyzico webhook ucu: imza doğrulama, idempotent işleme, audit kaydı.
-- Web checkout akışı ve plan yükseltme/iptal ekranları.
-- Fatura ve iade süreci (Türkiye mevzuatı).
-- iyzico site hazırlığı: Hakkımızda, İletişim, Mesafeli Satış ve Hizmet Teslim–İptal–İade
-  sayfaları hazır; fiyat, telefon, KEP, meslek odası ve resmî ödeme logoları bekliyor.
-- Mobil `settings/billing` yüzeyinin salt-okunur kaldığının testle doğrulanması.
+- App Store Connect alan girişleri ve iPhone 6.5" ekran görüntüleri
+  (`docs/APPLE_SUBMISSION_CHECKLIST.md`).
+- Play içerik derecelendirme anketi ve üretim erişimi için 12 test kullanıcısı × 14 gün.
+- Supabase `0019`, `0020`, `0021` migration'larının production'a uygulanması ve
+  Free → Pro geçişi.
+- Sentry projesi/DSN ve alarmlar; Resend domain doğrulaması ve teslimat testi.
+- iyzico sandbox, checkout ve webhook (kullanıcı kararıyla en sona bırakıldı).
+- Mobil IAP (ADR-0004 Faz C); Play abonelik ürünü için AAB'ye ödeme kütüphanesi gerekiyor.
+- Kullanıcıdan alınacak bilgiler: telefon, KEP, meslek odası, vergi levhası, IBAN.
 
 ## Bilinçli kapsam dışı
 

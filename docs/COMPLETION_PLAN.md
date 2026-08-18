@@ -1,87 +1,58 @@
 # Tamamlama planı
 
-Bu belge, yayına kadar kalan işleri bağımlılık sırasına göre listeler. Kod tarafındaki
-ürün kapsamı büyük ölçüde bitmiştir; kalan işler dış hesap kurulumu, ödeme ürünü ve
-mağaza gönderimidir.
+Son doğrulama: 18 Ağustos 2026 — konsollar (App Store Connect, Play Console,
+Codemagic, Vercel) canlı olarak okunarak güncellendi.
 
-## Faz 0 — Şu an bloke olmayan, hemen yapılabilir
+Ürün kodu, CI ve her iki mağaza pipeline'ı hazırdır. Kalan iş **mağaza veri
+girişi, Play test kullanıcısı süresi ve ödeme entegrasyonudur.**
 
-| #   | İş                                          | Sahip     | Not                                                 |
-| --- | ------------------------------------------- | --------- | --------------------------------------------------- |
-| 0.1 | Vercel production deploy                    | Kullanıcı | Son kod henüz production'a çıkmadı; DNS zaten doğru |
-| 0.2 | Supabase `0019_account_deletion` migration  | Kullanıcı | Önce staging provası, sonra production              |
-| 0.3 | Resend domain doğrulaması ve teslimat testi | Kullanıcı | Domain `pending` durumundan çıkınca                 |
+## Tamamlanan
 
-## Faz 1 — Dış konsollar
+| #   | İş                                                       | Kanıt                                                               |
+| --- | -------------------------------------------------------- | ------------------------------------------------------------------- |
+| ✅  | Vercel production deploy                                 | commit `bf20b2a` yayında, `/api/health` sağlıklı                    |
+| ✅  | Codemagic Android + iOS workflow                         | AAB #7 (versionCode 13), IPA #6 (build 12)                          |
+| ✅  | TestFlight yükleme ve dahili test                        | 5 build; build 11–12 gerçek cihazda çalıştırıldı                    |
+| ✅  | Play kapalı test (Alpha) yayını                          | versionCode 13, %100 kullanıma sunum                                |
+| ✅  | Play mağaza girişi                                       | "Canlı"; simge, özellik grafiği, telefon + tablet görselleri        |
+| ✅  | Play politika beyanları                                  | 9 beyan tamamlandı (Veri güvenliği, gizlilik, oturum bilgisi dahil) |
+| ✅  | Vercel production secret'ları                            | ClamAV servis URL'i dahil girili                                    |
+| ✅  | Fiyat kararı ve plan limitleri                           | ADR-0005 + `0021_entitlements`                                      |
+| ✅  | Kota uygulaması (müşteri, AI dakika, OCR, koltuk)        | `apps/web/src/lib/entitlements.ts` + 10 test                        |
+| ✅  | AI maliyet optimizasyonu                                 | Kullanıcı başı 64 ₺ → 34 ₺                                          |
+| ✅  | iyzico site koşulları (sözleşme, iade, ön bilgilendirme) | `docs/BILLING_INVOICE_PROCESS.md`                                   |
+| ✅  | `npm run check` yerel kapısı                             | `.gitattributes` + prettier `endOfLine: auto`                       |
 
-Adım adım komutlar ve tıklama sırası için `docs/EXTERNAL_SETUP_RUNBOOK.md`.
+## Kullanıcıda olan işler
 
-| #   | İş                                                            | Bağımlılık                      |
-| --- | ------------------------------------------------------------- | ------------------------------- |
-| 1.1 | Google Cloud: Cloud Run + Artifact Registry, ClamAV deploy    | Faturalandırma etkin proje      |
-| 1.2 | Vercel: `DOCUMENT_SCAN_SERVICE_URL` ve diğer secret'lar       | 1.1                             |
-| 1.3 | Sentry: web/mobil proje, DSN, 5xx + cron + uptime alarmları   | —                               |
-| 1.4 | Codemagic: repo bağlama, keystore yükleme, Apple entegrasyonu | Apple hesabı                    |
-| 1.5 | App Store Connect: App ID + uygulama kaydı                    | Apple Developer Program üyeliği |
-| 1.6 | Play Console: uygulama kaydı, ilk AAB manuel internal track   | Play Developer hesabı           |
+| #   | İş                                    | Not                                                              |
+| --- | ------------------------------------- | ---------------------------------------------------------------- |
+| U.1 | iPhone 6.5" ekran görüntüleri         | En az 3 adet; iPad artık gerekmiyor (cihaz ailesi yalnız iPhone) |
+| U.2 | Play için 12 test kullanıcısı, 14 gün | Şu an 1 kayıtlı; üretim erişiminin tek engeli                    |
+| U.3 | Telefon, KEP, meslek odası bilgisi    | iyzico başvurusu ve site iletişim alanı için                     |
+| U.4 | Vergi levhası, imza sirküleri, IBAN   | iyzico başvuru evrakı                                            |
+| U.5 | Supabase Pro'ya geçiş                 | Free planda proje duraklıyor ve otomatik yedek yok               |
+| U.6 | OpenAI aylık $50 hard limit           | ADR-0005 bütçe kapısı                                            |
 
-**Açman gereken hesaplar:** Google Cloud (faturalandırma), Codemagic, Apple Developer
-Program (yıllık $99), Google Play Console (tek seferlik $25), Sentry.
+## Kalan iş
 
-## Faz 2 — Ödeme ürünü (ADR-0003)
+| #   | İş                                             | Bağımlılık | Rehber                                 |
+| --- | ---------------------------------------------- | ---------- | -------------------------------------- |
+| 1.1 | App Store Connect alan girişleri               | U.1        | `docs/APPLE_SUBMISSION_CHECKLIST.md`   |
+| 1.2 | Play içerik derecelendirme anketi              | —          | Play Console → Uygulama içeriği        |
+| 1.3 | Supabase `0019`, `0020`, `0021` migration'ları | U.5        | `docs/OPERATIONS.md`                   |
+| 1.4 | Sentry projesi, DSN ve alarmlar                | —          | `docs/EXTERNAL_SETUP_RUNBOOK.md` §6    |
+| 1.5 | Resend domain doğrulaması ve teslimat testi    | —          | `docs/EXTERNAL_SETUP_RUNBOOK.md` §8    |
+| 2.1 | iyzico sandbox, ürün/plan tanımı               | U.3, U.4   | `docs/IYZICO_APPLICATION_READINESS.md` |
+| 2.2 | Web checkout ekranı                            | 2.1        | `PrePurchaseDisclosure` bağlanır       |
+| 2.3 | `POST /api/internal/webhooks/iyzico`           | 2.1        | Mevcut webhook deseni                  |
+| 2.4 | Plan yükseltme / koltuk / iptal ekranları      | 2.2        | —                                      |
+| 2.5 | AI ek paketi satın alma akışı                  | 2.3        | `workspace_ai_topups`                  |
+| 3.1 | Mobil IAP (ADR-0004 Faz C)                     | 2.x        | AAB'ye Play Billing eklenmeli          |
 
-Karar verildi: iyzico Subscription, TRY, aylık/yıllık; bireysel + kurumsal birlikte;
-satın alma yalnız web; mobilde satın alma yok. Gerekçe:
-`docs/product/decisions/0003-commerce-and-store-distribution.md`.
-
-Başvuru kullanıcı tarafından yapılacaktır. Site koşulları ve gerçek bilgi eksikleri
-`docs/IYZICO_APPLICATION_READINESS.md` içinde takip edilir; API/checkout geliştirmesi
-başvuru ve fiyatlar kesinleşmeden başlamaz.
-
-| #   | İş                                                                               |
-| --- | -------------------------------------------------------------------------------- |
-| 2.1 | iyzico sandbox hesabı, ürün ve plan tanımları                                    |
-| 2.2 | `subscriptions` / `entitlements` migration + rollback                            |
-| 2.3 | Plan limiti kontrolü (koltuk, AI kotası, dosya) mevcut billing yüzeyine bağlanır |
-| 2.4 | iyzico webhook ucu: imza doğrulama, idempotent işleme, audit kaydı               |
-| 2.5 | Web checkout, plan yükseltme ve iptal ekranları                                  |
-| 2.6 | Fatura ve iade süreci (Türkiye mevzuatı, Noesis Social bilgileri)                |
-| 2.7 | Mobil `settings/billing` salt-okunurluğunun testle sabitlenmesi                  |
-| 2.8 | Sandbox → production geçişi ve gerçek kart testi                                 |
-
-## Faz 3 — Mağaza gönderimi
-
-| #   | İş                                                                    | Bağımlılık                 |
-| --- | --------------------------------------------------------------------- | -------------------------- |
-| 3.1 | Ekran görüntüleri (telefon + tablet, iOS + Android)                   | 1.4 çıktısı build          |
-| 3.2 | Play feature graphic (1024×500)                                       | Logo hazır                 |
-| 3.3 | App Privacy / Data Safety formlarının konsolda gönderimi              | 1.5, 1.6                   |
-| 3.4 | Content rating, export compliance, destek/gizlilik URL'leri           | 0.1 (siteler canlı olmalı) |
-| 3.5 | Reviewer hesabı bilgilerinin inceleme alanlarına girilmesi            | —                          |
-| 3.6 | Gerçek cihazda signed build testi (iOS TestFlight + Android internal) | 1.4                        |
-| 3.7 | Kademeli production yayını                                            | Tümü                       |
-
-## Faz 4 — Ürün doğrulama (yayınla paralel)
+## Ürün doğrulama (yayınla paralel)
 
 - 15 saha çalışanı + 5 satış müdürü görüşmesi
 - 3 şirket pilotu
 - AI özet/transkript doğruluk ölçümü ve `needs_review` onay oranı takibi
-- Destek gelen kutusu: `support@kartvizyon.app` için Hostinger Email veya eşdeğeri
-
-## Bu turda kapatılanlar
-
-- ✅ Web–mobil özellik eşlemesi `docs/MOBILE_WEB_PARITY.md` ile tanımlandı;
-  mobil menüye Takvim, Aktivite, Rapor özeti, Bildirimler, Fırsatlar, Ürünler,
-  Siparişler, Belgeler ve Formlar gerçek API verileriyle eklendi.
-- ✅ Mobilde sahte yeni hesap özetleri kaldırıldı; manuel müşteri/ilgili kişi,
-  gerçek kartvizit kaydı, ziyaret brifingi ve AI özeti inceleme/onay akışları
-  tamamlandı.
-
-- ✅ Gradle/Java/Android build hatası — `org.gradle.java.home` ile JDK 21 sabitlendi;
-  `flutter build apk --debug`, `flutter analyze` ve 5 mobil test geçiyor.
-- ✅ Marka logosu web (favicon, apple-icon, PWA manifest, sidebar, pazarlama başlığı),
-  Android mipmap ve iOS AppIcon setlerine uygulandı.
-- ✅ Pazarlama sitesine 8 özellik kartı (nasıl çalışır / ne işe yarar), 3 katmanlı
-  fiyatlandırma bölümü ve FAQPage JSON-LD işaretli 7 soruluk SSS eklendi.
-- ✅ Ödeme mimarisi ADR-0003 olarak kalıcılaştırıldı.
-- ✅ Dış konsol adımları `docs/EXTERNAL_SETUP_RUNBOOK.md` olarak yazıldı.
+- Destek gelen kutusu: `support@kartvizyon.app` mailbox'ı

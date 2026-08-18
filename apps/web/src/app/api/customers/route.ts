@@ -1,24 +1,16 @@
 import { companyCreateSchema } from "@kartvizyon/contracts";
-import { apiError, serviceUnavailable } from "@/lib/api";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { apiError } from "@/lib/api";
+import { getApiContext } from "@/lib/api-context";
+import { assertQuota } from "@/lib/entitlements";
 
 export async function GET(request: Request) {
-  const supabase = await createSupabaseServerClient(request);
-  if (!supabase) return serviceUnavailable();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user)
-    return Response.json({ error: "Oturum gerekli." }, { status: 401 });
+  const context = await getApiContext(request);
+  if (!context.ok) return context.response;
 
-  const workspaceId = new URL(request.url).searchParams.get("workspaceId");
-  if (!workspaceId)
-    return Response.json({ error: "workspaceId gerekli." }, { status: 400 });
-
-  const { data, error } = await supabase
+  const { data, error } = await context.supabase
     .from("companies")
     .select("id,name,phone,email,address,assigned_to,updated_at")
-    .eq("workspace_id", workspaceId)
+    .eq("workspace_id", context.workspaceId)
     .is("archived_at", null)
     .order("updated_at", { ascending: false })
     .limit(100);
@@ -29,26 +21,26 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const input = companyCreateSchema.parse(await request.json());
-    const supabase = await createSupabaseServerClient(request);
-    if (!supabase) return serviceUnavailable();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user)
-      return Response.json({ error: "Oturum gerekli." }, { status: 401 });
+    const context = await getApiContext(request);
+    if (!context.ok) return context.response;
 
-    const { data, error } = await supabase
+    // Çalışma alanı istek gövdesinden değil oturumdan gelir; gövdedeki değer
+    // yalnız istemci tarafı kolaylığıdır ve yok sayılır.
+    const quotaDenied = await assertQuota(context, "companies");
+    if (quotaDenied) return quotaDenied;
+
+    const { data, error } = await context.supabase
       .from("companies")
       .insert({
-        workspace_id: input.workspaceId,
-        organization_id: input.organizationId,
+        workspace_id: context.workspaceId,
+        organization_id: context.organizationId,
         name: input.name,
         phone: input.phone,
         email: input.email,
         website: input.website,
         address: input.address,
         client_mutation_id: input.clientMutationId,
-        created_by: user.id,
+        created_by: context.user.id,
       })
       .select("id,name,created_at")
       .single();

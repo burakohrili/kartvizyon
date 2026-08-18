@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { apiError } from "@/lib/api";
+import { assertQuota } from "@/lib/entitlements";
 import {
   summarizeVisitTranscript,
   transcribeVisitAudio,
@@ -131,6 +132,19 @@ export async function POST(
           { error: "Ses biçimi desteklenmiyor." },
           { status: 415 },
         );
+      }
+      // AI dakika kotası yalnız ses işlemede uygulanır; metin notu ve manuel
+      // ziyaret kaydı kotadan bağımsız çalışmaya devam eder (offline ilkesi).
+      if (supabase && visit) {
+        const quotaDenied = await assertQuota(
+          {
+            supabase,
+            workspaceId: visit.workspace_id,
+            organizationId: visit.organization_id,
+          },
+          "ai_minutes",
+        );
+        if (quotaDenied) return quotaDenied;
       }
 
       const bytes = Buffer.from(await audio.arrayBuffer());

@@ -2975,6 +2975,67 @@ nav a.active {
 .pricing-card.featured li::before {
   color: var(--mk-lime);
 }
+.pricing-amount {
+  margin: 0;
+  color: var(--mk-ink);
+  font-size: 15px;
+}
+.pricing-amount strong {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.pricing-card.featured .pricing-amount,
+.pricing-card.featured .pricing-annual,
+.pricing-card.featured .pricing-note {
+  color: #dbe3f2;
+}
+.pricing-annual,
+.pricing-note {
+  margin: -6px 0 0;
+  color: #6a7283;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.pricing-topups {
+  margin-top: 32px;
+  padding: 28px;
+  border-radius: 26px;
+  border: 1px solid rgba(16, 28, 61, 0.14);
+  background: rgba(255, 255, 255, 0.6);
+}
+.pricing-topups h3 {
+  margin: 0 0 8px;
+  font-size: 21px;
+}
+.pricing-topups p {
+  margin: 0 0 14px;
+  color: #57607a;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.pricing-topups ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+.pricing-topups li {
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: #fff;
+  color: #57607a;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.pricing-footnote {
+  margin: 18px 0 0;
+  color: #6a7283;
+  font-size: 14px;
+  line-height: 1.6;
+}
 .faq-section {
   border-top: 1px solid rgba(16, 28, 61, 0.16);
 }
@@ -3050,6 +3111,62 @@ nav a.active {
   grid-column: 1/-1;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
   padding-top: 25px;
+}
+.legal-table {
+  width: 100%;
+  margin: 18px 0;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.legal-table th,
+.legal-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(16, 28, 61, 0.14);
+  text-align: left;
+}
+.legal-table th {
+  font-weight: 700;
+}
+.purchase-disclosure {
+  margin: 20px 0;
+  padding: 22px 24px;
+  border-radius: 20px;
+  border: 1px solid rgba(16, 28, 61, 0.16);
+  background: rgba(255, 255, 255, 0.7);
+}
+.purchase-disclosure h3 {
+  margin: 0 0 14px;
+  font-size: 19px;
+}
+.purchase-disclosure dl {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.purchase-disclosure dl > div {
+  display: grid;
+  grid-template-columns: minmax(140px, 32%) 1fr;
+  gap: 12px;
+}
+.purchase-disclosure dt {
+  color: #6a7283;
+  font-size: 14px;
+}
+.purchase-disclosure dd {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.purchase-disclosure-links {
+  margin: 16px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+@media (max-width: 640px) {
+  .purchase-disclosure dl > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
 }
 .legal-shell {
   min-height: 100vh;

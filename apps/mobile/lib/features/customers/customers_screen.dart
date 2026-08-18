@@ -256,14 +256,12 @@ Future<_CustomerDraft?> _showCustomerDialog(
     context: context,
     builder: (dialogContext) => Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      // Dialog klavye boşluğunu kendisi ekler (Flutter dialog.dart: effectivePadding
+      // = MediaQuery.viewInsetsOf(context) + insetPadding). Burada ikinci kez
+      // eklenirse içerik görünür alanın tamamen dışına taşar ve boş kutu görünür.
       child: SafeArea(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            20 + MediaQuery.viewInsetsOf(dialogContext).bottom,
-          ),
+          padding: const EdgeInsets.all(20),
           child: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -335,14 +333,17 @@ Future<_CustomerDraft?> _showCustomerDialog(
                     ),
                   ],
                   const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  // Dar ekranda (360 dp) iki buton tek satıra sığmıyor; Wrap
+                  // taşma yerine alt satıra indirir.
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(dialogContext),
                         child: const Text('Vazgeç'),
                       ),
-                      const SizedBox(width: 8),
                       FilledButton(
                         onPressed: () {
                           if (!formKey.currentState!.validate()) return;

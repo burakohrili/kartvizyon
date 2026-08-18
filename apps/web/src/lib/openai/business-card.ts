@@ -7,7 +7,13 @@ import { z } from "zod";
 
 import { createOpenAiClient } from "./client";
 
-const MODEL = process.env.OPENAI_OCR_MODEL ?? "gpt-5.6-sol";
+// Kartvizit OCR dar kapsamlı bir alan çıkarma işidir ve çıktı aşağıda Zod ile
+// doğrulanır; hatalı çıktı zaten reddedilir. Luna, Sol'a göre ~25x ucuzdur.
+// Gerekçe: docs/product/decisions/0005-pricing.md
+const MODEL = process.env.OPENAI_OCR_MODEL ?? "gpt-5.6-luna";
+
+/** Kullanım ölçümünün hangi modeli kaydedeceğini bilmesi için dışa verilir. */
+export const businessCardModel = MODEL;
 
 const nullableText = (max: number) => z.string().trim().max(max).nullable();
 

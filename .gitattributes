@@ -1,0 +1,15 @@
+# Depo içeriği daima LF ile saklanır. Windows'ta core.autocrlf=true çalışma
+# ağacına CRLF yazdığı için prettier --check bu satır sonlarını hata sayıyordu;
+# .prettierrc.json içindeki "endOfLine": "auto" ile birlikte kapı her iki
+# platformda da geçer.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.jks binary
+*.keystore binary
+*.ttf binary
+*.otf binary
