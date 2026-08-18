@@ -20,6 +20,12 @@ android {
     ndkVersion = "27.0.12077973"
 
     compileOptions {
+        // flutter_local_notifications 19.x, minSdk 23'te bulunmayan java.time
+        // sınıflarını kullanır ve desugaring açık değilse
+        // `checkReleaseAarMetadata` görevi build'i durdurur. Saha modu bu
+        // paketi getirdiği için 18 Ağustos 2026'da bütün Android release
+        // build'leri bu hatayla düştü.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -69,6 +75,10 @@ gradle.taskGraph.whenReady {
             "Release imzalama için android/key.properties gerekli; debug anahtarı production'da kullanılamaz.",
         )
     }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 flutter {

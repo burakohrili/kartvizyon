@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'local/app_database.dart';
 import 'secure_session_store.dart';
 
@@ -101,7 +102,17 @@ class SyncEngine {
       final attachment = item.attachmentPath;
       if (attachment != null && await File(attachment).exists()) {
         request.files.add(
-          await http.MultipartFile.fromPath('audio', attachment),
+          await http.MultipartFile.fromPath(
+            'audio',
+            attachment,
+            // MultipartFile.fromPath tür belirtilmezse parçayı
+            // `application/octet-stream` olarak gönderir; sunucu ise izinli
+            // ses türlerini beyan edilen türe bakarak süzüyor ve 415 dönüyor.
+            // 415 kalıcı hata sayıldığı için sesli not kuyrukta sonsuza kadar
+            // kalıyor, ekranda ise "bağlantı gelince gönderilecek" yazıyordu.
+            // Kaydedici AAC-LC ile .m4a üretir; doğru tür audio/mp4'tür.
+            contentType: MediaType('audio', 'mp4'),
+          ),
         );
       }
 
