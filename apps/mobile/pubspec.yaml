@@ -17,9 +17,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 # versionName (1.0.0) elle yönetilir; sürüm yükseltmesi bilinçli bir karardır.
-# Derleme numarası (+1) yalnız yerel derlemeler için geçerlidir — Codemagic her
-# build'de `--build-number=$PROJECT_BUILD_NUMBER` geçtiği için mağazaya giden
-# ikilinin numarası burada yazandan farklıdır (bkz. codemagic.yaml).
+# Derleme numarası (+1) yalnız yerel derlemeler için geçerlidir — Codemagic
+# numarayı mağazadaki son numaranın bir fazlası olarak hesaplar, bu yüzden
+# mağazaya giden ikilinin numarası burada yazandan farklıdır (bkz.
+# codemagic.yaml). Android ve iOS artık ayrı ayrı sayar.
 # Kullanıcı çalışan sürümü "Daha fazla → Uygulama sürümü" altında görebilir.
 version: 1.0.0+1
 

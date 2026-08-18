@@ -128,3 +128,39 @@ kanalına yayınladı.
 
 Artık her iki platform da aynı yolu izler: `main`'e push → imzalı build →
 iOS TestFlight, Android kapalı test.
+
+## Build numarası nereden gelir
+
+Karışması çok kolay olan üç ayrı sayı var:
+
+| Sayı                              | Nedir                           | Nerede görünür              |
+| --------------------------------- | ------------------------------- | --------------------------- |
+| Codemagic build indeksi (`#24`)   | O workflow'un kaçıncı çalışması | Yalnız Codemagic ekranında  |
+| `versionCode` / `CFBundleVersion` | Mağazadaki ikilinin numarası    | Play Console, TestFlight    |
+| `version: 1.0.0`                  | Kullanıcıya görünen sürüm adı   | Mağaza girişi, uygulama içi |
+
+Başlangıçta ikinci sayı `$PROJECT_BUILD_NUMBER`'dan geliyordu. Bu değişken
+**iki workflow'un toplam çalışma sayısıdır**; Android ve iOS aynı sayacı
+paylaştığı için:
+
+- hiçbir platformun numarası ardışık gitmiyordu (TestFlight 43 → 39 → 37),
+- Codemagic ekranındaki indeksle hiç tutmuyordu (Android çalışma #18 →
+  versionCode 34, iOS çalışma #21 → build 43),
+- Play'de "24" görüp Codemagic'te "#24" görmek insanı yanlış builde bakmaya
+  götürüyordu; ikisinin birbiriyle ilgisi yoktu.
+
+18 Ağustos 2026'dan itibaren numara mağazanın kendisinden alınıyor:
+
+```sh
+google-play get-latest-build-number --package-name app.kartvizyon.mobile
+app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID"
+```
+
+Sonuç bir artırılıp `--build-number`'a geçilir. Böylece her platform kendi
+ardışık dizisinde ilerler ve konsolda görülen numara ile build'in ürettiği
+numara aynı şeyi anlatır. Sorgu başarısız olursa build **durur**; numara
+uydurup mağazaya çakışan bir sürüm göndermez.
+
+`APP_STORE_APP_ID` (6797552440) `codemagic.yaml` içinde sabittir çünkü
+`get-latest-testflight-build-number` sayısal Apple app kimliğini ister, bundle
+identifier kabul etmez.

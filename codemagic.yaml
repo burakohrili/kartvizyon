@@ -56,10 +56,27 @@ workflows:
         script: flutter analyze
       - name: Unit and widget tests
         script: flutter test
+      # $PROJECT_BUILD_NUMBER iki workflow'un TOPLAM çalışma sayısıdır; Android
+      # ve iOS aynı sayacı paylaştığı için hiçbir mağazanın numarası ardışık
+      # ilerlemiyordu ve Codemagic ekranındaki build indeksiyle de tutmuyordu
+      # (Android çalışma #18 -> versionCode 34, iOS #21 -> build 43). Numara
+      # mağazanın kendisinden gelirse her platform kendi dizisinde ilerler ve
+      # konsolda görülen numara ile burada görülen numara aynı şeyi anlatır.
+      - name: Resolve the next Play version code
+        script: |
+          LATEST=$(google-play get-latest-build-number \
+            --credentials "$GCLOUD_SERVICE_ACCOUNT_CREDENTIALS" \
+            --package-name "$PACKAGE_NAME")
+          if [ -z "$LATEST" ]; then
+            echo "Play'den son versionCode okunamadı; numara uydurmak yerine duruyoruz."
+            exit 1
+          fi
+          echo "NEXT_BUILD_NUMBER=$((LATEST + 1))" >> "$CM_ENV"
+          echo "Play'deki son versionCode $LATEST, bu build $((LATEST + 1))."
       - name: Build signed Android App Bundle
         script: |
           flutter build appbundle --release \
-            --build-number=$PROJECT_BUILD_NUMBER \
+            --build-number=$NEXT_BUILD_NUMBER \
             --dart-define=KARTVIZYON_API_URL=https://app.kartvizyon.app \
             --dart-define=SUPABASE_URL=$SUPABASE_URL \
             --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \
@@ -116,6 +133,10 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: app.kartvizyon.mobile
+      vars:
+        # get-latest-testflight-build-number sayısal Apple app kimliğini ister,
+        # bundle identifier kabul etmez.
+        APP_STORE_APP_ID: 6797552440
       # .github/workflows/ci.yml ile aynı sürüme sabitlenir. `stable` kayan bir
       # kanaldır; testlerin geçtiği sürümle mağazaya giden ikilinin sürümü
       # ayrışırsa release build'i hiç doğrulanmamış bir toolchain'le üretilir.
@@ -139,10 +160,21 @@ workflows:
         script: find ios -name Podfile -execdir pod install \;
       - name: Apply KartVizyon-only iOS signing profiles
         script: xcode-project use-profiles --project ios/Runner.xcodeproj
+      # Android tarafındaki gerekçenin aynısı; numara TestFlight'tan gelir,
+      # böylece iOS sürümleri 43'ten 39'a atlamaz.
+      - name: Resolve the next TestFlight build number
+        script: |
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID")
+          if [ -z "$LATEST" ]; then
+            echo "TestFlight'tan son build numarası okunamadı; numara uydurmak yerine duruyoruz."
+            exit 1
+          fi
+          echo "NEXT_BUILD_NUMBER=$((LATEST + 1))" >> "$CM_ENV"
+          echo "TestFlight'taki son build $LATEST, bu build $((LATEST + 1))."
       - name: Build signed IPA
         script: |
           flutter build ipa --release \
-            --build-number=$PROJECT_BUILD_NUMBER \
+            --build-number=$NEXT_BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist \
             --dart-define=KARTVIZYON_API_URL=https://app.kartvizyon.app \
             --dart-define=SUPABASE_URL=$SUPABASE_URL \
