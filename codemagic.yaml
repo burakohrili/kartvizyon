@@ -95,6 +95,39 @@ workflows:
         # Sürüm taslak değil, doğrudan test kullanıcılarına açılır.
         submit_as_draft: false
 
+  kartvizyon-android-fgs-video:
+    name: KartVizyon Android FGS review video APK
+    max_build_duration: 45
+    # Bu workflow yalnız Codemagic arayüzünden elle çalıştırılır. Store'a paket
+    # göndermez; Google Play ön plan hizmeti beyan videosu için production
+    # Supabase oturumuyla çalışan, DEBUG etiketsiz bir profil APK üretir.
+    instance_type: mac_mini_m2
+    working_directory: apps/mobile
+    environment:
+      groups:
+        - mobile_runtime
+      flutter: 3.32.6
+      java: 17
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/.gradle/caches
+    scripts:
+      - name: Resolve dependencies
+        script: flutter pub get
+      - name: Static analysis
+        script: flutter analyze
+      - name: Unit and widget tests
+        script: flutter test
+      - name: Build Supabase-configured profile APK
+        script: |
+          flutter build apk --profile \
+            --dart-define=KARTVIZYON_API_URL=https://app.kartvizyon.app \
+            --dart-define=SUPABASE_URL=$SUPABASE_URL \
+            --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+    artifacts:
+      - build/app/outputs/flutter-apk/app-profile.apk
+
   kartvizyon-ios-testflight:
     name: KartVizyon iOS signed IPA / TestFlight
     max_build_duration: 90
