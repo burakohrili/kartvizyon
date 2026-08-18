@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/mobile_services.dart';
 
 class CustomerDetailScreen extends StatefulWidget {
@@ -160,6 +161,16 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             Text(company['address']?.toString() ?? ''),
+            const SizedBox(height: 14),
+            // Brifinge yalnız Bugün ekranındaki "sıradaki ziyaret" kartından
+            // ve onaylanmış ziyaret satırından gidilebiliyordu. Ziyarete
+            // giderken insanın açtığı ilk yer müşteri kartı; ziyaret öncesi
+            // bağlam buradan ulaşılabilir olmalı.
+            FilledButton.icon(
+              onPressed: () => context.push('/briefings/${widget.companyId}'),
+              icon: const Icon(Icons.assignment_outlined),
+              label: const Text('Ziyaret brifingini aç'),
+            ),
             const SizedBox(height: 18),
             Card(
               child: Padding(

@@ -306,8 +306,11 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                 subtitle: _parts([
                   _scanStatus(item['scan_status']),
                   _date(item['created_at']),
+                  if (item['scan_status']?.toString() == 'clean')
+                    'Açmak için dokunun',
                 ]),
                 icon: Icons.description_outlined,
+                raw: item,
               ),
             )
             .toList(),
@@ -350,15 +353,18 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
     }
   }
 
-  bool _isOpenablePriceList(_ModuleItem item) =>
-      widget.module == WorkspaceModule.products &&
+  /// Temiz tarama sonucu olan belge açılabilir. Sunucu da aynı kontrolü
+  /// yapar; burası yalnız dokunulabilirliği belirler.
+  bool _isOpenableDocument(_ModuleItem item) =>
+      (widget.module == WorkspaceModule.products ||
+          widget.module == WorkspaceModule.documents) &&
       item.raw?['scan_status']?.toString() == 'clean';
 
-  /// Temiz çıkmış fiyat listesini kısa ömürlü imzalı bağlantıyla açar.
+  /// Temiz çıkmış belgeyi kısa ömürlü imzalı bağlantıyla açar.
   ///
   /// Karantinadaki dosya doğrudan sunulmaz; sunucu tarama sonucu `clean`
   /// değilse bağlantı üretmez.
-  Future<void> openPriceList(_ModuleItem item) async {
+  Future<void> openDocument(_ModuleItem item) async {
     final id = item.raw?['id']?.toString();
     if (id == null) return;
     try {
@@ -375,7 +381,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
           content: Text(
             error is MobileApiException
                 ? error.message
-                : 'Fiyat listesi açılamadı. Tekrar deneyin.',
+                : 'Belge açılamadı. Tekrar deneyin.',
           ),
         ),
       );
@@ -468,8 +474,8 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                   subtitle: item.subtitle.isEmpty ? null : Text(item.subtitle),
                   onTap: widget.module == WorkspaceModule.notifications
                       ? () => markNotificationRead(item)
-                      : _isOpenablePriceList(item)
-                      ? () => openPriceList(item)
+                      : _isOpenableDocument(item)
+                      ? () => openDocument(item)
                       : null,
                 ),
               );

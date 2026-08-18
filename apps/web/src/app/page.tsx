@@ -59,10 +59,16 @@ const features = [
     value: "Kırsalda veya bodrum katta bile veri kaybı yaşanmaz.",
   },
   {
+    title: "Saha modu: yakındaki müşteriyi hatırlat",
+    how: "Vardiyanız boyunca saha modunu başlatırsınız; yakınından geçtiğiniz müşteri için tek seferlik hatırlatma gelir. Mod görünür çalışır ve kendiliğinden kapanır.",
+    value:
+      "Yolunuzun üstündeki müşteriyi kaçırmazsınız; konumunuz sunucuya yazılmaz ve uygulama kapalıyken konum alınmaz.",
+  },
+  {
     title: "Yakındaki müşteriyi tek dokunuşla bul",
     how: "Saha haritasında konumunuzu sorduğunuzda yakındaki müşteriler önceliğe göre listelenir.",
     value:
-      "Unutulan ziyaretleri azaltır; uygulama arka planda konumunuzu izlemediği için pil ve gizlilik maliyeti yoktur.",
+      "Unutulan ziyaretleri azaltır; konum yalnızca siz sorduğunuzda alınır ve sunucuda saklanmaz.",
   },
   {
     title: "Belge karantina ve zararlı yazılım taraması",
@@ -102,7 +108,10 @@ const faqs = [
   },
   {
     q: "Konumumu sürekli mi takip ediyorsunuz?",
-    a: "Hayır. Konum yalnızca kullanıcının açık bir eylemiyle (ör. yakındaki müşteri önerisi) alınır; arka planda sürekli GPS takibi yapılmaz.",
+    // Saha modu eklendikten sonra "arka planda hiç konum alınmaz" ifadesi
+    // yanlış oldu: mod açıkken konum arka planda da okunur. Doğru sınır,
+    // sürekli ve gizli takip yapılmamasıdır (ADR-0006).
+    a: "Hayır. Konum yalnızca siz istediğinizde ya da saha modunu kendiniz başlattığınızda alınır. Saha modu çalışırken bunu gizlemez (Android'de kalıcı bildirim, iOS'ta mavi konum göstergesi), sekiz saat sonra veya akşam kendiliğinden kapanır ve konumunuz sunucuya yazılmaz. Uygulama tamamen kapalıyken konum alınmaz.",
   },
   {
     q: "Verilerimiz diğer şirketlerin verileriyle karışır mı?",
