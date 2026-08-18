@@ -208,18 +208,29 @@ export default function MarketingHome() {
             Demo iste
           </a>
         </div>
+        <details className="marketing-mobile-menu">
+          <summary aria-label="Menüyü aç">Menü</summary>
+          <nav aria-label="Mobil tanıtım menüsü">
+            <a href="#cozum">Çözüm</a>
+            <a href="#ozellikler">Özellikler</a>
+            <a href="#guven">Güven</a>
+            <a href="#fiyatlandirma">Planlar</a>
+            <Link href="/support">Destek</Link>
+            <a href="https://app.kartvizyon.app/login">Giriş yap</a>
+          </nav>
+        </details>
       </header>
 
       <section className="marketing-hero">
         <div className="marketing-hero-copy">
-          <span className="marketing-kicker">
-            SAHA SATIŞININ HAFIZA KATMANI
-          </span>
-          <h1>Müşteri bağlamı, ekip değişse bile kaybolmasın.</h1>
+          <span className="marketing-kicker">SAHADA BAŞLAR · EKİPTE KALIR</span>
+          <h1>
+            Sahada verilen söz,
+            <em> ofiste kaybolmasın.</em>
+          </h1>
           <p>
-            KartVizyon, saha görüşmelerini doğrulanmış aksiyonlara dönüştürür.
-            Ekibiniz her ziyarete hazırlıklı gider, verdiği sözleri izler ve
-            müşteriye kaldığı yerden devam eder.
+            KartVizyon, ziyaret öncesi bağlamı hazırlar; görüşme sonrasında
+            notu, sesi ve takibi tek bir doğrulanmış müşteri hikâyesinde toplar.
           </p>
           <div className="marketing-hero-actions">
             <a
@@ -232,41 +243,84 @@ export default function MarketingHome() {
               Nasıl çalışır? ↓
             </a>
           </div>
-          <small>
-            Kredi kartı gerekmez · Bireysel ve kurumsal kullanım için tasarlandı
-          </small>
+          <small>20 dakikalık tanışma · Kredi kartı gerekmez</small>
         </div>
         <div
           className="marketing-visual"
-          aria-label="KartVizyon ziyaret akışı özeti"
+          aria-label="KartVizyon mobil ürün akışının temsili"
         >
-          <div className="visual-orbit orbit-one" />
-          <div className="visual-orbit orbit-two" />
-          <article className="visual-card main-card">
-            <span>BUGÜNÜN BRİFİNGİ</span>
-            <strong>Artemis Endüstri</strong>
-            <p>Revize teklif bekleniyor · 2 açık takip</p>
-            <div className="visual-progress">
-              <i />
+          <div className="field-stamp" aria-hidden="true">
+            <span>SAHA NOTU</span>
+            <strong>14:32</strong>
+          </div>
+          <div className="product-frame">
+            <div className="product-topbar">
+              <span className="product-avatar">BO</span>
+              <div>
+                <small>3 Ağustos · Pazartesi</small>
+                <strong>Bugünün odağı</strong>
+              </div>
+              <span className="sync-pill">● Çevrimiçi</span>
             </div>
-          </article>
-          <article className="visual-card note-card">
-            <span>AI TASLAĞI</span>
-            <strong>Onay sizde</strong>
-            <p>Kurumsal hafızaya yazılmadan önce kontrol edin.</p>
-          </article>
-          <article className="visual-card task-card">
-            <span>TAKİP</span>
-            <strong>Teklif · Cuma 14:00</strong>
-          </article>
+            <article className="brief-card">
+              <div className="brief-heading">
+                <span>SIRADAKİ ZİYARET · 15:30</span>
+                <b>03</b>
+              </div>
+              <h2>Artemis Endüstri</h2>
+              <p>
+                Revize teklif bekleniyor. Son görüşmede teslim süresi öne çıktı.
+              </p>
+              <div className="brief-sources">
+                <span>3 onaylı kaynak</span>
+                <span>2 açık takip</span>
+              </div>
+            </article>
+            <div className="product-timeline">
+              <div>
+                <i />
+                <span>
+                  <b>Teklif revizyonu</b>
+                  <small>Cuma · 14:00</small>
+                </span>
+                <strong>Takipte</strong>
+              </div>
+              <div>
+                <i />
+                <span>
+                  <b>AI ziyaret taslağı</b>
+                  <small>İnsan onayı bekliyor</small>
+                </span>
+                <strong className="review-state">İncele</strong>
+              </div>
+            </div>
+            <div className="product-tabs" aria-hidden="true">
+              <span className="active">Bugün</span>
+              <span>Müşteriler</span>
+              <span className="visit-action">＋</span>
+              <span>Görevler</span>
+              <span>Menü</span>
+            </div>
+          </div>
+          <p className="visual-caption">
+            Bir sonraki ziyaretin bağlamı, tek bakışta.
+          </p>
         </div>
       </section>
 
       <section className="marketing-proof" aria-label="Ürün ilkeleri">
-        <span>Offline-first mobil çalışma</span>
-        <span>İnsan onaylı AI</span>
-        <span>Türkiye ve KVKK odaklı</span>
-        <span>Web + iOS + Android</span>
+        <span>
+          <b>01</b> Offline-first mobil çalışma
+        </span>
+        <span>
+          <b>02</b> İnsan onaylı AI
+        </span>
+        <span>
+          <b>03</b> Türkiye ve KVKK odaklı
+        </span>
+        <span>
+          <b>04</b> Web + iOS + Android
+        </span>
       </section>
 
       <section className="marketing-section" id="cozum">
@@ -289,6 +343,44 @@ export default function MarketingHome() {
         </div>
       </section>
 
+      <section className="workflow-band" aria-label="KartVizyon çalışma akışı">
+        <div className="workflow-copy">
+          <span>TEK MÜŞTERİ HİKÂYESİ</span>
+          <h2>Hazırlan. Görüş. Onayla. Takip et.</h2>
+          <p>
+            KartVizyon her adımı aynı müşteri bağlamına bağlar. AI yalnızca
+            taslak üretir; ekip hafızasına neyin gireceğine kullanıcı karar
+            verir.
+          </p>
+        </div>
+        <ol className="workflow-steps">
+          <li>
+            <b>01</b>
+            <span>
+              <strong>Brifing</strong>Son görüşme ve açık sözler
+            </span>
+          </li>
+          <li>
+            <b>02</b>
+            <span>
+              <strong>Debrief</strong>Sesli veya yazılı saha notu
+            </span>
+          </li>
+          <li>
+            <b>03</b>
+            <span>
+              <strong>Onay</strong>Düzenlenebilir AI taslağı
+            </span>
+          </li>
+          <li>
+            <b>04</b>
+            <span>
+              <strong>Takip</strong>Görev, fırsat ve rapor
+            </span>
+          </li>
+        </ol>
+      </section>
+
       <section className="marketing-section" id="ozellikler">
         <div className="section-heading">
           <span>NASIL ÇALIŞIR, NE İŞE YARAR</span>
@@ -299,8 +391,11 @@ export default function MarketingHome() {
           </p>
         </div>
         <div className="feature-grid">
-          {features.map((feature) => (
-            <article key={feature.title}>
+          {features.map((feature, index) => (
+            <article
+              key={feature.title}
+              data-feature={`${index + 1}`.padStart(2, "0")}
+            >
               <h3>{feature.title}</h3>
               <p className="feature-how">
                 <strong>Nasıl:</strong> {feature.how}
@@ -420,13 +515,15 @@ export default function MarketingHome() {
       </section>
 
       <section className="marketing-final-cta">
-        <span>Bir sonraki müşteri görüşmeniz kaybolmasın.</span>
-        <h2>KartVizyon’u kendi satış akışınızla birlikte değerlendirelim.</h2>
+        <div>
+          <span>Bir sonraki müşteri görüşmeniz kaybolmasın.</span>
+          <h2>KartVizyon’u kendi satış akışınızla birlikte değerlendirelim.</h2>
+        </div>
         <a
           className="marketing-cta light"
           href="mailto:kartvizyonapp@gmail.com?subject=KartVizyon%20ürün%20görüşmesi"
         >
-          Görüşme planla
+          Görüşme planla <b>↗</b>
         </a>
       </section>
 

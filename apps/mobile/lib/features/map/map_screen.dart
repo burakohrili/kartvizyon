@@ -14,61 +14,71 @@ class _MapScreenState extends State<MapScreen> {
   bool busy = false;
   String? message;
   List<Map<String, dynamic>> candidates = const [];
+
+  void _updateState(VoidCallback callback) {
+    if (!mounted) return;
+    setState(callback);
+  }
+
   Future<void> locate() async {
-    setState(() {
+    _updateState(() {
       busy = true;
       message = null;
     });
-    if (!await Geolocator.isLocationServiceEnabled()) {
-      setState(() {
-        busy = false;
-        message = 'Konum servisi kapalı.';
-      });
-      return;
-    }
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      setState(() {
-        busy = false;
-        message = 'Konum izni verilmedi. Uygulama sürekli konum takibi yapmaz.';
-      });
-      return;
-    }
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.medium,
-      ),
-    );
-    if (!widget.services.config.hasSupabase) {
-      setState(() {
-        busy = false;
-        message =
-            'Sunucu bağlantısı yapılandırılmadığı için müşteri aranamadı.';
-        candidates = const [];
-      });
-      return;
-    }
     try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        _updateState(() => message = 'Konum servisi kapalı.');
+        return;
+      }
+      if (!mounted) return;
+
+      var permission = await Geolocator.checkPermission();
+      if (!mounted) return;
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (!mounted) return;
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        _updateState(
+          () => message =
+              'Konum izni verilmedi. Uygulama sürekli konum takibi yapmaz.',
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+        ),
+      );
+      if (!mounted) return;
+
+      if (!widget.services.config.hasSupabase) {
+        _updateState(() {
+          message =
+              'Sunucu bağlantısı yapılandırılmadığı için müşteri aranamadı.';
+          candidates = const [];
+        });
+        return;
+      }
+
       final result =
           await widget.services.api.get(
                 '/api/geofence/candidates?workspaceId=${widget.services.workspaceId}&latitude=${position.latitude}&longitude=${position.longitude}',
               )
               as Map<String, dynamic>;
-      setState(() {
+      _updateState(() {
         candidates = List<Map<String, dynamic>>.from(
           result['data'] as List? ?? [],
         );
         message =
             'Konum yalnızca aday hesaplamak için kullanıldı; sunucuda saklanmadı.';
       });
-    } catch (error) {
-      setState(() => message = error.toString());
+    } catch (_) {
+      _updateState(() => message = 'Konum alınamadı. Lütfen tekrar deneyin.');
     } finally {
-      if (mounted) setState(() => busy = false);
+      _updateState(() => busy = false);
     }
   }
 

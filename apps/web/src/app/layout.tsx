@@ -16,11 +16,20 @@ export const metadata: Metadata = {
     title: "KartVizyon AI",
     description: "Müşteri bağlamı, ekip değişse bile kaybolmasın.",
     url: "https://kartvizyon.app",
+    images: [
+      {
+        url: "/og-kartvizyon.png",
+        width: 1200,
+        height: 630,
+        alt: "KartVizyon — Sahada verilen söz, ofiste kaybolmasın.",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "KartVizyon AI",
     description: "Saha satışının yapay zekâ destekli hafıza katmanı.",
+    images: ["/og-kartvizyon.png"],
   },
 };
 
