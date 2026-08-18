@@ -20,39 +20,64 @@ class _MapScreenState extends State<MapScreen> {
     setState(callback);
   }
 
+  /// Konumu alır; alınamazsa sebebini söyleyip `null` döner.
+  ///
+  /// Konum alma ile müşteri çekme ayrı tutulur. Önce ikisi tek bir `catch (_)`
+  /// içindeydi: sunucudan gelen 401 ya da 400 de "Konum alınamadı" olarak
+  /// görünüyordu ve kullanıcı konum izniyle uğraşırken sorun bambaşka yerdeydi.
+  Future<Position?> _currentPosition() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      _updateState(
+        () => message = 'Konum servisi kapalı. Cihaz ayarlarından açın.',
+      );
+      return null;
+    }
+    if (!mounted) return null;
+
+    var permission = await Geolocator.checkPermission();
+    if (!mounted) return null;
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (!mounted) return null;
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      _updateState(
+        () => message =
+            'Konum izni verilmedi. Uygulama sürekli konum takibi yapmaz.',
+      );
+      return null;
+    }
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        // Süre sınırı yoktu; kapalı alanda soğuk GPS denemesi ekranı
+        // süresiz "Hesaplanıyor…" durumunda bırakabiliyordu.
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+    } catch (_) {
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null) return last;
+      _updateState(
+        () => message =
+            'Konum alınamadı. Açık alanda tekrar deneyin ya da müşteri '
+            'kartından "konumu buraya sabitle" seçeneğini kullanın.',
+      );
+      return null;
+    }
+  }
+
   Future<void> locate() async {
     _updateState(() {
       busy = true;
       message = null;
     });
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        _updateState(() => message = 'Konum servisi kapalı.');
-        return;
-      }
-      if (!mounted) return;
-
-      var permission = await Geolocator.checkPermission();
-      if (!mounted) return;
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (!mounted) return;
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        _updateState(
-          () => message =
-              'Konum izni verilmedi. Uygulama sürekli konum takibi yapmaz.',
-        );
-        return;
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-        ),
-      );
-      if (!mounted) return;
+      final position = await _currentPosition();
+      if (position == null || !mounted) return;
 
       if (!widget.services.config.hasSupabase) {
         _updateState(() {
@@ -63,20 +88,29 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
-      final result =
-          await widget.services.api.get(
-                '/api/geofence/candidates?workspaceId=${widget.services.workspaceId}&latitude=${position.latitude}&longitude=${position.longitude}',
-              )
-              as Map<String, dynamic>;
-      _updateState(() {
-        candidates = List<Map<String, dynamic>>.from(
-          result['data'] as List? ?? [],
+      try {
+        // Diğer veri ekranlarının hepsi bunu yapıyor; harita yapmıyordu ve
+        // eski bir çalışma alanı kimliğiyle 400 alabiliyordu.
+        await widget.services.refreshContext();
+        final result =
+            await widget.services.api.get(
+                  '/api/geofence/candidates?workspaceId=${widget.services.workspaceId}&latitude=${position.latitude}&longitude=${position.longitude}',
+                )
+                as Map<String, dynamic>;
+        _updateState(() {
+          candidates = List<Map<String, dynamic>>.from(
+            result['data'] as List? ?? [],
+          );
+          message =
+              'Konum yalnızca aday hesaplamak için kullanıldı; sunucuda saklanmadı.';
+        });
+      } catch (error) {
+        _updateState(
+          () => message = error is MobileApiException
+              ? error.message
+              : 'Yakındaki müşteriler getirilemedi. Tekrar deneyin.',
         );
-        message =
-            'Konum yalnızca aday hesaplamak için kullanıldı; sunucuda saklanmadı.';
-      });
-    } catch (_) {
-      _updateState(() => message = 'Konum alınamadı. Lütfen tekrar deneyin.');
+      }
     } finally {
       _updateState(() => busy = false);
     }

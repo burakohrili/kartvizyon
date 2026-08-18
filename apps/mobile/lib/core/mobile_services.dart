@@ -39,6 +39,7 @@ class MobileApiClient {
     required this.sessions,
     this.accessTokenProvider,
     this.refreshAccessToken,
+    this.workspaceId,
     this.timeout = const Duration(seconds: 20),
     this.fileTimeout = const Duration(seconds: 60),
     http.Client? client,
@@ -48,6 +49,12 @@ class MobileApiClient {
   final SecureSessionStore sessions;
   final Future<String?> Function()? accessTokenProvider;
   final Future<String?> Function()? refreshAccessToken;
+
+  /// Aktif çalışma alanı; her isteğe başlık olarak eklenir.
+  ///
+  /// Değer `MobileServices` üzerinde `refreshContext()` ile değiştiği için
+  /// kopyalanmaz, çağrıyla okunur.
+  final String? Function()? workspaceId;
 
   /// Sıradan istek için üst sınır.
   ///
@@ -69,10 +76,15 @@ class MobileApiClient {
   }
 
   Map<String, String> _headersFor(String? accessToken) {
+    final workspace = workspaceId?.call();
     return {
       'accept': 'application/json',
       'content-type': 'application/json',
       if (accessToken != null) 'authorization': 'Bearer $accessToken',
+      // Sunucu çalışma alanını çerezden okuyor; mobil istemci çerez
+      // göndermediği için "RLS'in gösterdiği ilk çalışma alanı"na düşüyordu.
+      if (workspace != null && workspace.isNotEmpty)
+        'x-kartvizyon-workspace': workspace,
     };
   }
 
@@ -253,9 +265,13 @@ class MobileServices {
   factory MobileServices.create(MobileConfig config) {
     final database = AppDatabase();
     const sessions = SecureSessionStore();
+    // Aktif çalışma alanı `refreshContext()` ile değiştiği için istemciye
+    // değer değil, okuyucu verilir; kurulum sırasında örnek henüz yok.
+    late final MobileServices services;
     final api = MobileApiClient(
       baseUrl: Uri.parse(config.apiBaseUrl),
       sessions: sessions,
+      workspaceId: () => services.workspaceId,
       accessTokenProvider: config.hasSupabase
           ? () async =>
                 Supabase.instance.client.auth.currentSession?.accessToken
@@ -282,7 +298,7 @@ class MobileServices {
             }
           : null,
     );
-    return MobileServices._(
+    services = MobileServices._(
       config: config,
       database: database,
       sessions: sessions,
@@ -294,6 +310,7 @@ class MobileServices {
         baseUrl: Uri.parse(config.apiBaseUrl),
       ),
     );
+    return services;
   }
 
   final MobileConfig config;

@@ -35,8 +35,19 @@ export async function getApiContext(request: Request) {
       ),
     };
   }
+  // Çalışma alanı kimliği önce istemciden okunur.
+  //
+  // Mobil istemci çerez göndermiyor ve uçların çoğuna `workspaceId` de
+  // eklemiyordu; bu yüzden aşağıdaki "ilk çalışma alanı" geri düşüşü devreye
+  // giriyor ve birden fazla çalışma alanı olan kullanıcı yanlış alanın
+  // verisini görüyordu. İstemciden gelen kimliği kabul etmek yetki açmaz:
+  // aşağıdaki `.eq("id", workspaceId).single()` sorgusu kullanıcı kapsamlı
+  // istemciyle ve RLS altında çalışır, erişimi olmayan alan 403 döner.
   let workspaceId =
-    (await cookies()).get("kartvizyon_workspace")?.value ?? null;
+    request.headers.get("x-kartvizyon-workspace") ??
+    new URL(request.url).searchParams.get("workspaceId") ??
+    (await cookies()).get("kartvizyon_workspace")?.value ??
+    null;
   if (!workspaceId || workspaceId.startsWith("demo-")) {
     const first = await supabase
       .from("workspaces")

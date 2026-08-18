@@ -85,4 +85,27 @@ void main() {
       ),
     );
   });
+
+  test('her istek aktif çalışma alanını taşır', () async {
+    // Sunucu çalışma alanını çerezden okuyor; mobil istemci çerez
+    // göndermediği için "ilk çalışma alanı" geri düşüşüne düşüyordu.
+    var workspace = 'workspace-1';
+    final seen = <String?>[];
+    final client = MobileApiClient(
+      baseUrl: Uri.parse('https://app.kartvizyon.app'),
+      sessions: const _EmptySessionStore(),
+      workspaceId: () => workspace,
+      client: MockClient((request) async {
+        seen.add(request.headers['x-kartvizyon-workspace']);
+        return http.Response(jsonEncode({'data': <Object>[]}), 200);
+      }),
+    );
+
+    await client.get('/api/opportunities');
+    workspace = 'workspace-2';
+    await client.get('/api/opportunities');
+
+    // Değer kopyalanmaz; oturum bağlamı değiştiğinde başlık da değişmeli.
+    expect(seen, ['workspace-1', 'workspace-2']);
+  });
 }
