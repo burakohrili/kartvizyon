@@ -97,3 +97,34 @@ yapılacağında Gradle wrapper'ı (`apps/mobile/android/gradle/wrapper/gradle-w
 şu an 8.12) birlikte yükseltilmeli ve değişiklik `npm run check` ile
 doğrulandıktan sonra üç yerde birden (yerel, CI, Codemagic) aynı sürüme
 çekilmelidir.
+
+## Android otomatik yayın
+
+18 Ağustos 2026'dan itibaren Android AAB'si de elle indirilip yüklenmez;
+`kartvizyon-android-release` workflow'u kapalı test (`alpha`) kanalına doğrudan
+yayınlar:
+
+```yaml
+publishing:
+  google_play:
+    credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+    track: alpha
+    submit_as_draft: false
+```
+
+Gereken kurulum (yapıldı):
+
+1. Google Cloud `kartvizyon` projesinde **Google Play Android Developer API** etkin.
+2. `codemagic-play-publisher@kartvizyon.iam.gserviceaccount.com` service account'u —
+   Cloud projesinde **hiçbir rolü yok**, yetkiyi yalnız Play Console'dan alır.
+3. Play Console → Kullanıcılar ve izinler → bu hesap davetli, **yalnız KartVizyon AI**
+   uygulamasının sürüm izniyle. Hesap seviyesinde ve diğer uygulamalarda yetkisi yok.
+4. Codemagic → uygulama ayarları → **Environment variables** sekmesi →
+   `GCLOUD_SERVICE_ACCOUNT_CREDENTIALS`, grup `mobile_runtime`, **Secure** işaretli,
+   değer service account JSON dosyasının tamamı.
+
+Doğrulama: commit `5d8d231` ile tetiklenen build, versionCode 24'ü kapalı test
+kanalına yayınladı.
+
+Artık her iki platform da aynı yolu izler: `main`'e push → imzalı build →
+iOS TestFlight, Android kapalı test.
