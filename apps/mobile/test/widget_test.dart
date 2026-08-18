@@ -94,6 +94,22 @@ void main() {
     expect(find.text('Yeni görev'), findsOneWidget);
   });
 
+  testWidgets('Menü uygulama sürümünü gösterir', (tester) async {
+    // Kapalı testte hata bildiren kullanıcı hangi derlemeyi kullandığını
+    // söyleyebilmeli; bu satır kaybolursa bildirimler izlenemez hale gelir.
+    await tester.pumpWidget(const KartVizyonApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Menü'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Uygulama sürümü'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Uygulama sürümü'), findsOneWidget);
+  });
+
   testWidgets('Menü alt sayfa bağlantılarını gösterir', (tester) async {
     await tester.pumpWidget(const KartVizyonApp());
     await tester.pumpAndSettle();

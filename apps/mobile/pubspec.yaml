@@ -16,6 +16,11 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
+# versionName (1.0.0) elle yönetilir; sürüm yükseltmesi bilinçli bir karardır.
+# Derleme numarası (+1) yalnız yerel derlemeler için geçerlidir — Codemagic her
+# build'de `--build-number=$PROJECT_BUILD_NUMBER` geçtiği için mağazaya giden
+# ikilinin numarası burada yazandan farklıdır (bkz. codemagic.yaml).
+# Kullanıcı çalışan sürümü "Daha fazla → Uygulama sürümü" altında görebilir.
 version: 1.0.0+1
 
 environment:
@@ -52,6 +57,7 @@ dependencies:
   geolocator: ^14.0.2
   connectivity_plus: ^7.3.1
   url_launcher: ^6.3.2
+  package_info_plus: ^8.3.1
 
 dev_dependencies:
   flutter_test:

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/mobile_services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({
@@ -129,7 +130,41 @@ class MoreScreen extends StatelessWidget {
           title: const Text('Tüm cihazlardan çıkış'),
           onTap: signOut,
         ),
+        const _AppVersionTile(),
       ],
     ),
+  );
+}
+
+/// Sürüm ve derleme numarasını gösterir.
+///
+/// Kapalı testte her yükleme "1.0.0" göründüğü için testçi hangi derlemeyi
+/// kullandığını söyleyemiyordu; hata bildirimlerinde derleme numarası şart.
+class _AppVersionTile extends StatelessWidget {
+  const _AppVersionTile();
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<PackageInfo>(
+    future: PackageInfo.fromPlatform(),
+    builder: (context, snapshot) {
+      final info = snapshot.data;
+      final label = info == null
+          ? 'Sürüm bilgisi yükleniyor…'
+          : 'Sürüm ${info.version} · Derleme ${info.buildNumber}';
+      return ListTile(
+        leading: const Icon(Icons.info_outline),
+        title: const Text('Uygulama sürümü'),
+        subtitle: Text(label),
+        // Hata bildirirken kopyalanabilsin.
+        onTap: info == null
+            ? null
+            : () => ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${info.packageName} $label'),
+                  duration: const Duration(seconds: 4),
+                ),
+              ),
+      );
+    },
   );
 }
