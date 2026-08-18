@@ -66,6 +66,29 @@ flutter build apk --debug
 
 iOS build/signing Codemagic macOS/Xcode worker’da yapılır. `codemagic.yaml` workflow’ları KartVizyon’a ait `app.kartvizyon.mobile`, `kartvizyon_upload` ve `kartvizyon_app_store` referansları dışında signing kimliği kabul etmez.
 
+## Müşteri konumu
+
+Yakınlık hatırlatması yalnız koordinatı olan müşteriler için çalışır
+(`/api/geofence/candidates` `latitude is not null` filtresi uygular). Koordinat
+iki yoldan gelir ve kaynağı `companies.location_source` alanında tutulur:
+
+| Kaynak     | Nasıl                                                      | Güvenilirlik |
+| ---------- | ---------------------------------------------------------- | ------------ |
+| `geocoded` | Müşteri kaydedilirken adres metninden çözülür              | Tahmin       |
+| `pinned`   | Saha çalışanı müşteri kartında "Konumu buraya sabitle" der | Kesin        |
+
+**Sahada sabitlenen konum tahmini ezer**; tersi olmaz.
+
+Geocoding `GOOGLE_GEOCODING_API_KEY` ortam değişkenine bağlıdır. Anahtar
+tanımlı değilse `geocodeAddress` sessizce `null` döner ve müşteri koordinatsız
+kaydedilir — geocoding hiçbir koşulda kayıt oluşturmayı engellemez. Zaman aşımı
+4 saniyedir; kota dolması, ağ hatası ve `ZERO_RESULTS` de aynı şekilde yutulur.
+
+Maliyet kontrolü: 8 karakterden kısa adresler için istek atılmaz, istek yalnız
+kayıt anında bir kez yapılır. Google Geocoding ücreti ~$5/1000 istektir.
+
+Anahtar Cloud Console'da **yalnız Geocoding API'ye kısıtlanmış** olmalıdır.
+
 ## Domain ve e-posta
 
 - `kartvizyon.app`: public site ve legal/store URL’leri
