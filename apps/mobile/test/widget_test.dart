@@ -12,6 +12,12 @@ void main() {
     expect(find.text('Bugünün saha özeti'), findsOneWidget);
     expect(find.text('Planlanan ziyaret'), findsOneWidget);
     expect(find.text('Açık takip'), findsOneWidget);
+    // Saha modu kartı eklendikten sonra bu satır liste altına indi.
+    await tester.scrollUntilVisible(
+      find.text('İlk müşterinizi ekleyin'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('İlk müşterinizi ekleyin'), findsOneWidget);
 
     await tester.tap(find.text('Planlanan ziyaret'));

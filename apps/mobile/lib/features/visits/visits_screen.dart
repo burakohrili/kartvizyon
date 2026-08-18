@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/mobile_services.dart';
+import '../../core/refresh.dart';
 
 class VisitsScreen extends StatefulWidget {
   const VisitsScreen({super.key, required this.services});
@@ -173,7 +174,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
   Future<void> refresh() async {
     final next = load();
     setState(() => visits = next);
-    await next;
+    await settleRefresh(next);
   }
 
   @override

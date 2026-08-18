@@ -5,6 +5,7 @@ import '../data/local/app_database.dart';
 import '../data/secure_session_store.dart';
 import '../data/sync_engine.dart';
 import '../data/sync_queue_repository.dart';
+import '../features/field_mode/field_mode_service.dart';
 
 class MobileConfig {
   const MobileConfig({
@@ -140,8 +141,10 @@ class MobileApiException implements Exception {
   const MobileApiException(this.statusCode, this.message);
   final int statusCode;
   final String message;
+  // Durum kodu mesaja katılır: Sentry raporunda 401 mi 500 mü olduğu
+  // görünmezse aynı hata bir daha araştırılamaz.
   @override
-  String toString() => message;
+  String toString() => statusCode > 0 ? '$message (HTTP $statusCode)' : message;
 }
 
 class MobileServices {
@@ -206,6 +209,11 @@ class MobileServices {
   final MobileApiClient api;
   final SyncQueueRepository queue;
   final SyncEngine sync;
+
+  /// Saha modu vardiya boyunca yaşadığı için servislerle birlikte tutulur;
+  /// ekran değiştirildiğinde oturum kopmamalıdır.
+  late final FieldModeService fieldMode = FieldModeService(this);
+
   String ownerId = 'demo-local';
   String workspaceId = '00000000-0000-4000-8000-000000000001';
   String? organizationId;
@@ -219,6 +227,8 @@ class MobileServices {
   }
 
   Future<void> dispose() async {
+    await fieldMode.stop();
+    fieldMode.dispose();
     api.client.close();
     sync.client.close();
     await database.close();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/mobile_services.dart';
+import '../../core/refresh.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key, required this.services});
@@ -196,7 +197,7 @@ class _TasksScreenState extends State<TasksScreen> {
           onRefresh: () async {
             final next = load();
             setState(() => tasks = next);
-            await next;
+            await settleRefresh(next);
           },
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),

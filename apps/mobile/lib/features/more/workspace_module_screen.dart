@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/mobile_services.dart';
+import '../../core/refresh.dart';
 
 enum WorkspaceModule {
   calendar,
@@ -263,7 +264,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
   Future<void> refresh() async {
     final next = load();
     setState(() => items = next);
-    await next;
+    await settleRefresh(next);
   }
 
   @override

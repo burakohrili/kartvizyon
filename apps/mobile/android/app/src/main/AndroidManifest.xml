@@ -4,6 +4,13 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Saha modu: kullanıcı başlattığında konum tipli ön plan servisi çalışır.
+         Servis uygulama ön plandayken başlatıldığı için ACCESS_BACKGROUND_LOCATION
+         gerekmez ve Play arka plan konum beyan formu tetiklenmez. Bu izin bilinçli
+         olarak eklenmez; store_compliance_test.dart eklenirse build'i kırar. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:label="KartVizyon AI"
         android:name="${applicationName}"

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/mobile_services.dart';
+import '../field_mode/field_mode_card.dart';
+import '../../core/refresh.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.services});
@@ -66,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> refresh() async {
     final next = load();
     setState(() => summary = next);
-    await next;
+    await settleRefresh(next);
   }
 
   @override
@@ -113,6 +115,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 20),
+            FieldModeCard(service: widget.services.fieldMode),
+            const SizedBox(height: 12),
             _Metric(
               label: 'Planlanan ziyaret',
               value: '${data.plannedVisits}',

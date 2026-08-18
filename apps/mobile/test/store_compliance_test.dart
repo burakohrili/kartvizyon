@@ -114,7 +114,71 @@ void main() {
     final manifest = File(
       'android/app/src/main/AndroidManifest.xml',
     ).readAsStringSync();
-    expect(manifest.contains('ACCESS_BACKGROUND_LOCATION'), isFalse);
+
+    // Yalnız gerçek izin beyanı aranır; açıklama satırında geçmesi sorun
+    // değildir, hatta neden eklenmediğini anlatması istenir.
+    final declared = RegExp(
+      r'<uses-permission[^>]*android:name="android\.permission\.([A-Z_]+)"',
+    ).allMatches(manifest).map((m) => m.group(1)).toSet();
+
+    expect(
+      declared.contains('ACCESS_BACKGROUND_LOCATION'),
+      isFalse,
+      reason:
+          'Arka plan konum izni Play beyan formunu ve haftalarca süren '
+          'incelemeyi tetikler; saha modu ön plan servisiyle çalışır.',
+    );
+  });
+
+  test('saha modu durdurulabilir ve kendiliğinden kapanır', () {
+    // Başlatılıp kapatılamayan ya da unutulunca gece boyu pil yakan bir mod
+    // yayınlanamaz.
+    final service = File(
+      'lib/features/field_mode/field_mode_service.dart',
+    ).readAsStringSync();
+
+    expect(service.contains('Future<void> stop('), isTrue);
+    expect(service.contains('sessionLimit'), isTrue);
+    expect(service.contains('autoStopHour'), isTrue);
+  });
+
+  test('arka planda konum alınıyorsa gösterge gizlenmez', () {
+    final plist = File('ios/Runner/Info.plist').readAsStringSync();
+    final service = File(
+      'lib/features/field_mode/field_mode_service.dart',
+    ).readAsStringSync();
+
+    if (plist.contains('UIBackgroundModes')) {
+      expect(
+        service.contains('showBackgroundLocationIndicator: true'),
+        isTrue,
+        reason:
+            'iOS mavi konum çubuğu kapatılırsa kullanıcı arka plan konumundan '
+            'habersiz kalır; Always yetkisi istemediğimiz için bu zorunludur.',
+      );
+    }
+  });
+
+  test('yenileme hatasi uygulamayi cokertmez', () {
+    // 18 Ağustos 2026 production çökmesi: RefreshIndicator.onRefresh içinden
+    // fırlatılan hata Flutter tarafından yakalanmıyor ve uygulama fatal
+    // hatayla kapanıyor (Sentry: MobileApiException, /api/session).
+    // Hata zaten FutureBuilder'da gösterildiği için yenileme yolunda
+    // yutulmalıdır; her yenileyen ekran settleRefresh kullanmalıdır.
+    final violations = <String>[];
+    for (final file in dartSources) {
+      if (file.path.endsWith('refresh.dart')) continue;
+      final content = file.readAsStringSync();
+      if (!content.contains('onRefresh')) continue;
+      if (!content.contains('settleRefresh')) violations.add(file.path);
+    }
+    expect(
+      violations,
+      isEmpty,
+      reason:
+          'Yenileyen ekran settleRefresh kullanmalı; aksi halde ağ hatası '
+          'uygulamayı çökertir.',
+    );
   });
 
   test('mobil kaynaklarda pazarlama sitesine yönlendirme yoktur', () {

@@ -10,6 +10,13 @@ export async function GET(request: Request) {
   const workspaceId = url.searchParams.get("workspaceId");
   const latitude = Number(url.searchParams.get("latitude"));
   const longitude = Number(url.searchParams.get("longitude"));
+  // Harita ekranı geniş listeyi ister; saha modu bildirimi yalnız gerçekten
+  // yakındakini bildirmeli. Varsayılan korunur ki mevcut çağrılar değişmesin.
+  const requestedRadius = Number(url.searchParams.get("maxDistanceKm"));
+  const maxDistanceKm =
+    Number.isFinite(requestedRadius) && requestedRadius > 0
+      ? Math.min(requestedRadius, 25)
+      : 25;
   if (
     !workspaceId ||
     !Number.isFinite(latitude) ||
@@ -98,14 +105,24 @@ export async function GET(request: Request) {
         customerValue: 0.5,
         distanceKm,
       });
-      return { ...company, distanceKm, priority };
+      return {
+        ...company,
+        distanceKm,
+        priority,
+        // Bildirim metni "en son ne zaman uğradın" diyebilsin diye ham
+        // değerler de döner; şimdiye kadar yalnız puana giriyorlardı.
+        lastVisitAt: lastVisit ?? null,
+        daysSinceVisit,
+        overdueTaskCount: overdue.get(company.id) ?? 0,
+      };
     })
-    .filter((candidate) => candidate.distanceKm <= 25)
+    .filter((candidate) => candidate.distanceKm <= maxDistanceKm)
     .sort((a, b) => b.priority.total - a.priority.total)
     .slice(0, 20);
   return Response.json({
     data: candidates,
     locationStored: false,
     cooldownHours: 24,
+    maxDistanceKm,
   });
 }

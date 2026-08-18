@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/mobile_services.dart';
+import '../../core/refresh.dart';
 
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key, required this.services});
@@ -295,7 +296,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
         onRefresh: () async {
           final next = load();
           setState(() => customers = next);
-          await next;
+          await settleRefresh(next);
         },
         child: ListView.separated(
           physics: const AlwaysScrollableScrollPhysics(),
