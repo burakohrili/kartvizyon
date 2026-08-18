@@ -10,7 +10,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bugünün saha özeti'), findsOneWidget);
-    expect(find.text('Planlanan ziyaret'), findsOneWidget);
+    // Bugüne planlanmış ziyaret yokken sayaç "Açık ziyaret"e döner; boş
+    // hesapta sürekli "Planlanan ziyaret: 0" göstermek bilgi vermiyordu.
+    expect(find.text('Açık ziyaret'), findsOneWidget);
+    expect(find.text('İnceleme bekleyen'), findsOneWidget);
     expect(find.text('Açık takip'), findsOneWidget);
     // Saha modu kartı eklendikten sonra bu satır liste altına indi.
     await tester.scrollUntilVisible(
@@ -20,7 +23,7 @@ void main() {
     );
     expect(find.text('İlk müşterinizi ekleyin'), findsOneWidget);
 
-    await tester.tap(find.text('Planlanan ziyaret'));
+    await tester.tap(find.text('Açık ziyaret'));
     await tester.pumpAndSettle();
     expect(find.text('Ziyaretler'), findsOneWidget);
     expect(find.text('Henüz ziyaret yok'), findsOneWidget);

@@ -22,7 +22,9 @@ export async function GET(request: Request) {
       "id,title,status,due_at,company_id,visit_id,assigned_to,company:companies(name)",
     )
     .eq("workspace_id", workspaceId)
-    .order("due_at", { ascending: true });
+    // Tarihi olmayan görevler sona. Varsayılan sırada bunlar öngörülemeyen
+    // yerlere düşüyordu; web sayfası zaten böyle sıralıyor.
+    .order("due_at", { ascending: true, nullsFirst: false });
   if (companyId) query = query.eq("company_id", companyId);
   const { data, error } = await query;
   if (error) return apiError(error);

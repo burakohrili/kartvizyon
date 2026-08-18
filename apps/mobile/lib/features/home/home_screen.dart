@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/mobile_services.dart';
 import '../field_mode/field_mode_card.dart';
 import '../../core/refresh.dart';
+import 'home_summary.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.services});
@@ -15,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late Future<_HomeSummary> summary;
+  late Future<HomeSummary> summary;
 
   @override
   void initState() {
@@ -23,9 +24,14 @@ class _HomeScreenState extends State<HomeScreen> {
     summary = load();
   }
 
-  Future<_HomeSummary> load() async {
+  Future<HomeSummary> load() async {
     if (!widget.services.config.hasSupabase) {
-      return const _HomeSummary(plannedVisits: 0, openTasks: 0);
+      return const HomeSummary(
+        plannedToday: 0,
+        awaitingReview: 0,
+        openVisits: 0,
+        openTasks: 0,
+      );
     }
     await widget.services.refreshContext();
     final results = await Future.wait([
@@ -44,25 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final tasks = List<Map<String, dynamic>>.from(
       tasksResponse['data'] as List? ?? [],
     );
-    final activeVisits = visits.where(
-      (visit) => const {
-        'draft',
-        'processing',
-        'needs_review',
-      }.contains(visit['status']?.toString()),
-    );
-    Map<String, dynamic>? nextVisit;
-    for (final visit in activeVisits) {
-      if (visit['company'] is Map && (visit['company'] as Map)['id'] != null) {
-        nextVisit = visit;
-        break;
-      }
-    }
-    return _HomeSummary(
-      plannedVisits: activeVisits.length,
-      openTasks: tasks.where((task) => task['status'] == 'open').length,
-      nextVisit: nextVisit,
-    );
+    return summarize(visits: visits, tasks: tasks, now: DateTime.now());
   }
 
   Future<void> refresh() async {
@@ -74,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) => RefreshIndicator(
     onRefresh: refresh,
-    child: FutureBuilder<_HomeSummary>(
+    child: FutureBuilder<HomeSummary>(
       future: summary,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -118,9 +106,18 @@ class _HomeScreenState extends State<HomeScreen> {
             FieldModeCard(service: widget.services.fieldMode),
             const SizedBox(height: 12),
             _Metric(
-              label: 'Planlanan ziyaret',
-              value: '${data.plannedVisits}',
+              // Planlanan ziyaret yoksa açık ziyaret gösterilir; web takvimini
+              // kullanmayan temsilci sürekli sıfır görmesin.
+              label: data.plannedToday > 0 ? 'Planlanan ziyaret' : 'Açık ziyaret',
+              value: '${data.plannedToday > 0 ? data.plannedToday : data.openVisits}',
               icon: Icons.route,
+              onTap: () => context.go('/visits'),
+            ),
+            const SizedBox(height: 12),
+            _Metric(
+              label: 'İnceleme bekleyen',
+              value: '${data.awaitingReview}',
+              icon: Icons.rate_review_outlined,
               onTap: () => context.go('/visits'),
             ),
             const SizedBox(height: 12),
@@ -202,18 +199,6 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     ),
   );
-}
-
-class _HomeSummary {
-  const _HomeSummary({
-    required this.plannedVisits,
-    required this.openTasks,
-    this.nextVisit,
-  });
-
-  final int plannedVisits;
-  final int openTasks;
-  final Map<String, dynamic>? nextVisit;
 }
 
 class _Metric extends StatelessWidget {

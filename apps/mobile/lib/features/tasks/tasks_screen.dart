@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
+import 'task_list.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key, required this.services});
@@ -33,6 +34,32 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   Future<void> toggle(Map<String, dynamic> item, bool completed) async {
+    // Tamamlamak tek dokunuşla olur; geri almak onay ister. Yanlışlıkla
+    // kaldırılan bir tik, tamamlandığı bilgisini ve `completed_at` damgasını
+    // sunucuda da siliyor.
+    if (!completed) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Görev yeniden açılsın mı?'),
+          content: Text(
+            '"${item['title'] ?? 'Görev'}" tamamlandı olarak işaretli. '
+            'Geri alırsanız tamamlanma zamanı silinir.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Vazgeç'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Yeniden aç'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
     final previous = item['status'];
     setState(() => item['status'] = completed ? 'completed' : 'open');
     try {
@@ -72,6 +99,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
     if (!mounted) return;
     String? companyId;
+    DateTime? dueAt;
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -107,6 +135,36 @@ class _TasksScreenState extends State<TasksScreen> {
                   ],
                   onChanged: (value) => setDialogState(() => companyId = value),
                 ),
+                // Tarih seçici yoktu ve `dueAt` her zaman null gidiyordu;
+                // bu yüzden elle açılan hiçbir görev "geciken" olamıyordu.
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.event_outlined),
+                  title: Text(
+                    dueAt == null
+                        ? 'Bitiş tarihi (isteğe bağlı)'
+                        : '${dueAt!.day.toString().padLeft(2, '0')}.'
+                              '${dueAt!.month.toString().padLeft(2, '0')}.'
+                              '${dueAt!.year}',
+                  ),
+                  trailing: dueAt == null
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          tooltip: 'Tarihi kaldır',
+                          onPressed: () => setDialogState(() => dueAt = null),
+                        ),
+                  onTap: () async {
+                    final now = DateTime.now();
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: dueAt ?? now,
+                      firstDate: DateTime(now.year - 1),
+                      lastDate: DateTime(now.year + 3),
+                    );
+                    if (picked != null) setDialogState(() => dueAt = picked);
+                  },
+                ),
               ],
             ),
           ),
@@ -134,7 +192,15 @@ class _TasksScreenState extends State<TasksScreen> {
         'companyId': companyId,
         'visitId': null,
         'title': taskTitle,
-        'dueAt': null,
+        // Gün sonu değil, mesai saati: 09:00 yerel.
+        'dueAt': dueAt == null
+            ? null
+            : DateTime(
+                dueAt!.year,
+                dueAt!.month,
+                dueAt!.day,
+                9,
+              ).toUtc().toIso8601String(),
         'assignedTo': null,
       });
       if (!mounted) return;
@@ -199,23 +265,63 @@ class _TasksScreenState extends State<TasksScreen> {
             setState(() => tasks = next);
             await settleRefresh(next);
           },
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            children: items.map((item) {
-              final company = item['company'] as Map?;
-              return Card(
-                child: CheckboxListTile(
-                  value: item['status'] == 'completed',
-                  onChanged: (value) => toggle(item, value ?? false),
-                  title: Text(item['title']?.toString() ?? 'Görev'),
-                  subtitle: Text(company?['name']?.toString() ?? 'Genel görev'),
-                ),
+          child: Builder(
+            builder: (context) {
+              final split = splitTasks(items);
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (split.open.isNotEmpty) ...[
+                    _SectionTitle('Açık görevler (${split.open.length})'),
+                    ...split.open.map(_tile),
+                  ],
+                  if (split.completed.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _SectionTitle('Tamamlananlar (${split.completed.length})'),
+                    ...split.completed.map(_tile),
+                  ],
+                ],
               );
-            }).toList(),
+            },
           ),
         );
       },
     ),
+  );
+
+  Widget _tile(Map<String, dynamic> item) {
+    final company = item['company'] as Map?;
+    final completed = item['status']?.toString() == 'completed';
+    final due = taskDueLabel(item);
+    return Card(
+      child: CheckboxListTile(
+        value: completed,
+        onChanged: (value) => toggle(item, value ?? false),
+        title: Text(
+          item['title']?.toString() ?? 'Görev',
+          style: completed
+              ? const TextStyle(decoration: TextDecoration.lineThrough)
+              : null,
+        ),
+        subtitle: Text(
+          [
+            company?['name']?.toString() ?? 'Genel görev',
+            if (due.isNotEmpty) 'Son tarih $due',
+          ].join(' · '),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.label);
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+    child: Text(label, style: Theme.of(context).textTheme.titleSmall),
   );
 }
