@@ -15,7 +15,8 @@ enum WorkspaceModule {
   forms,
 }
 
-extension on WorkspaceModule {
+/// Adlandırılmış, çünkü boş durum metinleri testten de okunuyor.
+extension WorkspaceModuleCopy on WorkspaceModule {
   String get title => switch (this) {
     WorkspaceModule.calendar => 'Takvim',
     WorkspaceModule.activity => 'Aktivite',
@@ -26,6 +27,67 @@ extension on WorkspaceModule {
     WorkspaceModule.orders => 'Sipariş taslakları',
     WorkspaceModule.documents => 'Belgeler',
     WorkspaceModule.forms => 'Saha formları',
+  };
+
+  IconData get emptyIcon => switch (this) {
+    WorkspaceModule.calendar => Icons.calendar_month_outlined,
+    WorkspaceModule.activity => Icons.history_toggle_off_outlined,
+    WorkspaceModule.reports => Icons.analytics_outlined,
+    WorkspaceModule.notifications => Icons.notifications_none,
+    WorkspaceModule.opportunities => Icons.trending_up,
+    WorkspaceModule.products => Icons.inventory_2_outlined,
+    WorkspaceModule.orders => Icons.receipt_long_outlined,
+    WorkspaceModule.documents => Icons.description_outlined,
+    WorkspaceModule.forms => Icons.dynamic_form_outlined,
+  };
+
+  String get emptyTitle => switch (this) {
+    WorkspaceModule.calendar => 'Planlanmış ziyaret yok',
+    WorkspaceModule.activity => 'Henüz onaylanmış ziyaret yok',
+    WorkspaceModule.reports => 'Gösterge üretecek kayıt yok',
+    WorkspaceModule.notifications => 'Bildirim yok',
+    WorkspaceModule.opportunities => 'Fırsat kaydı yok',
+    WorkspaceModule.products => 'Katalogda ürün yok',
+    WorkspaceModule.orders => 'Sipariş taslağı yok',
+    WorkspaceModule.documents => 'Belge yok',
+    WorkspaceModule.forms => 'Aktif form yok',
+  };
+
+  /// Ekranın ne olduğunu ve kaydın nerede oluştuğunu anlatır.
+  ///
+  /// Bu modüllerin çoğu mobilde bilinçli olarak salt okunurdur; saha çalışanı
+  /// fırsat ya da ürün yayınlamaz, sahada bunları okur
+  /// (bkz. `docs/MOBILE_WEB_PARITY.md`).
+  String get emptyBody => switch (this) {
+    WorkspaceModule.calendar =>
+      'Tarihli ziyaretler ve son tarihi olan görevler burada listelenir. '
+          'Planlı ziyaret web çalışma alanındaki takvimden oluşturulur; '
+          'görevlere tarihi Görevler ekranından verebilirsiniz.',
+    WorkspaceModule.activity =>
+      'Onayladığınız ziyaretler buraya düşer. Bir ziyaret notu gönderip '
+          'özeti onayladığınızda ilk kayıt görünecek.',
+    WorkspaceModule.reports =>
+      'Müşteri, ziyaret ve görev sayıları buradan okunur. İlk müşterinizi '
+          'ekleyip bir ziyaret kaydettiğinizde göstergeler dolar.',
+    WorkspaceModule.notifications =>
+      'Yorum, görev ve onay olayları burada birikir. Bu olaylar web çalışma '
+          'alanındaki yorumlardan üretilir; yalnız mobil kullanıyorsanız bu '
+          'liste boş kalır.',
+    WorkspaceModule.opportunities =>
+      'Satış pipeline\'ı sahada salt okunur gösterilir. Fırsat kayıtları web '
+          'çalışma alanında oluşturulur ve aşaması orada güncellenir.',
+    WorkspaceModule.products =>
+      'Aktif ürün kataloğu ve liste fiyatları sahada salt okunur gösterilir. '
+          'Ürünler ve fiyat listesi web çalışma alanında yönetilir.',
+    WorkspaceModule.orders =>
+      'Sipariş taslaklarının durumu ve tutarı sahada salt okunur gösterilir. '
+          'Taslaklar web çalışma alanında oluşturulur.',
+    WorkspaceModule.documents =>
+      'Yüklenen dosyalar ve zararlı yazılım tarama durumları burada görünür. '
+          'Belge yükleme web çalışma alanında yapılır.',
+    WorkspaceModule.forms =>
+      'Saha formu şablonları ve gönderimleri burada listelenir. Şablonlar web '
+          'çalışma alanında tanımlanır.',
   };
 
   String get path => switch (this) {
@@ -295,13 +357,39 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         }
         final data = snapshot.data ?? [];
         if (data.isEmpty) {
-          return Center(
-            child: Padding(
+          // Boş durum yalnız "kayıt bulunmuyor" diyordu; kullanıcı ekranın ne
+          // olduğunu da, kaydın nereden geleceğini de bilmiyordu. Metinde
+          // pazarlama sitesine tıklanabilir bağlantı verilmez
+          // (store_compliance_test.dart bunu kesiyor).
+          return RefreshIndicator(
+            onRefresh: refresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(28),
-              child: Text(
-                '${widget.module.title} için henüz kayıt bulunmuyor.',
-                textAlign: TextAlign.center,
-              ),
+              children: [
+                const SizedBox(height: 40),
+                Icon(widget.module.emptyIcon, size: 44),
+                const SizedBox(height: 14),
+                Text(
+                  widget.module.emptyTitle,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.module.emptyBody,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 18),
+                Center(
+                  child: OutlinedButton.icon(
+                    onPressed: refresh,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Yenile'),
+                  ),
+                ),
+              ],
             ),
           );
         }

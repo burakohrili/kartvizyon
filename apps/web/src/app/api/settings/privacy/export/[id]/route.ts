@@ -31,6 +31,13 @@ export async function GET(
       .from("privacy-exports")
       .createSignedUrl(privacyRequest.data.export_storage_path, 60);
     if (signed.error) throw signed.error;
+
+    // Mobil istemci 303'ü kullanamıyor: `http` paketi yönlendirmeyi izliyor ve
+    // gelen dosyayı JSON diye çözmeye çalışıyor. JSON isteyen istemciye
+    // bağlantının kendisi verilir, tarayıcı yönlendirmeye devam eder.
+    if (request.headers.get("accept")?.includes("application/json")) {
+      return Response.json({ url: signed.data.signedUrl, expiresIn: 60 });
+    }
     return Response.redirect(signed.data.signedUrl, 303);
   } catch (error) {
     return apiError(error);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kartvizyon_mobile/app.dart';
+import 'package:kartvizyon_mobile/features/more/workspace_module_screen.dart';
 
 /// Saha cihazlarının gerçek koşullarına karşı UX dayanıklılığı.
 ///
@@ -140,5 +141,31 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Yeni görev'), findsOneWidget);
     });
+
+    testWidgets('modül boş durumları ne olduğunu anlatır ve yenileme sunar', (
+      tester,
+    ) async {
+      // Bu ekranlar yalnız "… için henüz kayıt bulunmuyor." diyordu; kullanıcı
+      // ne olduğunu da, kaydın nereden geleceğini de bilmiyordu.
+      for (final module in WorkspaceModule.values) {
+        expect(
+          module.emptyTitle.isNotEmpty,
+          isTrue,
+          reason: '${module.title} için boş durum başlığı yok',
+        );
+        expect(
+          module.emptyBody.length,
+          greaterThan(40),
+          reason: '${module.title} boş durumu ne olduğunu anlatmıyor',
+        );
+        // Mağaza kuralı: mobilde pazarlama sitesine bağlantı verilmez.
+        expect(
+          module.emptyBody.contains('http'),
+          isFalse,
+          reason: '${module.title} boş durumunda bağlantı var',
+        );
+      }
+    });
+
   });
 }

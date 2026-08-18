@@ -142,6 +142,12 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('KVKK ve veri hakları'), findsOneWidget);
+    // Gizlilik ve ses saklama bilgi kartları listeyi uzattı.
+    await tester.scrollUntilVisible(
+      find.text('Tüm cihazlardan çıkış'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Tüm cihazlardan çıkış'), findsOneWidget);
   });
 }

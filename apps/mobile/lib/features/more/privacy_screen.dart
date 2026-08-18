@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../core/mobile_services.dart';
 
 class PrivacyScreen extends StatefulWidget {
@@ -76,6 +78,38 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     }
   }
 
+  /// Hazır dışa aktarmayı imzalı bağlantıyla açar.
+  ///
+  /// Bağlantı 60 saniye geçerlidir; loglanmaz ve ekranda bırakılmaz.
+  Future<void> download(String? id) async {
+    if (id == null) return;
+    try {
+      final result =
+          await widget.services.api.get('/api/settings/privacy/export/$id')
+              as Map<String, dynamic>;
+      final url = result['url']?.toString();
+      if (url == null || url.isEmpty) throw StateError('boş bağlantı');
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (error) {
+      if (!mounted) return;
+      setState(
+        () => message = error is MobileApiException
+            ? error.message
+            : 'Dışa aktarma açılamadı. Kısa süre sonra tekrar deneyin.',
+      );
+    }
+  }
+
+  static String _statusLabel(String status) => switch (status) {
+    'requested' => 'Alındı, sıraya girdi',
+    'processing' => 'Hazırlanıyor',
+    'ready' => 'Hazır',
+    'completed' => 'Tamamlandı',
+    'failed' => 'Hazırlanamadı',
+    'rejected' => 'Reddedildi',
+    _ => status,
+  };
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('KVKK ve veri hakları')),
@@ -124,12 +158,23 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
             'Taleplerim',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          ...requests.map(
-            (item) => ListTile(
+          ...requests.map((item) {
+            final status = item['status']?.toString() ?? 'requested';
+            final ready = item['kind'] == 'export' && status == 'ready';
+            return ListTile(
               title: Text(item['kind'] == 'export' ? 'Dışa aktarma' : 'Silme'),
-              trailing: Text(item['status']?.toString() ?? 'requested'),
-            ),
-          ),
+              subtitle: Text(_statusLabel(status)),
+              // Dosya hazır olduğu halde ekranda yalnız "ready" yazıyordu ve
+              // indirme yolu hiç sunulmuyordu.
+              trailing: ready
+                  ? FilledButton.tonalIcon(
+                      onPressed: () => download(item['id']?.toString()),
+                      icon: const Icon(Icons.download),
+                      label: const Text('İndir'),
+                    )
+                  : null,
+            );
+          }),
         ],
       ],
     ),

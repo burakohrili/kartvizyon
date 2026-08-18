@@ -101,22 +101,25 @@ class MoreScreen extends StatelessWidget {
           onTap: () => context.push('/forms'),
         ),
         const Divider(),
-        const ListTile(
-          leading: Icon(Icons.language),
-          title: Text('Dil'),
-          subtitle: Text('Türkçe · İngilizce altyapısı hazır'),
+        // Bu iki madde ayar değil, ürünün verdiği söz. Daha önce `ListTile`
+        // olarak duruyorlardı ve tıklanmadıkları için bozuk düğme gibi
+        // görünüyorlardı. "Dil" satırı kaldırıldı: alt metni İngilizce
+        // altyapısının hazır olduğunu söylüyordu ama arayüz dili
+        // `app.dart` içinde Türkçe'ye sabit.
+        const _PromiseCard(
+          icon: Icons.location_off_outlined,
+          title: 'Konum gizliliği',
+          body:
+              'Sürekli GPS takibi yapılmaz. Konum yalnızca siz istediğinizde '
+              'ya da saha modunu başlattığınızda alınır; saha modu çalışırken '
+              'bunu gizlemez ve akşam kendiliğinden kapanır.',
         ),
-        const ListTile(
-          leading: Icon(Icons.location_off_outlined),
-          title: Text('Konum gizliliği'),
-          subtitle: Text(
-            'Sürekli GPS kapalı; yalnızca açık işlemle kullanılır',
-          ),
-        ),
-        const ListTile(
-          leading: Icon(Icons.graphic_eq),
-          title: Text('Ses saklama'),
-          subtitle: Text('Ham ses varsayılan olarak yöneticiye kapalı'),
+        const _PromiseCard(
+          icon: Icons.graphic_eq,
+          title: 'Ses saklama',
+          body:
+              'Sesli not yalnızca metne çevrilmek için gönderilir. Ham kayıt '
+              'yöneticilere açılmaz ve 30 gün sonra sunucudan silinir.',
         ),
         ListTile(
           leading: const Icon(Icons.privacy_tip_outlined),
@@ -131,6 +134,43 @@ class MoreScreen extends StatelessWidget {
           onTap: signOut,
         ),
         const _AppVersionTile(),
+      ],
+    ),
+  );
+}
+
+/// Ayar değil, bilgi. Dokunulabilir görünmemesi için `ListTile` kullanılmaz.
+class _PromiseCard extends StatelessWidget {
+  const _PromiseCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2, right: 14),
+          child: Icon(icon, size: 22),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              Text(body, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
       ],
     ),
   );
