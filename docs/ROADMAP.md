@@ -46,14 +46,17 @@ Son doğrulama: 18 Ağustos 2026, konsollar canlı okunarak.
   ödeme öncesi bilgilendirme bileşeni hazır.
 - **Kalite kapısı:** `npm run check` yerelde tam yeşil (CRLF sorunu `.gitattributes`
   ile giderildi).
+- **Veritabanı:** `0019`, `0020` ve `0021` migration'ları production'a uygulandı;
+  plan limitleri, deneme ve ek AI paketleri artık canlı şemada.
+- **CI/CD:** Codemagic `main`'e push'ta otomatik derliyor (eksik GitHub webhook
+  eklendi) ve Flutter sürümü CI ile aynı (`3.32.6`) olacak şekilde sabitlendi.
 
 ### Kalan
 
 - App Store Connect alan girişleri ve iPhone 6.5" ekran görüntüleri
   (`docs/APPLE_SUBMISSION_CHECKLIST.md`).
 - Play içerik derecelendirme anketi ve üretim erişimi için 12 test kullanıcısı × 14 gün.
-- Supabase `0019`, `0020`, `0021` migration'larının production'a uygulanması ve
-  Free → Pro geçişi.
+- Supabase Free → Pro geçişi (migration'lar 18 Ağustos 2026'da uygulandı).
 - Sentry projesi/DSN ve alarmlar; Resend domain doğrulaması ve teslimat testi.
 - iyzico sandbox, checkout ve webhook (kullanıcı kararıyla en sona bırakıldı).
 - Mobil IAP (ADR-0004 Faz C); Play abonelik ürünü için AAB'ye ödeme kütüphanesi gerekiyor.
