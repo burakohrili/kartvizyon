@@ -14,6 +14,11 @@ export const runtime = "nodejs";
 const transcriptSchema = z.string().trim().min(10).max(20_000);
 const mutationIdSchema = z.uuid();
 
+/// Bir `processing` satırının hâlâ gerçekten işlendiği varsayılan süre.
+/// Transkripsiyon + özet en kötü ihtimalle bunun çok altında sürer; üstünde
+/// kalan satır takılmıştır ve yeniden denenebilir olmalıdır.
+const staleProcessingMs = 10 * 60 * 1000;
+
 function extensionFor(mime: string) {
   return (
     {
@@ -34,6 +39,7 @@ export async function POST(
   let supabase: Awaited<ReturnType<typeof createSupabaseServerClient>> = null;
   let userId: string | null = null;
   let submissionId: string | null = null;
+  let visitTouched = false;
   let visit: {
     id: string;
     workspace_id: string;
@@ -73,45 +79,11 @@ export async function POST(
       form.get("clientMutationId"),
     );
 
-    if (supabase && userId && visit) {
-      const existing = await supabase
-        .from("debrief_submissions")
-        .select("id,status,response")
-        .eq("user_id", userId)
-        .eq("client_mutation_id", clientMutationId)
-        .maybeSingle();
-      if (existing.data?.status === "completed" && existing.data.response) {
-        return Response.json(existing.data.response);
-      }
-      if (existing.data?.status === "processing") {
-        return Response.json(
-          { error: "Bu not zaten işleniyor; kısa süre sonra tekrar deneyin." },
-          { status: 409 },
-        );
-      }
-
-      const submission = await supabase
-        .from("debrief_submissions")
-        .upsert(
-          {
-            visit_id: visit.id,
-            workspace_id: visit.workspace_id,
-            organization_id: visit.organization_id,
-            user_id: userId,
-            client_mutation_id: clientMutationId,
-            status: "processing",
-            response: null,
-            error_code: null,
-          },
-          { onConflict: "user_id,client_mutation_id" },
-        )
-        .select("id")
-        .single();
-      if (submission.error) throw submission.error;
-      submissionId = submission.data.id;
-    }
-
-    const audio = form.get("audio");
+    const submittedAudio = form.get("audio");
+    const audio =
+      submittedAudio instanceof File && submittedAudio.size > 0
+        ? submittedAudio
+        : null;
     const manualTranscript = form.get("transcript");
     let transcript =
       typeof manualTranscript === "string" && manualTranscript.trim()
@@ -120,7 +92,15 @@ export async function POST(
     let audioAssetId: string | null = null;
     let transcriptionModel: string | null = null;
 
-    if (audio instanceof File && audio.size > 0) {
+    // Doğrulama, `debrief_submissions` satırı yazılmadan ÖNCE yapılır.
+    //
+    // Sıra daha önce tersti: satır `processing` olarak yazılıyor, ardından
+    // 413/415/402 ile erken dönülüyordu. Bu dönüşler `try` içinde düz `return`
+    // olduğu için satırı `failed` yapan `catch` hiç çalışmıyordu; satır
+    // sonsuza kadar `processing` kalıyor ve aynı `clientMutationId` ile her
+    // yeniden deneme 409 alıyordu. Mobil kuyrukta o kayıt kalıcı olarak
+    // ölüyordu (18 Ağustos 2026, testçi ekranı: http_409, 5 deneme).
+    if (audio) {
       if (audio.size > visitAiLimits.maxAudioBytes) {
         return Response.json(
           { error: "Ses dosyası en fazla 25 MB olabilir." },
@@ -146,7 +126,58 @@ export async function POST(
         );
         if (quotaDenied) return quotaDenied;
       }
+    }
 
+    if (supabase && userId && visit) {
+      const existing = await supabase
+        .from("debrief_submissions")
+        .select("id,status,response,created_at")
+        .eq("user_id", userId)
+        .eq("client_mutation_id", clientMutationId)
+        .maybeSingle();
+      if (existing.data?.status === "completed" && existing.data.response) {
+        return Response.json(existing.data.response);
+      }
+      // 409 yalnız gerçekten süren bir işleme için döner. Süre aşılmışsa satır
+      // takılmış demektir ve yeniden denemenin önü açılır. Bu, yukarıdaki sıra
+      // düzeltmesinin emniyet kemeri: süreç çökmesi ya da ileride eklenecek bir
+      // erken dönüş bir kaydı kalıcı olarak kilitleyemesin.
+      if (
+        existing.data?.status === "processing" &&
+        Date.now() - Date.parse(String(existing.data.created_at)) <
+          staleProcessingMs
+      ) {
+        return Response.json(
+          { error: "Bu not zaten işleniyor; kısa süre sonra tekrar deneyin." },
+          { status: 409 },
+        );
+      }
+
+      const submission = await supabase
+        .from("debrief_submissions")
+        .upsert(
+          {
+            visit_id: visit.id,
+            workspace_id: visit.workspace_id,
+            organization_id: visit.organization_id,
+            user_id: userId,
+            client_mutation_id: clientMutationId,
+            status: "processing",
+            response: null,
+            error_code: null,
+            // Takılmış satır penceresi bu denemeye göre ölçülür; aksi halde
+            // eski `created_at` yüzünden pencere hep açık kalırdı.
+            created_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,client_mutation_id" },
+        )
+        .select("id")
+        .single();
+      if (submission.error) throw submission.error;
+      submissionId = submission.data.id;
+    }
+
+    if (audio) {
       const bytes = Buffer.from(await audio.arrayBuffer());
       const sha256 = createHash("sha256").update(bytes).digest("hex");
 
@@ -203,6 +234,7 @@ export async function POST(
       );
       if (transcriptResult.error) throw transcriptResult.error;
 
+      visitTouched = true;
       const visitResult = await supabase
         .from("visits")
         .update({
@@ -275,11 +307,16 @@ export async function POST(
     return Response.json(responsePayload);
   } catch (error) {
     if (supabase && userId && visit) {
-      await supabase
-        .from("visits")
-        .update({ status: "draft" })
-        .eq("id", visit.id)
-        .eq("representative_id", userId);
+      // Ziyaret yalnız gerçekten dokunulduysa geri alınır. Önce koşulsuzdu ve
+      // ses yüklemesinde patlayan bir istek, o ziyaretin daha önce üretilmiş
+      // özetini de silip durumu `draft`a çekiyordu.
+      if (visitTouched) {
+        await supabase
+          .from("visits")
+          .update({ status: "draft" })
+          .eq("id", visit.id)
+          .eq("representative_id", userId);
+      }
       if (submissionId) {
         await supabase
           .from("debrief_submissions")
