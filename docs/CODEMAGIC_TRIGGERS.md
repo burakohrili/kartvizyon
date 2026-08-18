@@ -68,12 +68,13 @@ PowerShell'de `$env:CODEMAGIC_API_TOKEN = "..."`. Token
 ## Otomatik tetiklemede TestFlight
 
 `kartvizyon-ios-testflight` workflow'u `submitToTestFlight` girdisini taşır ve
-varsayılanı `false`'tur. Push ile tetiklendiğinde varsayılan uygulanır: **imzalı
-IPA üretilir ama TestFlight'a yüklenmez.** Yükleme istendiğinde build elle
-`submitToTestFlight=true` ile ya da yukarıdaki `--testflight` bayrağıyla başlatılır.
+varsayılanı **`true`**'dur. `main`'e giden her başarılı build doğrudan dahili
+TestFlight grubuna teslim edilir; ayrıca bir işlem gerekmez.
 
-Bu bilinçli bir tercihtir; her push'un otomatik olarak TestFlight'a sürüm
-göndermesi test kullanıcılarını gereksiz bildirimle yorar.
+Test grubu şu an yalnız iç testçilerden oluştuğu için bu bildirim gürültüsü
+yaratmaz. **Dış (external) test grubu açıldığında** varsayılan tekrar `false`
+yapılmalı ve yükleme elle ya da `npm run build:ios:testflight` ile
+tetiklenmelidir; aksi halde her commit dış testçilere sürüm gönderir.
 
 ## Flutter sürümü sabittir
 

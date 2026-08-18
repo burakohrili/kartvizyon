@@ -94,7 +94,11 @@ workflows:
       submitToTestFlight:
         description: Upload the verified build to TestFlight
         type: boolean
-        default: false
+        # main'e giden her doğrulanmış build dahili test grubuna teslim edilir.
+        # Grup şu an yalnız iç testçilerden oluştuğu için bildirim gürültüsü
+        # yaratmaz. Dış test grubu açıldığında bu varsayılan tekrar false
+        # yapılıp yükleme elle tetiklenmelidir.
+        default: true
     integrations:
       app_store_connect: kartvizyon_app_store
     environment:
