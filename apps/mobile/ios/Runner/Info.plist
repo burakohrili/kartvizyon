@@ -23,6 +23,16 @@
 	<string>Ziyaret sonrası kişisel sesli debrief kaydetmek için mikrofon kullanılır.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Yakındaki gecikmiş müşterileri yalnızca siz istediğinizde hesaplamak için konum kullanılır; sürekli takip yapılmaz.</string>
+	<!-- Apple'ın statik denetimi (ITMS-90683) bağlı SDK'lar Always API'sine
+	     referans verdiği için bu anahtarı zorunlu tutuyor; her teslimatta
+	     uyarı üretiyordu. Anahtarın varlığı istemi yükseltmez: geolocator
+	     (geolocator_apple PermissionHandler.m) önce
+	     NSLocationWhenInUseUsageDescription'a bakıp
+	     requestWhenInUseAuthorization çağırıyor, Always dalına yalnız o
+	     anahtar yokken giriyor. Bizde When In Use anahtarı var, dolayısıyla
+	     Always yetkisi hiçbir zaman istenmez (ADR-0006). -->
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Uygulama "Her Zaman" konum yetkisi istemez. Saha modu yalnız siz başlattığınızda ve uygulama açıkken konumu kullanır; mod çalışırken mavi konum göstergesi görünür ve oturum kendiliğinden kapanır.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Kartvizit veya ziyaret belgesi seçebilmek için fotoğraf arşimine erişilir.</string>
 	<key>CFBundleExecutable</key>

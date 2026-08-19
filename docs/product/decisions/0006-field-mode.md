@@ -93,7 +93,30 @@ Bu dört madde birlikte sağlanmadıkça saha modu genişletilmemelidir.
 **Bilinçli olarak eklenmeyenler**
 
 - `ACCESS_BACKGROUND_LOCATION`
-- `NSLocationAlwaysAndWhenInUseUsageDescription`
+- `NSLocationAlwaysUsageDescription` (iOS 11 öncesi Always anahtarı)
+
+**19 Ağustos 2026 düzeltmesi — `NSLocationAlwaysAndWhenInUseUsageDescription`**
+
+Bu anahtar önce bilinçli olarak dışarıda bırakılmıştı; gerekçe "varlığı
+geolocator'ı Always yetkisi istemeye iter" varsayımıydı. Varsayım yanlış çıktı.
+`geolocator_apple` (`PermissionHandler.m`) iOS'ta şu sırayı izliyor:
+
+```objc
+if (NSLocationWhenInUseUsageDescription varsa) {
+  requestWhenInUseAuthorization();     // bizim girdiğimiz dal
+} else if (Always açıklaması varsa) {
+  requestAlwaysAuthorization();        // ulaşılamaz
+}
+```
+
+When In Use anahtarı bizde bulunduğu için Always dalı ölü koddur. Anahtar
+yokken Apple her teslimatta **ITMS-90683** uyarısı gönderiyordu; bağlı SDK'lar
+Always API'sine referans verdiği için statik denetim açıklamayı zorunlu
+tutuyor. Anahtar, yetki istemini değiştirmediği doğrulandıktan sonra eklendi.
+
+Korunması gereken değişmez artık "Always anahtarı olmasın" değil,
+**"When In Use anahtarı bulunsun"**dur: o kaldırılırsa uygulama sessizce
+Always yetkisi istemeye başlar. `store_compliance_test.dart` bunu kontrol eder.
 
 Ön plan servisi uygulama görünürken başlatıldığı için arka plan konum izni
 gerekmez; bu, Play beyan formunu tetiklememenin de tek yoludur.

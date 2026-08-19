@@ -36,8 +36,10 @@
 Rehber, SMS, reklam kimliği ve izleme izni kullanılmaz. İzinler onboarding'de
 topluca değil, özellik ilk kez kullanıldığında istenir.
 
-**Arka plan konumu:** `ACCESS_BACKGROUND_LOCATION` ve
-`NSLocationAlwaysAndWhenInUseUsageDescription` **istenmez**. Saha modu açıkken
+**Arka plan konumu:** `ACCESS_BACKGROUND_LOCATION` **istenmez** ve iOS'ta
+_Always_ yetkisi **hiç talep edilmez** (`NSLocationAlwaysAndWhenInUseUsageDescription`
+yalnız Apple'ın statik denetimi için bulunur, izin istemini değiştirmez —
+ADR-0006). Saha modu açıkken
 konum arka planda alınır ama bu, kullanıcının başlattığı ve görünür çalışan bir
 oturumdur: Android'de kalıcı sistem bildirimi, iOS'ta mavi konum çubuğu görünür,
 oturum 8 saat sonra veya 21:00'de kendiliğinden kapanır. Uygulama kapalıyken

@@ -6,6 +6,18 @@ import { apiError, serviceUnavailable } from "@/lib/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
+  // Uç hiç `try` içinde değildi; beklenmedik her hata Next.js tarafından
+  // gövdesiz 500'e dönüşüyor ve istemciye "İşlem tamamlanamadı." olarak
+  // görünüyordu. Sarmalanınca en azından ZodError 400 olur ve sunucu logunda
+  // sebebi kalır.
+  try {
+    return await handle(request);
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+async function handle(request: Request) {
   const url = new URL(request.url);
   const workspaceId = url.searchParams.get("workspaceId");
   const latitude = Number(url.searchParams.get("latitude"));
@@ -85,23 +97,46 @@ export async function GET(request: Request) {
   });
   const coolingDown = new Set(cooldowns?.map((event) => event.company_id));
   const now = Date.now();
+  // Mesafe filtresi puanlamadan ÖNCE uygulanır.
+  //
+  // Önce tersiydi: çalışma alanındaki koordinatı olan HER müşteri için
+  // `calculateVisitPriority` çağrılıyor, yarıçap filtresi sonra geliyordu.
+  // Puanlama girdisi `distanceKm <= 500` şartıyla doğrulandığı için 500 km'den
+  // uzaktaki tek bir müşteri ZodError fırlatıyor ve uç, o kullanıcı için
+  // tamamen 500 dönüyordu. Saha modu ve harita birlikte çöküyordu
+  // (Sentry, 18-19 Ağustos 2026, iOS 46 ve Android 40).
   const candidates = (companies ?? [])
     .filter((company) => !coolingDown.has(company.id))
-    .map((company) => {
-      const distanceKm = haversineDistanceKm(
+    .map((company) => ({
+      company,
+      distanceKm: haversineDistanceKm(
         { latitude, longitude },
         {
           latitude: Number(company.latitude),
           longitude: Number(company.longitude),
         },
-      );
+      ),
+    }))
+    .filter(
+      ({ distanceKm }) =>
+        Number.isFinite(distanceKm) && distanceKm <= maxDistanceKm,
+    )
+    .map(({ company, distanceKm }) => {
       const lastVisit = lastVisits.get(company.id);
+      // Saat kayması ya da ileri tarihli `approved_at` negatif gün üretir;
+      // şema negatife izin vermiyor.
       const daysSinceVisit = lastVisit
-        ? Math.floor((now - new Date(lastVisit).getTime()) / 86_400_000)
+        ? Math.min(
+            3650,
+            Math.max(
+              0,
+              Math.floor((now - new Date(lastVisit).getTime()) / 86_400_000),
+            ),
+          )
         : null;
       const priority = calculateVisitPriority({
         daysSinceVisit,
-        overdueTaskCount: overdue.get(company.id) ?? 0,
+        overdueTaskCount: Math.min(100, overdue.get(company.id) ?? 0),
         customerValue: 0.5,
         distanceKm,
       });
@@ -116,7 +151,6 @@ export async function GET(request: Request) {
         overdueTaskCount: overdue.get(company.id) ?? 0,
       };
     })
-    .filter((candidate) => candidate.distanceKm <= maxDistanceKm)
     .sort((a, b) => b.priority.total - a.priority.total)
     .slice(0, 20);
   return Response.json({

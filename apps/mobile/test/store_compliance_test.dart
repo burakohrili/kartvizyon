@@ -48,14 +48,30 @@ void main() {
     final plist = File('ios/Runner/Info.plist').readAsStringSync();
     final sources = dartSources.map((f) => f.readAsStringSync()).join();
 
-    // Arka plan/"Always" konum anahtarı, geolocator'ın iOS'ta Always yetkisi
-    // istemesine yol açar. Ürün sözü "sürekli GPS takibi yapılmaz" olduğu için
-    // bu anahtar bulunmamalıdır (App Review 5.1.1).
+    // Korunan asıl değişmez: When In Use anahtarı bulunmalı.
+    //
+    // geolocator (geolocator_apple PermissionHandler.m) önce bu anahtara bakar
+    // ve varsa `requestWhenInUseAuthorization` çağırır; Always dalına yalnız bu
+    // anahtar YOKKEN girer. Yani bu anahtar kaldırılırsa uygulama sessizce
+    // "Her Zaman" yetkisi istemeye başlar ve ürün sözü çiğnenir.
+    //
+    // `NSLocationAlwaysAndWhenInUseUsageDescription` 19 Ağustos 2026'da
+    // bilinçli olarak eklendi: Apple'ın statik denetimi bağlı SDK'lar
+    // yüzünden ITMS-90683 üretiyordu. Anahtarın varlığı yukarıdaki dal
+    // sırasını değiştirmediği için yetki yükselmesi olmaz (ADR-0006).
     expect(
-      plist.contains('NSLocationAlwaysAndWhenInUseUsageDescription'),
-      isFalse,
+      plist.contains('NSLocationWhenInUseUsageDescription'),
+      isTrue,
       reason:
-          'Uygulama arka plan konumu kullanmıyor; Always anahtarı beyan edilmemeli.',
+          'Bu anahtar kaldırılırsa geolocator Always yetkisi istemeye başlar.',
+    );
+
+    // Eski, iOS 11 öncesi Always anahtarı hiç kullanılmamalı; onun tek etkisi
+    // Always yetkisi istemek olurdu.
+    expect(
+      plist.contains('<key>NSLocationAlwaysUsageDescription</key>'),
+      isFalse,
+      reason: 'Yalnız Always anahtarı beyan edilmemeli.',
     );
 
     // Beyan edilen her izin kodda fiilen kullanılmalıdır.

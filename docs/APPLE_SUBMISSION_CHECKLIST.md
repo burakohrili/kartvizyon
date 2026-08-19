@@ -180,14 +180,18 @@ kullanıcı tarafından başlatılır, mavi konum göstergesi açık kalır
 Reviewer bunu Bugün ekranındaki "Saha modunu başlat" düğmesiyle görebilir;
 "Saha modunu bitir" ile durdurulur. Ayrıntı: ADR-0006.
 
-**`NSLocationAlwaysAndWhenInUseUsageDescription` bilinçli olarak yoktur.** Bu
-anahtar bulunduğunda `geolocator` iOS'ta _Always_ yetkisi ister; ürün sözü ise
-"sürekli GPS takibi yapılmaz". Anahtar 18 Ağustos 2026'da kaldırıldı.
+**`NSLocationAlwaysAndWhenInUseUsageDescription` vardır ama _Always_ yetkisi
+istenmez.** Anahtar 18 Ağustos 2026'da "geolocator'ı Always istemeye iter"
+gerekçesiyle kaldırılmıştı; gerekçe yanlıştı ve 19 Ağustos'ta geri kondu.
+`geolocator_apple` önce `NSLocationWhenInUseUsageDescription`'a bakıp
+`requestWhenInUseAuthorization` çağırıyor, Always dalına yalnız o anahtar
+yokken giriyor — yani bizde ölü kod. Anahtarsız her teslimat `ITMS-90683`
+uyarısı üretiyordu.
 
-> Not: bu anahtar daha önce `ITMS-90683` uyarısı nedeniyle eklenmişti. O uyarı
-> eklentinin arka plan konum API'lerine referans vermesinden kaynaklanır ve
-> yükleme engelleyici değildir. Uyarı tekrar gelirse anahtarı geri eklemek
-> yerine ürün duruşu korunur.
+> Reviewer'a söylenecek: uygulama yalnız "Uygulamayı kullanırken" yetkisi
+> ister. Açıklama metni de bunu yazar; anahtar Apple'ın statik denetimi bağlı
+> SDK'ların referansları yüzünden zorunlu tuttuğu için bulunur.
+> Ayrıntı: ADR-0006.
 
 Reviewer izinleri reddederek test edebilir; uygulama her üç yolda da manuel
 alternatifle çalışmaya devam eder.
