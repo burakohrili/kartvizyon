@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -39,6 +40,7 @@ class MobileApiClient {
     required this.sessions,
     this.accessTokenProvider,
     this.refreshAccessToken,
+    this.onSessionExpired,
     this.workspaceId,
     this.timeout = const Duration(seconds: 20),
     this.fileTimeout = const Duration(seconds: 60),
@@ -49,6 +51,16 @@ class MobileApiClient {
   final SecureSessionStore sessions;
   final Future<String?> Function()? accessTokenProvider;
   final Future<String?> Function()? refreshAccessToken;
+
+  /// Oturum yenilemeyle de kurtarılamadığında çağrılır.
+  ///
+  /// Yönlendirici açılışta bir kez `authenticated` hesaplıyor ve bunu yalnız
+  /// menüden çıkış yapılınca değiştiriyordu. Supabase oturumu cihazda kalıcı
+  /// olduğu için, kayıtlı oturum ölmüşse uygulama kendini "girişli" sanıp
+  /// Bugün ekranını açıyor, oradaki her istek 401 dönüyor ve kullanıcı
+  /// "Oturum gerekli. (HTTP 401)" ekranında kilitleniyordu — giriş ekranına,
+  /// yani Google ve Apple düğmelerine, hiçbir yoldan ulaşamadan.
+  final VoidCallback? onSessionExpired;
 
   /// Aktif çalışma alanı; her isteğe başlık olarak eklenir.
   ///
@@ -114,8 +126,14 @@ class MobileApiClient {
       return response;
     }
     final refreshedToken = await refreshAccessToken!.call();
-    if (refreshedToken == null || refreshedToken.isEmpty) return response;
+    if (refreshedToken == null || refreshedToken.isEmpty) {
+      onSessionExpired?.call();
+      return response;
+    }
     response = await attempt(_headersFor(refreshedToken));
+    // Taze token da 401 alıyorsa yenilenecek bir şey kalmamıştır; kullanıcı
+    // yeniden giriş yapmalı ve bunu ona söyleyebilmeliyiz.
+    if (response.statusCode == 401) onSessionExpired?.call();
     return response;
   }
 
@@ -297,6 +315,7 @@ class MobileServices {
               }
             }
           : null,
+      onSessionExpired: () => services.sessionExpired.value = true,
     );
     services = MobileServices._(
       config: config,
@@ -324,6 +343,10 @@ class MobileServices {
   /// ekran değiştirildiğinde oturum kopmamalıdır.
   late final FieldModeService fieldMode = FieldModeService(this);
 
+  /// Kayıtlı oturum ölünce true olur; yönlendirici bunu dinleyip kullanıcıyı
+  /// giriş ekranına alır. Girişten sonra tekrar false'a çekilir.
+  final ValueNotifier<bool> sessionExpired = ValueNotifier<bool>(false);
+
   String ownerId = 'demo-local';
   String workspaceId = '00000000-0000-4000-8000-000000000001';
   String? organizationId;
@@ -339,6 +362,7 @@ class MobileServices {
   Future<void> dispose() async {
     await fieldMode.stop();
     fieldMode.dispose();
+    sessionExpired.dispose();
     api.client.close();
     sync.client.close();
     await database.close();

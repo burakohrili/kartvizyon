@@ -108,4 +108,72 @@ void main() {
     // Değer kopyalanmaz; oturum bağlamı değiştiğinde başlık da değişmeli.
     expect(seen, ['workspace-1', 'workspace-2']);
   });
+
+  test('kurtarılamayan oturum bildirilir', () async {
+    // Yönlendirici açılışta bir kez `authenticated` hesaplıyordu ve bunu
+    // yalnız menüden çıkış değiştiriyordu. Supabase oturumu cihazda kalıcı
+    // olduğu için ölü oturumla açılan uygulama kendini girişli sanıyor, her
+    // istek 401 dönüyor ve kullanıcı "Oturum gerekli. (HTTP 401)" ekranında
+    // kilitleniyordu; giriş ekranına, yani Google ve Apple düğmelerine,
+    // hiçbir yol kalmıyordu.
+    var expired = 0;
+    final client = MobileApiClient(
+      baseUrl: Uri.parse('https://app.kartvizyon.app'),
+      sessions: const _EmptySessionStore(),
+      accessTokenProvider: () async => 'expired-token',
+      refreshAccessToken: () async => null,
+      onSessionExpired: () => expired += 1,
+      client: MockClient(
+        (_) async =>
+            http.Response(jsonEncode({'error': 'Oturum gerekli.'}), 401),
+      ),
+    );
+
+    await expectLater(
+      client.get('/api/customers'),
+      throwsA(isA<MobileApiException>()),
+    );
+    expect(expired, 1);
+  });
+
+  test('taze token da 401 alıyorsa oturum bildirilir', () async {
+    var expired = 0;
+    final client = MobileApiClient(
+      baseUrl: Uri.parse('https://app.kartvizyon.app'),
+      sessions: const _EmptySessionStore(),
+      accessTokenProvider: () async => 'expired-token',
+      refreshAccessToken: () async => 'fresh-token',
+      onSessionExpired: () => expired += 1,
+      client: MockClient(
+        (_) async =>
+            http.Response(jsonEncode({'error': 'Oturum gerekli.'}), 401),
+      ),
+    );
+
+    await expectLater(
+      client.get('/api/customers'),
+      throwsA(isA<MobileApiException>()),
+    );
+    expect(expired, 1);
+  });
+
+  test('başarılı istek oturumu ölü saymaz', () async {
+    var expired = 0;
+    final client = MobileApiClient(
+      baseUrl: Uri.parse('https://app.kartvizyon.app'),
+      sessions: const _EmptySessionStore(),
+      accessTokenProvider: () async => 'expired-token',
+      refreshAccessToken: () async => 'fresh-token',
+      onSessionExpired: () => expired += 1,
+      client: MockClient((request) async {
+        if (request.headers['authorization'] == 'Bearer expired-token') {
+          return http.Response(jsonEncode({'error': 'Oturum gerekli.'}), 401);
+        }
+        return http.Response(jsonEncode({'data': <Object>[]}), 200);
+      }),
+    );
+
+    await client.get('/api/customers');
+    expect(expired, 0);
+  });
 }

@@ -50,6 +50,7 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
     authenticated =
         !services.config.hasSupabase ||
         Supabase.instance.client.auth.currentSession != null;
+    services.sessionExpired.addListener(_onSessionExpired);
     router = GoRouter(
       initialLocation: authenticated ? '/' : '/login',
       redirect: (_, state) {
@@ -65,6 +66,7 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
             services: services,
             onSignedIn: () async {
               authenticated = true;
+              services.sessionExpired.value = false;
               try {
                 await services.refreshContext();
               } catch (_) {
@@ -169,8 +171,30 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
     if (authenticated) services.refreshContext().catchError((_) {});
   }
 
+  /// Kayıtlı oturum ölünce kullanıcıyı giriş ekranına al.
+  ///
+  /// Supabase oturumu cihazda kalıcıdır. Oturum sunucu tarafında geçersiz
+  /// hale gelmişse `currentSession` hâlâ dolu görünür; uygulama kendini
+  /// girişli sanıp Bugün ekranını açar ve oradaki her istek 401 döner.
+  /// Yönlendiriciyi yalnız açılışta hesaplanan bir bayrağa bağlamak,
+  /// kullanıcıyı "Oturum gerekli. (HTTP 401)" ekranında kilitliyordu: giriş
+  /// ekranına, dolayısıyla Google ve Apple düğmelerine, hiçbir yol kalmıyordu.
+  void _onSessionExpired() {
+    if (!services.sessionExpired.value || !authenticated) return;
+    authenticated = false;
+    // Ölü oturum cihazda kalırsa uygulama bir sonraki açılışta yine kendini
+    // girişli sanır. `local` kapsam sunucuya gitmez; ağ yokken de temizler.
+    if (services.config.hasSupabase) {
+      Supabase.instance.client.auth
+          .signOut(scope: SignOutScope.local)
+          .catchError((_) {});
+    }
+    router.go('/login');
+  }
+
   @override
   void dispose() {
+    services.sessionExpired.removeListener(_onSessionExpired);
     router.dispose();
     if (ownsServices) services.dispose();
     super.dispose();
