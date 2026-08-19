@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { signOutEverywhere } from "./actions";
+import { DemoBanner } from "@/app/demo-banner";
 
 export default function SecuritySettingsPage() {
   return (
     <main className="form-page">
+      <DemoBanner />
       <section className="form-card security-card">
         <Link href="/dashboard" className="back-link">
           ← Genel bakış

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { completeTask } from "./actions";
+import { DemoBanner } from "@/app/demo-banner";
 
 type Task = {
   id: string;
@@ -60,6 +61,7 @@ export default async function TasksPage() {
   const completed = tasks.filter((task) => task.status === "completed");
   return (
     <main className="customers-page tasks-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">

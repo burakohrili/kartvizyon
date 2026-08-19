@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { ActivityFeed } from "../interaction-workbench";
+import { DemoBanner } from "@/app/demo-banner";
 
 const demoVisits = [
   {
@@ -37,6 +38,7 @@ export default async function ActivityPage() {
     : [{ data: demoVisits }, { data: [] }];
   return (
     <main className="customers-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">

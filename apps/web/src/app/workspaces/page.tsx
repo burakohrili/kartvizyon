@@ -1,5 +1,6 @@
 import { createOrganization, selectWorkspace } from "./actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { DemoBanner } from "@/app/demo-banner";
 
 type Workspace = {
   id: string;
@@ -33,6 +34,7 @@ export default async function WorkspacesPage() {
   }
   return (
     <main className="auth-page">
+      <DemoBanner />
       <section className="workspace-card">
         <div className="auth-brand">
           <span>KV</span>

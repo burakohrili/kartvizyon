@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { MapExperience } from "./map-experience";
+import { DemoBanner } from "@/app/demo-banner";
 
 export default function MapPage() {
   return (
     <main className="map-page">
+      <DemoBanner />
       <header className="map-header">
         <div>
           <Link href="/dashboard" className="back-link">

@@ -3,11 +3,9 @@ import { apiError, serviceUnavailable } from "@/lib/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
-  const organizationId = new URL(request.url).searchParams.get(
-    "organizationId",
-  );
-  if (!organizationId)
-    return Response.json({ error: "organizationId gerekli." }, { status: 400 });
+  // Kimlik doğrulama parametre doğrulamasından önce gelir: aksi halde oturumsuz
+  // çağıran, hangi parametrenin beklendiğini uçtan öğrenir ve 401 yerine 400
+  // alır. Veri sızmıyordu ama sıra tersti.
   const supabase = await createSupabaseServerClient();
   if (!supabase) return Response.json({ data: [], demo: true });
   const {
@@ -15,6 +13,11 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
   if (!user)
     return Response.json({ error: "Oturum gerekli." }, { status: 401 });
+  const organizationId = new URL(request.url).searchParams.get(
+    "organizationId",
+  );
+  if (!organizationId)
+    return Response.json({ error: "organizationId gerekli." }, { status: 400 });
   const { data, error } = await supabase
     .from("invitations")
     .select("id,email,role,status,expires_at,created_at")

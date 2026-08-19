@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { loadDashboard } from "@/lib/dashboard";
+import { DemoBanner } from "@/app/demo-banner";
 
 const nav = [
   { label: "Genel Bakış", href: "/dashboard" },
@@ -36,6 +37,7 @@ export default async function DashboardHome() {
 
   return (
     <main className="app-shell">
+      <DemoBanner />
       <aside className="sidebar">
         <div className="brand">
           <Image

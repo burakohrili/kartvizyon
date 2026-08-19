@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { NotificationCenter } from "../interaction-workbench";
+import { DemoBanner } from "@/app/demo-banner";
 
 export default async function NotificationsPage() {
   const context = await getWebWorkspaceContext();
@@ -14,6 +15,7 @@ export default async function NotificationsPage() {
     : { data: [] };
   return (
     <main className="customers-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">

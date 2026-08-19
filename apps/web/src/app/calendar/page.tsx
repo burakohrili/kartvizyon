@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { CalendarWorkbench } from "../operations-workbench";
+import { DemoBanner } from "@/app/demo-banner";
 
 const demoWorkspace = "00000000-0000-4000-8000-000000000001";
 const demoUser = "00000000-0000-4000-8000-000000000201";
@@ -37,6 +38,7 @@ export default async function CalendarPage() {
     : [{ data: demoVisits }, { data: demoCompanies }];
   return (
     <main className="customers-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">

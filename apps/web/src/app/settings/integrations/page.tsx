@@ -2,11 +2,13 @@ import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { IntegrationsPanel } from "../settings-workbench";
 import { SettingsNav } from "../settings-nav";
+import { DemoBanner } from "@/app/demo-banner";
 
 export default async function IntegrationsPage() {
   const context = await getWebWorkspaceContext();
   return (
     <main className="customers-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">

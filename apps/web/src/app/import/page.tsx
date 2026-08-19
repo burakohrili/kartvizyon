@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ImportWizard } from "./wizard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { DemoBanner } from "@/app/demo-banner";
 
 export default async function ImportPage() {
   const supabase = await createSupabaseServerClient();
@@ -13,6 +14,7 @@ export default async function ImportPage() {
     : { data: null };
   return (
     <main className="customers-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/customers" className="back-link">

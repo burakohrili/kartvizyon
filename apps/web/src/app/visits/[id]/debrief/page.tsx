@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DebriefRecorder } from "./recorder";
+import { DemoBanner } from "@/app/demo-banner";
 
 export default async function VisitDebriefPage({
   params,
@@ -14,6 +15,7 @@ export default async function VisitDebriefPage({
     : "demo-local";
   return (
     <main className="review-page">
+      <DemoBanner />
       <section className="review-card debrief-card">
         <Link href="/visits" className="back-link">
           ← Ziyaretler

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ContactForm } from "./contact-form";
+import { DemoBanner } from "@/app/demo-banner";
 
 export default async function NewContactPage({
   params,
@@ -9,6 +10,7 @@ export default async function NewContactPage({
   const { id } = await params;
   return (
     <main className="form-page">
+      <DemoBanner />
       <section className="form-card">
         <Link href={`/customers/${id}`} className="back-link">
           ← Firma detayına dön

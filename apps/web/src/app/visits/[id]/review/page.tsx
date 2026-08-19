@@ -2,6 +2,7 @@ import { visitSummarySchema, type VisitSummary } from "@kartvizyon/contracts";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { approveVisit, returnVisitToDraft } from "./actions";
+import { DemoBanner } from "@/app/demo-banner";
 
 const demoSummary: VisitSummary = {
   summary:
@@ -57,6 +58,7 @@ export default async function VisitReviewPage({
   if (!visit) {
     return (
       <main className="review-page">
+        <DemoBanner />
         <section className="review-card">
           <Link href="/visits" className="back-link">
             ← Ziyaretler

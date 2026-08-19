@@ -2,6 +2,7 @@ import Link from "next/link";
 import { TeamManager } from "./team-manager";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { DemoBanner } from "@/app/demo-banner";
 
 export default async function TeamPage() {
   const workspaceId = (await cookies()).get("kartvizyon_workspace")?.value;
@@ -16,6 +17,7 @@ export default async function TeamPage() {
       : { data: null };
   return (
     <main className="customers-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">

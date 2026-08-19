@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { OrganizationStructure } from "./organization-structure";
+import { DemoBanner } from "@/app/demo-banner";
 
 export default async function OrganizationPage() {
   const context = await getWebWorkspaceContext();
@@ -22,6 +23,7 @@ export default async function OrganizationPage() {
     : [{ data: [] }, { data: [] }];
   return (
     <main className="customers-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/settings/team" className="back-link">

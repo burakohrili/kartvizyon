@@ -2,11 +2,13 @@ import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { PrivacyPanel } from "../settings-workbench";
 import { SettingsNav } from "../settings-nav";
+import { DemoBanner } from "@/app/demo-banner";
 
 export default async function PrivacyPage() {
   const context = await getWebWorkspaceContext();
   return (
     <main className="customers-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">

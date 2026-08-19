@@ -18,6 +18,16 @@ export async function GET(request: Request) {
 }
 
 async function handle(request: Request) {
+  // Kimlik doğrulama parametre doğrulamasından önce gelir: oturumsuz çağıran
+  // uçtan hangi alanların beklendiğini öğrenmemeli, 401 almalı.
+  const supabase = await createSupabaseServerClient(request);
+  if (!supabase) return serviceUnavailable();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return Response.json({ error: "Oturum gerekli." }, { status: 401 });
+
   const url = new URL(request.url);
   const workspaceId = url.searchParams.get("workspaceId");
   const latitude = Number(url.searchParams.get("latitude"));
@@ -43,13 +53,6 @@ async function handle(request: Request) {
       { status: 400 },
     );
   }
-  const supabase = await createSupabaseServerClient(request);
-  if (!supabase) return serviceUnavailable();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user)
-    return Response.json({ error: "Oturum gerekli." }, { status: 401 });
   const [
     { data: companies, error },
     { data: visits },

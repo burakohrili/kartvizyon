@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { OpportunityWorkbench } from "../operations-workbench";
+import { DemoBanner } from "@/app/demo-banner";
 
 const demoWorkspace = "00000000-0000-4000-8000-000000000001";
 const demoCompanies = [
@@ -36,6 +37,7 @@ export default async function OpportunitiesPage() {
     : [{ data: demoItems }, { data: demoCompanies }];
   return (
     <main className="customers-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">

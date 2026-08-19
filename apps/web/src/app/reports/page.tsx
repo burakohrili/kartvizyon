@@ -3,6 +3,7 @@ import { reportFiltersSchema, type ReportFilters } from "@kartvizyon/contracts";
 import { loadApprovedReport, reportMetrics } from "@/lib/reports";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ReportControls } from "./report-controls";
+import { DemoBanner } from "@/app/demo-banner";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -61,6 +62,7 @@ export default async function ReportsPage({
 
   return (
     <main className="customers-page reports-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">

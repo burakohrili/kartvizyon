@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { createCompany } from "./actions";
+import { DemoBanner } from "@/app/demo-banner";
 
 const errors: Record<string, string> = {
   config: "Veritabanı bağlantısı yapılandırılmadı.",
@@ -18,6 +19,7 @@ export default async function NewCustomerPage({
   const { error } = await searchParams;
   return (
     <main className="form-page">
+      <DemoBanner />
       <section className="form-card">
         <Link href="/customers" className="back-link">
           ← Müşteriler

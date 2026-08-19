@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { DemoBanner } from "@/app/demo-banner";
 
 type Company = {
   id?: string;
@@ -148,6 +149,7 @@ export default async function CustomerDetailPage({
     : null;
   return (
     <main className="form-page">
+      <DemoBanner />
       <section className="customer-detail wide-detail">
         <div className="detail-top">
           <div>

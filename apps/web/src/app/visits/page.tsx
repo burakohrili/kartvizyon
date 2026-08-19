@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { DemoBanner } from "@/app/demo-banner";
 
 type Visit = {
   id: string;
@@ -66,6 +67,7 @@ export default async function VisitsPage() {
   const { visits, demo } = await getVisits();
   return (
     <main className="customers-page">
+      <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
