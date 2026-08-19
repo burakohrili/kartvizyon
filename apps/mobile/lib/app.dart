@@ -201,7 +201,11 @@ class _MobileShell extends StatelessWidget {
       String value when value.startsWith('/customers') => 1,
       String value when value.startsWith('/visits') => 2,
       String value when value.startsWith('/tasks') => 3,
-      _ => 4,
+      '/more' => 4,
+      // Harita kabuğun içinde ama alt çubukta sekmesi yok. Varsayılana
+      // düşürülünce "Daha fazla" seçili görünüyor ve kullanıcı nerede olduğunu
+      // yanlış okuyordu; hiçbir sekme seçili olmamalı.
+      _ => -1,
     };
     return Scaffold(
       body: SafeArea(bottom: false, child: child),
