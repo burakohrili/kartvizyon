@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -87,5 +88,38 @@ void main() {
 
     inFlight.complete(http.Response('{"data":{}}', 200));
     await tester.pumpAndSettle();
+  });
+
+  test('taranan kartvizitin adresi forma aktarılır', () {
+    // Adres alanı formda vardı ama OCR yanıtından hiç doldurulmuyordu. Sunucu
+    // adresi koordinata çevirdiği için boş adres, kartvizitten eklenen her
+    // müşteriyi haritadan ve yakınlık hatırlatmalarından tamamen çıkarıyordu.
+    //
+    // Bu, widget testi yerine kaynak üzerinden doğrulanır: yükleme yolu
+    // kartvizit dosyasını diskten gerçekten okuyor ve bu iş `pump` içindeki
+    // FakeAsync bölgesinde güvenilir biçimde tamamlanmıyor.
+    final source = File(
+      'lib/features/customers/customers_screen.dart',
+    ).readAsStringSync();
+    final start = source.indexOf('_CustomerDraft(');
+    expect(start, greaterThan(-1), reason: 'OCR taslağı bulunamadı');
+    final draft = source.substring(start, source.indexOf(');', start));
+
+    for (final field in [
+      'companyName',
+      'firstName',
+      'lastName',
+      'title',
+      'phone',
+      'email',
+      'website',
+      'address',
+    ]) {
+      expect(
+        draft.contains("data['$field']"),
+        isTrue,
+        reason: '$field OCR yanıtından forma aktarılmıyor',
+      );
+    }
   });
 }

@@ -41,6 +41,7 @@ describe("validateBusinessCardExtraction", () => {
     title: null,
     companyName: "Örnek A.Ş.",
     phone: null,
+    address: null,
     confidence: 0.9,
     needsReview: true as const,
   };
@@ -67,5 +68,45 @@ describe("validateBusinessCardExtraction", () => {
         website: "not a website",
       }),
     ).toMatchObject({ email: null, website: null, needsReview: true });
+  });
+
+  it("adresi tek satıra indirir", () => {
+    // Kartvizitte adres iki üç satıra basılır; model bunu satır sonlarıyla
+    // döndürür. Tek satır hem listede düzgün görünür hem geocoding'e temiz
+    // gider.
+    expect(
+      validateBusinessCardExtraction({
+        ...baseOutput,
+        email: null,
+        website: null,
+        address: "Gazi Osman Paşa Mah.\n5499/1 Sok. No:9\n  Bornova / İzmir ",
+      }),
+    ).toMatchObject({
+      address: "Gazi Osman Paşa Mah. 5499/1 Sok. No:9 Bornova / İzmir",
+    });
+  });
+
+  it("çok uzun adres taramanın tamamını kaybettirmez", () => {
+    // Sözleşme sınırını aşan bir çıktı şemayı reddettirir ve o zaman ad,
+    // telefon, e-posta dahil her şey kaybolurdu.
+    const result = validateBusinessCardExtraction({
+      ...baseOutput,
+      email: null,
+      website: null,
+      address: "a".repeat(1800),
+    });
+    expect(result.address).toHaveLength(500);
+    expect(result.companyName).toBe("Örnek A.Ş.");
+  });
+
+  it("adres yoksa null kalır", () => {
+    expect(
+      validateBusinessCardExtraction({
+        ...baseOutput,
+        email: null,
+        website: null,
+        address: "   ",
+      }),
+    ).toMatchObject({ address: null });
   });
 });

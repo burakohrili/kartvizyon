@@ -187,6 +187,7 @@ describe("kartvizit OCR sözleşmesi", () => {
       phone: "+90 555 000 00 00",
       email: "ayse@example.com",
       website: "https://example.com",
+      address: "Gazi Osman Paşa Mah. 5499/1 Sok. No:9 Bornova / İzmir",
       confidence: 0.91,
       needsReview: true,
     });

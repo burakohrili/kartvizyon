@@ -143,6 +143,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
         phone: data['phone']?.toString() ?? '',
         email: data['email']?.toString() ?? '',
         website: data['website']?.toString() ?? '',
+        // Adres formda vardı ama taramadan hiç doldurulmuyordu. Sunucu adresi
+        // koordinata çevirdiği için boş adres, müşteriyi haritadan ve yakınlık
+        // hatırlatmalarından tamamen dışarıda bırakıyordu.
+        address: data['address']?.toString() ?? '',
       );
     } catch (error) {
       if (!mounted) return;

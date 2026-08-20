@@ -72,6 +72,10 @@ export const businessCardExtractionSchema = z.object({
   phone: nullableCardText(40),
   email: z.email().nullable(),
   website: z.url().nullable(),
+  // `companyCreateSchema.address` ile aynı sınır. Adres yalnız görüntü için
+  // değil: müşteri kaydı bunu koordinata çeviriyor ve koordinatsız müşteri
+  // yakınlık hatırlatmalarına hiç girmiyor.
+  address: nullableCardText(500),
   confidence: z.number().min(0).max(1),
   needsReview: z.literal(true),
 });
