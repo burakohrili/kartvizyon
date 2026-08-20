@@ -68,7 +68,10 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
               authenticated = true;
               services.sessionExpired.value = false;
               try {
-                await services.refreshContext();
+                // Zorunlu: `MobileServices` çıkış ve girişten sağ çıkıyor.
+                // Önbelleğe güvenilirse başka bir kullanıcıyla giren cihaz,
+                // öncekinin çalışma alanını taşımaya devam eder.
+                await services.refreshContext(force: true);
               } catch (_) {
                 // Oturum geçerlidir; geçici ağ/API hatasında çevrimdışı açılışa
                 // izin ver ve sonraki eşitlemede bağlamı yeniden yükle.

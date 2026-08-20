@@ -176,4 +176,48 @@ void main() {
     await client.get('/api/customers');
     expect(expired, 0);
   });
+
+  test('gövdesiz ağ geçidi hatası ne yapılacağını söyler', () async {
+    // 502/503/504 gövdesi boştur; okunacak bir `error` alanı yoktur ve
+    // kullanıcı "İşlem tamamlanamadı. (HTTP 504)" görüyordu. 19 Ağustos
+    // 2026'da `/api/session` bir kez 504 döndü ve testçiye tam olarak bu
+    // göründü.
+    for (final status in [502, 503, 504]) {
+      final client = MobileApiClient(
+        baseUrl: Uri.parse('https://app.kartvizyon.app'),
+        sessions: const _EmptySessionStore(),
+        client: MockClient((_) async => http.Response('', status)),
+      );
+      await expectLater(
+        client.get('/api/session'),
+        throwsA(
+          isA<MobileApiException>().having(
+            (error) => error.message,
+            'message',
+            contains('tekrar deneyin'),
+          ),
+        ),
+      );
+    }
+  });
+
+  test('sunucu kendi mesajını yazdıysa o korunur', () async {
+    final client = MobileApiClient(
+      baseUrl: Uri.parse('https://app.kartvizyon.app'),
+      sessions: const _EmptySessionStore(),
+      client: MockClient(
+        (_) async => http.Response(jsonEncode({'error': 'Kota doldu.'}), 503),
+      ),
+    );
+    await expectLater(
+      client.get('/api/customers'),
+      throwsA(
+        isA<MobileApiException>().having(
+          (error) => error.message,
+          'message',
+          'Kota doldu.',
+        ),
+      ),
+    );
+  });
 }

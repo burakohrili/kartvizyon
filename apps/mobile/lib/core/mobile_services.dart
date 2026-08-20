@@ -187,6 +187,22 @@ class MobileApiClient {
     return _decode(response);
   }
 
+  /// Gövdesiz hata yanıtları için kullanıcıya ne yapacağını söyleyen metin.
+  ///
+  /// Ağ geçidi hatalarının gövdesi boştur; okunacak bir `error` alanı yoktur.
+  /// Kullanıcı bu durumda "İşlem tamamlanamadı. (HTTP 504)" görüyordu — ne
+  /// olduğunu da ne yapması gerektiğini de anlatmayan bir metin. Nitekim
+  /// 19 Ağustos 2026'da `/api/session` bir kez 504 döndü ve testçiye tam
+  /// olarak bu göründü.
+  String _fallbackMessage(int statusCode) => switch (statusCode) {
+    502 || 503 || 504 => 'Sunucuya şu an ulaşılamıyor. Birkaç saniye sonra '
+        'tekrar deneyin.',
+    408 =>
+      'Sunucu zamanında yanıt vermedi. Bağlantınızı kontrol edip tekrar '
+          'deneyin.',
+    _ => 'İşlem tamamlanamadı.',
+  };
+
   dynamic _decode(http.Response response) {
     final data = response.body.isEmpty
         ? <String, dynamic>{}
@@ -195,7 +211,7 @@ class MobileApiClient {
       final message = data is Map ? data['error']?.toString() : null;
       final failure = MobileApiException(
         response.statusCode,
-        message ?? 'İşlem tamamlanamadı.',
+        message ?? _fallbackMessage(response.statusCode),
       );
       _report(response, failure);
       throw failure;
@@ -351,12 +367,36 @@ class MobileServices {
   String workspaceId = '00000000-0000-4000-8000-000000000001';
   String? organizationId;
 
-  Future<void> refreshContext() async {
+  /// Bağlamın son başarıyla okunduğu an; `contextFreshness` içinde tekrar
+  /// sorulmaz.
+  DateTime? _contextReadAt;
+
+  /// Oturum bağlamı bir vardiya boyunca değişmez: mobilde çalışma alanı
+  /// değiştirme yoktur, `ownerId` ve `workspaceId` girişten çıkışa sabittir.
+  static const contextFreshness = Duration(minutes: 5);
+
+  /// Oturum bağlamını tazeler.
+  ///
+  /// Her ekran açılışında çağrılıyordu — Bugün, Müşteriler, Harita, modüller,
+  /// eşitleme merkezi. Yani hiç değişmeyen bir veri için uygulama boyunca
+  /// onlarca kez `/api/session` isteği gidiyor ve her biri Supabase'e bir
+  /// kimlik doğrulama turu açıyordu. Uç bir kez yavaşladığında bunun bedeli
+  /// tek bir ekran değil, açılan her ekran oluyordu; 19 Ağustos 2026'daki
+  /// 504 tam olarak bu uçta görüldü.
+  Future<void> refreshContext({bool force = false}) async {
     if (!config.hasSupabase) return;
+    final readAt = _contextReadAt;
+    if (!force &&
+        readAt != null &&
+        DateTime.now().difference(readAt) < contextFreshness) {
+      return;
+    }
     final result = await api.get('/api/session') as Map<String, dynamic>;
     ownerId = result['ownerId']?.toString() ?? ownerId;
     workspaceId = result['workspaceId']?.toString() ?? workspaceId;
     organizationId = result['organizationId']?.toString();
+    // Yalnız başarıda işaretlenir; hata sonrası bir sonraki ekran tekrar dener.
+    _contextReadAt = DateTime.now();
   }
 
   Future<void> dispose() async {
