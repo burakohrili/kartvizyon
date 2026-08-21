@@ -39,6 +39,40 @@ içinde değil.
 | 18 Ağu | İlk müşteri kaydında `Geçersiz istek.`                                          | `website` alanı tam URL istiyordu; `firma.com` reddediliyordu                                                                                                                                                                                          | `66d1306` | Android 43 / iOS 50  |
 | 18 Ağu | Müşteri ekleme ekranı boş kutu olarak açılıyor                                  | Klavye boşluğu iki kez ekleniyordu                                                                                                                                                                                                                     | —         | Android 43 / iOS 50  |
 
+## Düzeltilmeyi bekleyenler
+
+Bulundu, sebebi belli, henüz düzeltilmedi. Düzeltmesi mobil kodda olduğu için
+yayın build'iyle birlikte yapılacak.
+
+**Geçersiz e-posta bağlantısı uygulamayı çökertiyor** — 21 Ağu, sürüm
+`1.0.0+41`, iki ayrı olay:
+
+- Sentry `7618402c` — `otp_expired` / `access_denied`, Huawei RNE-L21, Android 8
+- Sentry `4e9d9c26` — `bad_code_verifier`, Huawei ANE-LX1, Android 9
+
+İkisi de `level=fatal`, `handled=no`. Zincir şu: `supabase_flutter`
+`_handleDeeplink` içinde hatayı yakalayıp `notifyException`'a veriyor, o da
+`onAuthStateChange` akışına **stream hatası** olarak ekliyor. Bizim
+dinleyicimizde ([login_screen.dart:40](../apps/mobile/lib/features/auth/login_screen.dart))
+`onError` olmadığı için hata zone'un yakalanmamış hata yoluna düşüyor ve
+uygulama kapanıyor.
+
+Bağlantının geçersiz olması normal bir kullanıcı durumudur; çökme değildir.
+Kullanıcı "bağlantının süresi dolmuş, yenisini gönderin" görmelidir.
+
+Bağlantının neden geçersiz olduğu iki olayda farklı:
+
+- `otp_expired`: bağlantı süresi dolmuş ya da daha önce kullanılmış. Supabase
+  doğrulama bağlantıları kısa ömürlü ve tek kullanımlıktır.
+- `bad_code_verifier`: PKCE doğrulayıcısı eşleşmiyor. Bağlantı başka cihazda
+  açıldığında, uygulama silinip kurulduğunda, aynı bağlantıya ikinci kez
+  tıklandığında, ilk mail açılmadan ikinci bağlantı istendiğinde (yeni
+  doğrulayıcı eskisini ezer) veya e-posta güvenlik tarayıcısı bağlantıyı önden
+  açıp kodu tükettiğinde olur.
+
+Mağaza incelemesi açısından da riskli: incelemeci doğrulama bağlantısına geç
+tıklarsa uygulama gözünün önünde çöker.
+
 ## Açık kalanlar
 
 | Konu                                              | Durum                                                                                     |
