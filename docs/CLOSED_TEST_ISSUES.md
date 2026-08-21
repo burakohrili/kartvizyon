@@ -41,10 +41,11 @@ içinde değil.
 
 ## Düzeltilmeyi bekleyenler
 
-Bulundu, sebebi belli, henüz düzeltilmedi. Düzeltmesi mobil kodda olduğu için
-yayın build'iyle birlikte yapılacak.
+Şu an boş.
 
-**Geçersiz e-posta bağlantısı uygulamayı çökertiyor** — 21 Ağu, sürüm
+## Geçersiz giriş bağlantısı çökmesi (düzeltildi, yayını bekliyor)
+
+**Geçersiz giriş bağlantısı uygulamayı çökertiyordu** — 21 Ağu, sürüm
 `1.0.0+41`, iki ayrı olay:
 
 - Sentry `7618402c` — `otp_expired` / `access_denied`, Huawei RNE-L21, Android 8
@@ -70,8 +71,19 @@ Bağlantının neden geçersiz olduğu iki olayda farklı:
   doğrulayıcı eskisini ezer) veya e-posta güvenlik tarayıcısı bağlantıyı önden
   açıp kodu tükettiğinde olur.
 
-Mağaza incelemesi açısından da riskli: incelemeci doğrulama bağlantısına geç
-tıklarsa uygulama gözünün önünde çöker.
+Mağaza incelemesi açısından da riskliydi: incelemeci doğrulama bağlantısına geç
+tıklarsa uygulama gözünün önünde çökerdi.
+
+**Kapı e-postaya özel değil.** Google ve Apple girişi de aynı callback
+adresinden (`app.kartvizyon.mobile://login-callback`) döndüğü için tarayıcıda
+"vazgeç" demek veya uygulamanın arka planda öldürülmesi de aynı çökmeyi
+üretiyordu. Yani **her giriş yolu** aynı riski taşıyordu.
+
+Düzeltme `c9de2f4`: dinleyiciye `onError` eklendi, bilinen hata kodları
+kullanıcıya ne yapacağını söyleyen Türkçe metne çevrildi, ve tarayıcıdan
+sonuçsuz dönüldüğünde ekranda asılı kalan "giriş ekranı açılıyor…" mesajı
+temizleniyor. `apps/mobile/test/auth_error_test.dart` dinleyicinin `onError`
+olmadan kurulmasını engelliyor.
 
 ## Açık kalanlar
 

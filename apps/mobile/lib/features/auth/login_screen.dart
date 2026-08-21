@@ -21,7 +21,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   final email = TextEditingController();
   final password = TextEditingController();
   final scrollController = ScrollController();
@@ -31,19 +31,83 @@ class _LoginScreenState extends State<LoginScreen> {
   bool busy = false;
   bool awaitingEmailConfirmation = false;
   bool sessionHandled = false;
+
+  /// Tarayıcı açıldı ve henüz bir sonuç dönmedi.
+  ///
+  /// `signInWithOAuth` yalnız tarayıcının açıldığını söyler, girişin başarılı
+  /// olduğunu değil. Kullanıcı tarayıcıda vazgeçip geri döndüğünde ekranda
+  /// "giriş ekranı açılıyor…" yazısı asılı kalıyordu.
+  bool awaitingOAuth = false;
+  Timer? _oauthReturnTimer;
   String? message;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (widget.services.config.hasSupabase) {
       authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
         (event) {
           final session = event.session;
           if (session != null) unawaited(_completeSession(session));
         },
+        onError: _onAuthError,
       );
     }
+  }
+
+  /// Tarayıcıdan sonuçsuz dönüldüyse ekranı serbest bırak.
+  ///
+  /// Geri dönüş anında derin bağlantı hâlâ işleniyor olabilir; oturum birkaç
+  /// yüz milisaniye sonra gelir. Bu yüzden hemen değil, kısa bir bekleyişten
+  /// sonra ve yalnız hâlâ sonuç yoksa temizlenir.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !awaitingOAuth) return;
+    _oauthReturnTimer?.cancel();
+    _oauthReturnTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted || !awaitingOAuth || sessionHandled) return;
+      awaitingOAuth = false;
+      setState(() => busy = false);
+      _showMessage('Giriş tamamlanmadı. Dilerseniz tekrar deneyin.');
+    });
+  }
+
+  /// Giriş bağlantısı geçersizse kullanıcıya söyle; uygulamayı kapatma.
+  ///
+  /// `supabase_flutter` derin bağlantı hatasını yakalayıp `notifyException`
+  /// ile bu akışa **stream hatası** olarak veriyor. `onError` tanımlı
+  /// olmadığında bu hata zone'un yakalanmamış hata yoluna düşüyor ve uygulama
+  /// çöküyordu — 21 Ağustos 2026'da iki testçide böyle oldu (Sentry
+  /// `7618402c` ve `4e9d9c26`, ikisi de `level=fatal`).
+  ///
+  /// Kapı e-postaya özel değil: Google ve Apple girişi de aynı callback
+  /// adresinden döndüğü için tarayıcıda vazgeçmek ya da uygulamanın arka
+  /// planda öldürülmesi de buraya düşer.
+  void _onAuthError(Object error, StackTrace stackTrace) {
+    awaitingOAuth = false;
+    if (!mounted) return;
+    setState(() => busy = false);
+    _showMessage(_authErrorMessage(error));
+  }
+
+  String _authErrorMessage(Object error) {
+    if (error is! AuthException) {
+      return 'Giriş tamamlanamadı. Lütfen tekrar deneyin.';
+    }
+    return switch (error.code) {
+      // Bağlantı tek kullanımlık ve kısa ömürlüdür.
+      'otp_expired' || 'access_denied' =>
+        'Bağlantının süresi dolmuş veya daha önce kullanılmış. Aşağıdan yeni '
+            'bir bağlantı isteyin.',
+      // PKCE doğrulayıcısı bu cihazda başlatılan istekle eşleşmiyor: bağlantı
+      // başka cihazda açılmış, ikinci kez tıklanmış ya da arada yeni bir
+      // bağlantı istenmiş olabilir.
+      'bad_code_verifier' =>
+        'Bu bağlantı başka bir cihazda veya daha önce kullanılmış. Girişi bu '
+            'cihazdan yeniden başlatın.',
+      _ => error.message,
+    };
   }
 
   void _showMessage(String value, {bool confirmation = false}) {
@@ -182,6 +246,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ? 'Google güvenli giriş ekranı açılıyor…'
           : 'Apple güvenli giriş ekranı açılıyor…';
       awaitingEmailConfirmation = false;
+      awaitingOAuth = true;
     });
     try {
       final opened = await Supabase.instance.client.auth.signInWithOAuth(
@@ -190,11 +255,14 @@ class _LoginScreenState extends State<LoginScreen> {
         authScreenLaunchMode: LaunchMode.externalApplication,
       );
       if (!opened) {
+        awaitingOAuth = false;
         _showMessage('Giriş ekranı açılamadı. Lütfen tekrar deneyin.');
       }
     } on AuthException catch (error) {
+      awaitingOAuth = false;
       _showMessage(error.message);
     } catch (_) {
+      awaitingOAuth = false;
       _showMessage('Giriş ekranı açılamadı. Lütfen tekrar deneyin.');
     } finally {
       if (mounted) setState(() => busy = false);
@@ -212,6 +280,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _oauthReturnTimer?.cancel();
     authSubscription?.cancel();
     email.dispose();
     password.dispose();
