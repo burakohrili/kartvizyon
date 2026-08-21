@@ -79,7 +79,7 @@ adresinden (`app.kartvizyon.mobile://login-callback`) döndüğü için tarayıc
 "vazgeç" demek veya uygulamanın arka planda öldürülmesi de aynı çökmeyi
 üretiyordu. Yani **her giriş yolu** aynı riski taşıyordu.
 
-Düzeltme `c9de2f4`: dinleyiciye `onError` eklendi, bilinen hata kodları
+Düzeltme `b231ab7`: dinleyiciye `onError` eklendi, bilinen hata kodları
 kullanıcıya ne yapacağını söyleyen Türkçe metne çevrildi, ve tarayıcıdan
 sonuçsuz dönüldüğünde ekranda asılı kalan "giriş ekranı açılıyor…" mesajı
 temizleniyor. `apps/mobile/test/auth_error_test.dart` dinleyicinin `onError`
