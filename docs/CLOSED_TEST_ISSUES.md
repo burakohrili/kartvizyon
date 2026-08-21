@@ -24,6 +24,7 @@ içinde değil.
 | Tarih  | Ne görüldü                                                                                          | Neden                                                                                                                                                                                                                                                   | Düzeltme  | Build |
 | ------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----- |
 | 19 Ağu | `İşlem tamamlanamadı. (HTTP 504)` — Sentry `e5c8e9bb`, `/api/session`, Android 11, sürüm `1.0.0+42` | Uçta zaman aşımı yoktu; Supabase yavaşlayınca işlev platformca kesildi ve **gövdesiz** 504 döndü. İstemci gövdesiz hatada anlamsız metne düşüyordu. Ayrıca uç her ekran açılışında çağrılıyordu, yani bir yavaşlama tek ekranı değil hepsini kırıyordu. | `be33441` | evet  |
+| 21 Ağu | Geçersiz giriş bağlantısı uygulamayı çökertiyor — Sentry `7618402c` ve `4e9d9c26`, sürüm `1.0.0+41` | Auth akışı dinleyicisinde `onError` yoktu; stream hatası zone'un yakalanmamış hata yoluna düşüyordu. **Her giriş yolunu** etkiliyordu. Ayrıntı aşağıda.                                                                                                 | `b231ab7` | evet  |
 
 ## Yayınlananlar
 
@@ -39,14 +40,10 @@ içinde değil.
 | 18 Ağu | İlk müşteri kaydında `Geçersiz istek.`                                          | `website` alanı tam URL istiyordu; `firma.com` reddediliyordu                                                                                                                                                                                          | `66d1306` | Android 43 / iOS 50  |
 | 18 Ağu | Müşteri ekleme ekranı boş kutu olarak açılıyor                                  | Klavye boşluğu iki kez ekleniyordu                                                                                                                                                                                                                     | —         | Android 43 / iOS 50  |
 
-## Düzeltilmeyi bekleyenler
+## Ayrıntı: geçersiz giriş bağlantısı çökmesi
 
-Şu an boş.
-
-## Geçersiz giriş bağlantısı çökmesi (düzeltildi, yayını bekliyor)
-
-**Geçersiz giriş bağlantısı uygulamayı çökertiyordu** — 21 Ağu, sürüm
-`1.0.0+41`, iki ayrı olay:
+Yukarıdaki tablodaki 21 Ağustos satırının uzun hâli. İki ayrı olay, sürüm
+`1.0.0+41`:
 
 - Sentry `7618402c` — `otp_expired` / `access_denied`, Huawei RNE-L21, Android 8
 - Sentry `4e9d9c26` — `bad_code_verifier`, Huawei ANE-LX1, Android 9
