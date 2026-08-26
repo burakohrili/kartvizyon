@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../core/mobile_services.dart';
 
@@ -173,7 +174,39 @@ class FieldModeService {
     _sessionTimer = Timer(_remainingSessionTime(), () {
       stop(reason: 'Saha modu süre dolduğu için kapandı.');
     });
+    _markSentryState(true);
     return true;
+  }
+
+  /// Saha modunun açık olduğunu Sentry olaylarına iliştir.
+  ///
+  /// 25 Ağustos 2026'da iOS'ta bir `WatchdogTermination` düştü (sürüm
+  /// `1.0.0+46`). Bu olay gözlemlenmez, **çıkarsanır**: çökme raporu yoktur,
+  /// SDK yalnız "uygulama temiz kapanmadı" durumundan tahmin eder. Elimizdeki
+  /// tek olayla sebebini söylemek mümkün değil.
+  ///
+  /// Saha modu, uygulamayı iOS'ta saatlerce arka planda canlı tutabilen tek
+  /// yerimiz (`UIBackgroundModes: location`, `allowBackgroundLocationUpdates`,
+  /// `pauseLocationUpdatesAutomatically: false`). iOS belleği önce arka plan
+  /// uygulamalarından geri alır. Bu yüzden bir sonraki olayda modun açık olup
+  /// olmadığını bilmek, tahmin etmekle ölçmek arasındaki farkı yaratır.
+  ///
+  /// Yalnız açık/kapalı bilgisi ve süre gider; konum gitmez.
+  void _markSentryState(bool active) {
+    Sentry.configureScope((scope) {
+      scope.setTag('field_mode.active', active.toString());
+    });
+    Sentry.addBreadcrumb(
+      Breadcrumb(
+        category: 'field_mode',
+        message: active ? 'saha modu başladı' : 'saha modu durdu',
+        level: SentryLevel.info,
+        data: {
+          if (active && _startedAt != null)
+            'endsAt': endsAt?.toIso8601String() ?? 'bilinmiyor',
+        },
+      ),
+    );
   }
 
   /// Sekiz saatlik sınır ile akşam kapanışından hangisi önce geliyorsa o.
@@ -195,6 +228,7 @@ class FieldModeService {
     _sessionTimer = null;
     _startedAt = null;
     isActive.value = false;
+    _markSentryState(false);
     if (reason != null) lastMessage.value = reason;
   }
 

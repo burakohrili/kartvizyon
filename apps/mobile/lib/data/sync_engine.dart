@@ -140,7 +140,9 @@ class SyncEngine {
           },
           body: item.payloadJson,
         );
-        return _settle(item, response.statusCode, attachment: null);
+        // `await` olmadan döndürülürse `_settle` içindeki bir hata aşağıdaki
+        // catch'e uğramaz ve kuyruk kaydı hiçbir sonuç işaretlenmeden kalır.
+        return await _settle(item, response.statusCode, attachment: null);
       } catch (_) {
         await database.markFailure(item.clientMutationId, 'network_error');
         return null;
@@ -195,7 +197,7 @@ class SyncEngine {
       // Yanıt gövdesi okunmazsa bağlantı açık kalır; her başarısız gönderimde
       // bir soket sızıyordu.
       await response.stream.drain<void>();
-      return _settle(item, response.statusCode, attachment: attachment);
+      return await _settle(item, response.statusCode, attachment: attachment);
     } catch (_) {
       await database.markFailure(item.clientMutationId, 'network_error');
       return null;
