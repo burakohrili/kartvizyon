@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/local/app_database.dart';
@@ -112,7 +113,7 @@ class MobileApiClient {
             const failure = MobileApiException(
               408,
               'Sunucu zamanında yanıt vermedi. Bağlantınızı kontrol edip '
-                  'tekrar deneyin.',
+              'tekrar deneyin.',
             );
             // Zaman aşımı yanıt üretmediği için `_decode` yolundan geçmez;
             // bildirilmezse yavaş uç hiçbir yerde görünmez.
@@ -175,11 +176,23 @@ class MobileApiClient {
     String path, {
     required String field,
     required String filePath,
+    Map<String, String> fields = const {},
+    MediaType? contentType,
   }) async {
     Future<http.Response> sendFile(Map<String, String> headers) async {
       final request = http.MultipartRequest('POST', baseUrl.resolve(path));
       request.headers.addAll(headers);
-      request.files.add(await http.MultipartFile.fromPath(field, filePath));
+      // MultipartRequest sınır (boundary) içeren doğru Content-Type değerini
+      // kendisi üretir. JSON istemcinin varsayılan başlığı bunu bozmamalı.
+      request.headers.remove('content-type');
+      request.fields.addAll(fields);
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          field,
+          filePath,
+          contentType: contentType,
+        ),
+      );
       return http.Response.fromStream(await client.send(request));
     }
 
@@ -195,8 +208,9 @@ class MobileApiClient {
   /// 19 Ağustos 2026'da `/api/session` bir kez 504 döndü ve testçiye tam
   /// olarak bu göründü.
   String _fallbackMessage(int statusCode) => switch (statusCode) {
-    502 || 503 || 504 => 'Sunucuya şu an ulaşılamıyor. Birkaç saniye sonra '
-        'tekrar deneyin.',
+    502 || 503 || 504 =>
+      'Sunucuya şu an ulaşılamıyor. Birkaç saniye sonra '
+          'tekrar deneyin.',
     408 =>
       'Sunucu zamanında yanıt vermedi. Bağlantınızı kontrol edip tekrar '
           'deneyin.',

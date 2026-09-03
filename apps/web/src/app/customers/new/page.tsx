@@ -43,6 +43,18 @@ export default async function NewCustomerPage({
               autoFocus
             />
           </label>
+          <label>
+            Kısa ad / saha adı
+            <input
+              name="displayName"
+              maxLength={80}
+              placeholder="Örn. Ohrili Makina"
+            />
+            <small>
+              Uzun ticari unvan yerine mobil listelerde ve seçim alanlarında
+              gösterilir.
+            </small>
+          </label>
           <div className="form-row">
             <label>
               Firma telefonu

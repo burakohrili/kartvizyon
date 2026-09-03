@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
+import '../customers/customer_identity.dart';
+import '../customers/customer_picker.dart';
 import 'task_list.dart';
 
 class TasksScreen extends StatefulWidget {
@@ -15,6 +17,7 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   late Future<List<Map<String, dynamic>>> tasks;
+  bool creatingTask = false;
 
   @override
   void initState() {
@@ -78,118 +81,107 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   Future<void> createTask() async {
+    if (creatingTask) return;
+    setState(() => creatingTask = true);
     final title = TextEditingController();
-    var customers = <Map<String, dynamic>>[];
-    try {
-      final response =
-          await widget.services.api.get(
-                '/api/customers?workspaceId=${widget.services.workspaceId}',
-              )
-              as Map<String, dynamic>;
-      customers = List<Map<String, dynamic>>.from(
-        response['data'] as List? ?? [],
-      );
-    } catch (error) {
-      title.dispose();
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
-      return;
-    }
-    if (!mounted) return;
-    String? companyId;
+    CustomerChoice? customer;
     DateTime? dueAt;
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Yeni görev'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: title,
-                  autofocus: true,
-                  decoration: const InputDecoration(labelText: 'Görev *'),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String?>(
-                  // ignore: deprecated_member_use
-                  value: companyId,
-                  decoration: const InputDecoration(
-                    labelText: 'Müşteri (isteğe bağlı)',
-                  ),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('Müşteri seçmeden devam et'),
-                    ),
-                    ...customers.map(
-                      (customer) => DropdownMenuItem<String?>(
-                        value: customer['id']?.toString(),
-                        child: Text(customer['name']?.toString() ?? 'Firma'),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) => setDialogState(() => companyId = value),
-                ),
-                // Tarih seçici yoktu ve `dueAt` her zaman null gidiyordu;
-                // bu yüzden elle açılan hiçbir görev "geciken" olamıyordu.
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.event_outlined),
-                  title: Text(
-                    dueAt == null
-                        ? 'Bitiş tarihi (isteğe bağlı)'
-                        : '${dueAt!.day.toString().padLeft(2, '0')}.'
-                              '${dueAt!.month.toString().padLeft(2, '0')}.'
-                              '${dueAt!.year}',
-                  ),
-                  trailing: dueAt == null
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.clear),
-                          tooltip: 'Tarihi kaldır',
-                          onPressed: () => setDialogState(() => dueAt = null),
-                        ),
-                  onTap: () async {
-                    final now = DateTime.now();
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: dueAt ?? now,
-                      firstDate: DateTime(now.year - 1),
-                      lastDate: DateTime(now.year + 3),
-                    );
-                    if (picked != null) setDialogState(() => dueAt = picked);
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Vazgeç'),
-            ),
-            FilledButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, title.text.trim().isNotEmpty),
-              child: const Text('Kaydet'),
-            ),
-          ],
-        ),
-      ),
-    );
-    final taskTitle = title.text.trim();
-    title.dispose();
-    if (accepted != true || taskTitle.isEmpty) return;
     try {
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Yeni görev'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: title,
+                    autofocus: true,
+                    decoration: const InputDecoration(labelText: 'Görev *'),
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.apartment_outlined),
+                    title: Text(customer?.name ?? 'Müşteri seç (isteğe bağlı)'),
+                    subtitle: customer?.legalName == null
+                        ? null
+                        : Text(
+                            customer!.legalName!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                    trailing: customer == null
+                        ? const Icon(Icons.search)
+                        : IconButton(
+                            tooltip: 'Müşteriyi kaldır',
+                            onPressed: () =>
+                                setDialogState(() => customer = null),
+                            icon: const Icon(Icons.clear),
+                          ),
+                    onTap: () async {
+                      final selected = await showCustomerPicker(
+                        context,
+                        services: widget.services,
+                      );
+                      if (selected != null) {
+                        setDialogState(() => customer = selected);
+                      }
+                    },
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.event_outlined),
+                    title: Text(
+                      dueAt == null
+                          ? 'Bitiş tarihi (isteğe bağlı)'
+                          : '${dueAt!.day.toString().padLeft(2, '0')}.'
+                                '${dueAt!.month.toString().padLeft(2, '0')}.'
+                                '${dueAt!.year}',
+                    ),
+                    trailing: dueAt == null
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear),
+                            tooltip: 'Tarihi kaldır',
+                            onPressed: () => setDialogState(() => dueAt = null),
+                          ),
+                    onTap: () async {
+                      final now = DateTime.now();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: dueAt ?? now,
+                        firstDate: DateTime(now.year - 1),
+                        lastDate: DateTime(now.year + 3),
+                      );
+                      if (picked != null) setDialogState(() => dueAt = picked);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Vazgeç'),
+              ),
+              FilledButton(
+                onPressed: () =>
+                    Navigator.pop(dialogContext, title.text.trim().isNotEmpty),
+                child: const Text('Kaydet'),
+              ),
+            ],
+          ),
+        ),
+      );
+      final taskTitle = title.text.trim();
+      if (accepted != true || taskTitle.isEmpty) return;
       await widget.services.api.post('/api/tasks', {
         'workspaceId': widget.services.workspaceId,
         'organizationId': widget.services.organizationId,
-        'companyId': companyId,
+        'companyId': customer?.id,
         'visitId': null,
         'title': taskTitle,
         // Gün sonu değil, mesai saati: 09:00 yerel.
@@ -213,6 +205,9 @@ class _TasksScreenState extends State<TasksScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      title.dispose();
+      if (mounted) setState(() => creatingTask = false);
     }
   }
 
@@ -220,9 +215,14 @@ class _TasksScreenState extends State<TasksScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Görevler')),
     floatingActionButton: FloatingActionButton.extended(
-      onPressed: createTask,
-      icon: const Icon(Icons.add_task),
-      label: const Text('Yeni görev'),
+      onPressed: creatingTask ? null : createTask,
+      icon: creatingTask
+          ? const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.add_task),
+      label: Text(creatingTask ? 'Açılıyor…' : 'Yeni görev'),
     ),
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: tasks,
@@ -306,7 +306,7 @@ class _TasksScreenState extends State<TasksScreen> {
         ),
         subtitle: Text(
           [
-            company?['name']?.toString() ?? 'Genel görev',
+            company == null ? 'Genel görev' : customerDisplayName(company),
             if (due.isNotEmpty) 'Son tarih $due',
           ].join(' · '),
         ),

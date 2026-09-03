@@ -44,10 +44,7 @@ void main() {
           }
           if (request.url.path == '/api/session') {
             return http.Response(
-              jsonEncode({
-                'ownerId': 'user-1',
-                'workspaceId': 'workspace-1',
-              }),
+              jsonEncode({'ownerId': 'user-1', 'workspaceId': 'workspace-1'}),
               200,
             );
           }
@@ -74,9 +71,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(
-      MaterialApp(home: TasksScreen(services: services)),
-    );
+    await tester.pumpWidget(MaterialApp(home: TasksScreen(services: services)));
     await tester.pumpAndSettle();
 
     expect(find.text('Tamamlananlar (1)'), findsOneWidget);
@@ -100,5 +95,73 @@ void main() {
 
     expect(patched, hasLength(1));
     expect(patched.single, contains('"status":"open"'));
+  });
+
+  testWidgets('yeni görev çift dokunmada tek pencere açar ve kayıtla kapanır', (
+    tester,
+  ) async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    var postCount = 0;
+    const config = MobileConfig(
+      apiBaseUrl: 'https://app.kartvizyon.app',
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseAnonKey: 'anon',
+      sentryDsn: '',
+    );
+    final services = MobileServices.forTesting(
+      config: config,
+      database: database,
+      sessions: const _EmptySessionStore(),
+      api: MobileApiClient(
+        baseUrl: Uri.parse(config.apiBaseUrl),
+        sessions: const _EmptySessionStore(),
+        client: MockClient((request) async {
+          if (request.url.path == '/api/session') {
+            return http.Response(
+              jsonEncode({
+                'ownerId': '00000000-0000-4000-8000-000000000010',
+                'workspaceId': '00000000-0000-4000-8000-000000000001',
+              }),
+              200,
+            );
+          }
+          if (request.method == 'POST') {
+            postCount += 1;
+            return http.Response(
+              jsonEncode({
+                'data': {'id': 'task-2'},
+              }),
+              201,
+            );
+          }
+          return http.Response(jsonEncode({'data': []}), 200);
+        }),
+      ),
+      sync: SyncEngine(
+        database: database,
+        sessions: const _EmptySessionStore(),
+        baseUrl: Uri.parse(config.apiBaseUrl),
+        client: MockClient((_) async => http.Response('{}', 200)),
+      ),
+    );
+
+    await tester.pumpWidget(MaterialApp(home: TasksScreen(services: services)));
+    await tester.pumpAndSettle();
+
+    final fab = find.byType(FloatingActionButton);
+    await tester.tap(fab);
+    await tester.tap(fab, warnIfMissed: false);
+    // FAB, pencere açıkken ikinci dokunuşu engellediğini göstermek için
+    // yükleniyor simgesi taşır; sonsuz animasyon nedeniyle settle beklenmez.
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(AlertDialog), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, 'Teklif gönder');
+    await tester.tap(find.text('Kaydet'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(postCount, 1);
   });
 }

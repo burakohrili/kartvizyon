@@ -17,7 +17,7 @@ export async function GET(
     const { data, error } = await supabase
       .from("visits")
       .select(
-        "id,status,purpose,ai_summary,completed_at,company:companies(id,name)",
+        "id,status,purpose,ai_summary,completed_at,company:companies(id,name,display_name)",
       )
       .eq("id", id)
       .eq("representative_id", user.id)

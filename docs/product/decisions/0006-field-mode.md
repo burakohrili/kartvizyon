@@ -78,6 +78,8 @@ ikinci katman olarak ileride değerlendirilebilir; bu ADR kapsamı dışında.
 1. Mod **kullanıcı tarafından başlatılır**; varsayılan kapalıdır.
 2. Çalıştığı **gizlenmez** — Android'de kalıcı bildirim, iOS'ta mavi çubuk.
 3. **Kendiliğinden kapanır**; unutulan oturum gece boyu çalışmaz.
+   Oturum yerel saatle en fazla sekiz saat sürer, aynı gün 21.00'de kapanır
+   ve 21.00'den sonra yeni oturum başlatılmaz.
 4. **Kullanıcının konumu hiçbir yere yazılmaz.** `geofence_events` yalnız
    firma kimliği, mesafe, öncelik puanı ve sonuç tutar; enlem/boylam saklanmaz.
 

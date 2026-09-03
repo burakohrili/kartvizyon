@@ -16,12 +16,13 @@ String syncErrorLabel(String? lastError) {
   return switch (code) {
     'network_error' =>
       'Bağlantı kurulamadı. Ağ geldiğinde kendiliğinden denenecek.',
-    'http_401' || 'http_403' =>
-      'Oturum süresi doldu. Çıkıp yeniden giriş yapın.',
+    'http_401' ||
+    'http_403' => 'Oturum süresi doldu. Çıkıp yeniden giriş yapın.',
     'http_402' =>
       'AI dakika kotanız doldu. Metin notu kotasız gönderilir; '
           'sesli notu silip notu yazarak gönderebilirsiniz.',
-    'http_404' => 'Bu notun bağlı olduğu ziyaret bulunamadı. Kayıt silinebilir.',
+    'http_404' =>
+      'Bu notun bağlı olduğu ziyaret bulunamadı. Kayıt silinebilir.',
     'http_409' =>
       'Bu not sunucuda hâlâ işleniyor. Kısa süre sonra kendiliğinden '
           'tamamlanacak.',

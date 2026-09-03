@@ -9,31 +9,52 @@ export async function GET(request: Request) {
   if (!context.ok) return context.response;
 
   // Konum izni reddedilen kullanıcının belgelenen alternatifi arama ve manuel
-  // adrestir (docs/STORE_RELEASE.md izin tablosu). Liste 100 kayıtla sınırlı
-  // olduğu için arama olmadan bu alternatif fiilen çalışmıyordu.
-  const query = new URL(request.url).searchParams.get("q")?.trim();
+  // adrestir (docs/STORE_RELEASE.md izin tablosu). Arama ve sayfalama birlikte
+  // kullanılır; kayıt sayısı büyüdüğünde seçim listeleri eksik kalmaz.
+  const params = new URL(request.url).searchParams;
+  const query = params.get("q")?.trim();
+  const requestedLimit = Number.parseInt(params.get("limit") ?? "50", 10);
+  const requestedOffset = Number.parseInt(params.get("offset") ?? "0", 10);
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), 100)
+    : 50;
+  const offset = Number.isFinite(requestedOffset)
+    ? Math.max(requestedOffset, 0)
+    : 0;
 
   let builder = context.supabase
     .from("companies")
     .select(
-      "id,name,phone,email,address,assigned_to,updated_at,latitude,longitude,location_source",
+      "id,name,display_name,phone,email,address,assigned_to,updated_at,latitude,longitude,location_source",
+      { count: "exact" },
     )
     .eq("workspace_id", context.workspaceId)
     .is("archived_at", null);
 
   if (query) {
     // `%` ve `_` PostgREST desenini bozmasın diye kaçırılır.
-    const escaped = query.replace(/[%_]/g, (char) => `\${char}`);
+    const escaped = query.replace(/[%_]/g, (char) => `\\${char}`);
     builder = builder.or(
-      `name.ilike.%${escaped}%,address.ilike.%${escaped}%,email.ilike.%${escaped}%`,
+      `name.ilike.%${escaped}%,display_name.ilike.%${escaped}%,address.ilike.%${escaped}%,email.ilike.%${escaped}%`,
     );
   }
 
-  const { data, error } = await builder
+  const { data, error, count } = await builder
     .order("updated_at", { ascending: false })
-    .limit(100);
+    .range(offset, offset + limit);
   if (error) return apiError(error);
-  return Response.json({ data });
+  const rows = data ?? [];
+  const hasMore = rows.length > limit;
+  return Response.json({
+    data: hasMore ? rows.slice(0, limit) : rows,
+    page: {
+      limit,
+      offset,
+      hasMore,
+      nextOffset: hasMore ? offset + limit : null,
+      total: count ?? offset + rows.length,
+    },
+  });
 }
 
 export async function POST(request: Request) {
@@ -57,6 +78,7 @@ export async function POST(request: Request) {
         workspace_id: context.workspaceId,
         organization_id: context.organizationId,
         name: input.name,
+        display_name: input.displayName,
         phone: input.phone,
         email: input.email,
         website: input.website,
@@ -68,7 +90,9 @@ export async function POST(request: Request) {
         client_mutation_id: input.clientMutationId,
         created_by: context.user.id,
       })
-      .select("id,name,created_at,latitude,longitude,location_source")
+      .select(
+        "id,name,display_name,created_at,latitude,longitude,location_source",
+      )
       .single();
     if (error) return apiError(error);
     return Response.json({ data }, { status: 201 });

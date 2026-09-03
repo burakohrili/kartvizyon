@@ -4,6 +4,8 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
+import '../customers/customer_identity.dart';
+import '../customers/customer_picker.dart';
 
 class VisitsScreen extends StatefulWidget {
   const VisitsScreen({super.key, required this.services});
@@ -16,6 +18,7 @@ class VisitsScreen extends StatefulWidget {
 
 class _VisitsScreenState extends State<VisitsScreen> {
   late Future<List<Map<String, dynamic>>> visits;
+  bool creatingVisit = false;
 
   @override
   void initState() {
@@ -35,109 +38,76 @@ class _VisitsScreenState extends State<VisitsScreen> {
   }
 
   Future<void> createVisit() async {
+    if (creatingVisit) return;
+    setState(() => creatingVisit = true);
     final purpose = TextEditingController();
-    List<Map<String, dynamic>> customers;
+    CustomerChoice? customer;
+    var visitPurpose = '';
     try {
-      final response =
-          await widget.services.api.get(
-                '/api/customers?workspaceId=${widget.services.workspaceId}',
-              )
-              as Map<String, dynamic>;
-      customers = List<Map<String, dynamic>>.from(
-        response['data'] as List? ?? [],
-      );
-    } on MobileApiException catch (error) {
-      purpose.dispose();
-      if (!mounted) return;
-      final message = error.statusCode == 401
-          ? 'Oturumunuzun süresi doldu. Lütfen yeniden giriş yapın.'
-          : error.message;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-      return;
-    } catch (_) {
-      purpose.dispose();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Müşteriler yüklenemedi. Bağlantınızı kontrol edin.'),
-        ),
-      );
-      return;
-    }
-    if (!mounted) return;
-    if (customers.isEmpty) {
-      purpose.dispose();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ziyaret oluşturmadan önce bir müşteri ekleyin.'),
-        ),
-      );
-      context.go('/customers');
-      return;
-    }
-
-    String? companyId = customers.first['id']?.toString();
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Yeni ziyaret'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  // ignore: deprecated_member_use
-                  value: companyId,
-                  decoration: const InputDecoration(labelText: 'Müşteri'),
-                  items: customers
-                      .map(
-                        (item) => DropdownMenuItem(
-                          value: item['id'].toString(),
-                          child: Text(item['name']?.toString() ?? 'Firma'),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => setDialogState(() => companyId = value),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: purpose,
-                  decoration: const InputDecoration(labelText: 'Ziyaret amacı'),
-                ),
-              ],
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Yeni ziyaret'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.apartment_outlined),
+                    title: Text(customer?.name ?? 'Müşteri seç *'),
+                    subtitle: customer?.legalName == null
+                        ? null
+                        : Text(
+                            customer!.legalName!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                    trailing: const Icon(Icons.search),
+                    onTap: () async {
+                      final selected = await showCustomerPicker(
+                        context,
+                        services: widget.services,
+                      );
+                      if (selected != null) {
+                        setDialogState(() => customer = selected);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: purpose,
+                    decoration: const InputDecoration(
+                      labelText: 'Ziyaret amacı',
+                    ),
+                  ),
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Vazgeç'),
+              ),
+              FilledButton(
+                onPressed: customer == null
+                    ? null
+                    : () => Navigator.pop(dialogContext, true),
+                child: const Text('Ziyareti başlat'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Vazgeç'),
-            ),
-            FilledButton(
-              onPressed: companyId == null
-                  ? null
-                  : () => Navigator.pop(dialogContext, true),
-              child: const Text('Ziyareti başlat'),
-            ),
-          ],
         ),
-      ),
-    );
-    if (accepted != true || companyId == null) {
-      purpose.dispose();
-      return;
-    }
-    final visitPurpose = purpose.text.trim();
-    purpose.dispose();
-
-    try {
+      );
+      if (accepted != true || customer == null) return;
+      final selectedCustomer = customer!;
+      visitPurpose = purpose.text.trim();
       final response =
           await widget.services.api.post('/api/visits', {
                 'workspaceId': widget.services.workspaceId,
                 'organizationId': widget.services.organizationId,
-                'companyId': companyId,
+                'companyId': selectedCustomer.id,
                 'purpose': visitPurpose,
                 'startedAt': DateTime.now().toUtc().toIso8601String(),
                 'clientMutationId': const Uuid().v4(),
@@ -153,11 +123,13 @@ class _VisitsScreenState extends State<VisitsScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
+      final selectedCustomer = customer;
+      if (selectedCustomer == null) return;
       await widget.services.queue.enqueueVisitCreate(
         ownerId: widget.services.ownerId,
         workspaceId: widget.services.workspaceId,
         organizationId: widget.services.organizationId,
-        companyId: companyId!,
+        companyId: selectedCustomer.id,
         purpose: visitPurpose,
       );
       if (!mounted) return;
@@ -168,6 +140,9 @@ class _VisitsScreenState extends State<VisitsScreen> {
           ),
         ),
       );
+    } finally {
+      purpose.dispose();
+      if (mounted) setState(() => creatingVisit = false);
     }
   }
 
@@ -181,9 +156,14 @@ class _VisitsScreenState extends State<VisitsScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Ziyaretler')),
     floatingActionButton: FloatingActionButton.extended(
-      onPressed: createVisit,
-      icon: const Icon(Icons.add),
-      label: const Text('Yeni ziyaret'),
+      onPressed: creatingVisit ? null : createVisit,
+      icon: creatingVisit
+          ? const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.add),
+      label: Text(creatingVisit ? 'Açılıyor…' : 'Yeni ziyaret'),
     ),
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: visits,
@@ -251,7 +231,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
               final status = item['status']?.toString() ?? 'draft';
               return Card(
                 child: ListTile(
-                  title: Text(company['name']?.toString() ?? 'Firma'),
+                  title: Text(customerDisplayName(company)),
                   subtitle: Text(item['purpose']?.toString() ?? 'Ziyaret'),
                   trailing: Chip(
                     label: Text(

@@ -8,7 +8,9 @@ export async function GET(request: Request) {
     if (!context.ok) return context.response;
     const { data, error } = await context.supabase
       .from("order_drafts")
-      .select("*,company:companies(name),items:order_draft_items(*)")
+      .select(
+        "*,company:companies(name,display_name),items:order_draft_items(*)",
+      )
       .eq("workspace_id", context.workspaceId)
       .order("created_at", { ascending: false });
     if (error) throw error;

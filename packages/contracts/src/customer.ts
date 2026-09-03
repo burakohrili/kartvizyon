@@ -31,6 +31,7 @@ export const companyCreateSchema = z.object({
   workspaceId: z.uuid(),
   organizationId: z.uuid().nullable(),
   name: z.string().trim().min(2).max(200),
+  displayName: optionalText(80),
   phone: optionalText(40),
   email: z
     .union([z.email(), z.literal("")])

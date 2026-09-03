@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
+import '../customers/customer_identity.dart';
+import 'workspace_module_actions.dart';
 
 enum WorkspaceModule {
   calendar,
@@ -54,16 +57,11 @@ extension WorkspaceModuleCopy on WorkspaceModule {
     WorkspaceModule.forms => 'Aktif form yok',
   };
 
-  /// Ekranın ne olduğunu ve kaydın nerede oluştuğunu anlatır.
-  ///
-  /// Bu modüllerin çoğu mobilde bilinçli olarak salt okunurdur; saha çalışanı
-  /// fırsat ya da ürün yayınlamaz, sahada bunları okur
-  /// (bkz. `docs/MOBILE_WEB_PARITY.md`).
+  /// Ekranın ne olduğunu ve mobilde ilk kaydın nasıl oluştuğunu anlatır.
   String get emptyBody => switch (this) {
     WorkspaceModule.calendar =>
       'Tarihli ziyaretler ve son tarihi olan görevler burada listelenir. '
-          'Planlı ziyaret web çalışma alanındaki takvimden oluşturulur; '
-          'görevlere tarihi Görevler ekranından verebilirsiniz.',
+          'Sağ alttaki düğmeyle yeni ziyaret planlayabilirsiniz.',
     WorkspaceModule.activity =>
       'Onayladığınız ziyaretler buraya düşer. Bir ziyaret notu gönderip '
           'özeti onayladığınızda ilk kayıt görünecek.',
@@ -71,24 +69,23 @@ extension WorkspaceModuleCopy on WorkspaceModule {
       'Müşteri, ziyaret ve görev sayıları buradan okunur. İlk müşterinizi '
           'ekleyip bir ziyaret kaydettiğinizde göstergeler dolar.',
     WorkspaceModule.notifications =>
-      'Yorum, görev ve onay olayları burada birikir. Bu olaylar web çalışma '
-          'alanındaki yorumlardan üretilir; yalnız mobil kullanıyorsanız bu '
-          'liste boş kalır.',
+      'Yorum, görev ve onay olayları burada birikir. Yeni olay oluştuğunda '
+          'mobilde okuyup işaretleyebilirsiniz.',
     WorkspaceModule.opportunities =>
-      'Satış pipeline\'ı sahada salt okunur gösterilir. Fırsat kayıtları web '
-          'çalışma alanında oluşturulur ve aşaması orada güncellenir.',
+      'Yeni fırsatı mobilde oluşturabilir, kayda dokunarak satış aşamasını '
+          'güncelleyebilirsiniz.',
     WorkspaceModule.products =>
-      'Aktif ürün kataloğu ve liste fiyatları sahada salt okunur gösterilir. '
-          'Ürünler ve fiyat listesi web çalışma alanında yönetilir.',
+      'Aktif ürün kataloğu ve liste fiyatları burada görünür. Yeni ürünü '
+          'mobilde kataloğa ekleyebilirsiniz.',
     WorkspaceModule.orders =>
-      'Sipariş taslaklarının durumu ve tutarı sahada salt okunur gösterilir. '
-          'Taslaklar web çalışma alanında oluşturulur.',
+      'Mobilde sipariş taslağı oluşturabilir; kayda dokunarak onaya '
+          'gönderebilir veya yetkiniz varsa sonuçlandırabilirsiniz.',
     WorkspaceModule.documents =>
       'Yüklenen dosyalar ve zararlı yazılım tarama durumları burada görünür. '
-          'Belge yükleme web çalışma alanında yapılır.',
+          'Belgeyi fotoğraflayıp güvenlik taramasına gönderebilirsiniz.',
     WorkspaceModule.forms =>
-      'Saha formu şablonları ve gönderimleri burada listelenir. Şablonlar web '
-          'çalışma alanında tanımlanır.',
+      'Mobilde form şablonu oluşturabilir; şablona dokunup saha yanıtını '
+          'gönderebilirsiniz.',
   };
 
   String get path => switch (this) {
@@ -120,6 +117,7 @@ class WorkspaceModuleScreen extends StatefulWidget {
 
 class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
   late Future<List<_ModuleItem>> items;
+  bool actionBusy = false;
 
   @override
   void initState() {
@@ -141,7 +139,11 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
           '/api/tasks?workspaceId=${widget.services.workspaceId}',
         ),
       ]);
-      final customers = _list((responses[0] as Map)['data']);
+      final customerResponse = responses[0] as Map;
+      final customers = _list(customerResponse['data']);
+      final customerTotal =
+          (customerResponse['page'] as Map?)?['total'] as int? ??
+          customers.length;
       final visits = _list((responses[1] as Map)['data']);
       final tasks = _list((responses[2] as Map)['data']);
       final approved = visits
@@ -155,24 +157,28 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
           .length;
       return [
         _ModuleItem(
-          title: '${customers.length}',
+          title: '$customerTotal',
           subtitle: 'Aktif müşteri',
           icon: Icons.apartment_outlined,
+          raw: const {'route': '/customers'},
         ),
         _ModuleItem(
           title: '$approved',
           subtitle: 'Onaylanmış ziyaret',
           icon: Icons.verified_outlined,
+          raw: const {'route': '/visits'},
         ),
         _ModuleItem(
           title: '$review',
           subtitle: 'İnceleme bekleyen ziyaret',
           icon: Icons.rate_review_outlined,
+          raw: const {'route': '/visits'},
         ),
         _ModuleItem(
           title: '$openTasks',
           subtitle: 'Açık görev',
           icon: Icons.task_alt_outlined,
+          raw: const {'route': '/tasks'},
         ),
       ];
     }
@@ -217,6 +223,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
               _date(item['planned_start_at']),
             ]),
             icon: Icons.event_outlined,
+            raw: {...item, '_kind': 'visit'},
           ),
         ),
         ..._list(response['tasks']).map(
@@ -224,6 +231,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
             title: item['title']?.toString() ?? 'Görev',
             subtitle: _parts([_company(item), _date(item['due_at'])]),
             icon: Icons.task_alt_outlined,
+            raw: {...item, '_kind': 'task'},
           ),
         ),
       ],
@@ -235,6 +243,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                 title: _company(item) ?? 'Müşteri ziyareti',
                 subtitle: _parts([item['purpose'], _date(item['approved_at'])]),
                 icon: Icons.verified_outlined,
+                raw: item,
               ),
             )
             .toList(),
@@ -269,6 +278,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                   _money(item['estimated_value'], item['currency']),
                 ]),
                 icon: Icons.trending_up,
+                raw: item,
               ),
             )
             .toList(),
@@ -282,6 +292,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
               _money(item['list_price'], item['currency']),
             ]),
             icon: Icons.inventory_2_outlined,
+            raw: item,
           ),
         ),
       ],
@@ -295,6 +306,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                   _money(item['grand_total'], item['currency']),
                 ]),
                 icon: Icons.receipt_long_outlined,
+                raw: item,
               ),
             )
             .toList(),
@@ -320,6 +332,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
             title: item['name']?.toString() ?? 'Form şablonu',
             subtitle: item['description']?.toString() ?? 'Aktif form şablonu',
             icon: Icons.dynamic_form_outlined,
+            raw: {...item, '_kind': 'template'},
           ),
         ),
         ..._list(response['submissions']).map(
@@ -330,6 +343,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
               _date(item['submitted_at']),
             ]),
             icon: Icons.fact_check_outlined,
+            raw: {...item, '_kind': 'submission'},
           ),
         ),
       ],
@@ -394,9 +408,183 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
     await settleRefresh(next);
   }
 
+  bool get _canCreate => switch (widget.module) {
+    WorkspaceModule.calendar ||
+    WorkspaceModule.opportunities ||
+    WorkspaceModule.products ||
+    WorkspaceModule.orders ||
+    WorkspaceModule.documents ||
+    WorkspaceModule.forms => true,
+    _ => false,
+  };
+
+  String get _actionLabel => switch (widget.module) {
+    WorkspaceModule.calendar => 'Ziyaret planla',
+    WorkspaceModule.opportunities => 'Yeni fırsat',
+    WorkspaceModule.products => 'Yeni ürün',
+    WorkspaceModule.orders => 'Yeni taslak',
+    WorkspaceModule.documents => 'Belge yükle',
+    WorkspaceModule.forms => 'Yeni form',
+    _ => 'Yeni kayıt',
+  };
+
+  IconData get _actionIcon => switch (widget.module) {
+    WorkspaceModule.calendar => Icons.event_available_outlined,
+    WorkspaceModule.opportunities => Icons.add_chart_outlined,
+    WorkspaceModule.products => Icons.add_box_outlined,
+    WorkspaceModule.orders => Icons.post_add_outlined,
+    WorkspaceModule.documents => Icons.upload_file_outlined,
+    WorkspaceModule.forms => Icons.playlist_add_outlined,
+    _ => Icons.add,
+  };
+
+  Future<void> createRecord() async {
+    if (actionBusy) return;
+    setState(() => actionBusy = true);
+    try {
+      final changed = switch (widget.module) {
+        WorkspaceModule.calendar => WorkspaceModuleActions.planVisit(
+          context,
+          widget.services,
+        ),
+        WorkspaceModule.opportunities =>
+          WorkspaceModuleActions.createOpportunity(context, widget.services),
+        WorkspaceModule.products => WorkspaceModuleActions.createProduct(
+          context,
+          widget.services,
+        ),
+        WorkspaceModule.orders => WorkspaceModuleActions.createOrder(
+          context,
+          widget.services,
+        ),
+        WorkspaceModule.documents => WorkspaceModuleActions.uploadDocument(
+          context,
+          widget.services,
+        ),
+        WorkspaceModule.forms => WorkspaceModuleActions.createFormTemplate(
+          context,
+          widget.services,
+        ),
+        _ => Future.value(false),
+      };
+      if (!await changed || !mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Kayıt oluşturuldu.')));
+      await refresh();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is MobileApiException
+                ? error.message
+                : 'İşlem tamamlanamadı. Tekrar deneyin.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => actionBusy = false);
+    }
+  }
+
+  bool _canActivate(_ModuleItem item) =>
+      widget.module == WorkspaceModule.notifications ||
+      _isOpenableDocument(item) ||
+      widget.module == WorkspaceModule.calendar ||
+      widget.module == WorkspaceModule.activity ||
+      widget.module == WorkspaceModule.reports ||
+      widget.module == WorkspaceModule.opportunities ||
+      widget.module == WorkspaceModule.orders ||
+      (widget.module == WorkspaceModule.forms &&
+          item.raw?['_kind'] == 'template');
+
+  Future<void> activateItem(_ModuleItem item) async {
+    try {
+      switch (widget.module) {
+        case WorkspaceModule.notifications:
+          await markNotificationRead(item);
+          return;
+        case WorkspaceModule.documents:
+        case WorkspaceModule.products:
+          if (_isOpenableDocument(item)) await openDocument(item);
+          return;
+        case WorkspaceModule.calendar:
+          context.go(item.raw?['_kind'] == 'task' ? '/tasks' : '/visits');
+          return;
+        case WorkspaceModule.activity:
+          final id = item.raw?['id']?.toString();
+          if (id != null) context.push('/visits/$id/review');
+          return;
+        case WorkspaceModule.reports:
+          final route = item.raw?['route']?.toString();
+          if (route != null) context.go(route);
+          return;
+        case WorkspaceModule.opportunities:
+          if (item.raw != null &&
+              await WorkspaceModuleActions.updateOpportunityStage(
+                context,
+                widget.services,
+                item.raw!,
+              )) {
+            await refresh();
+          }
+          return;
+        case WorkspaceModule.orders:
+          if (item.raw != null &&
+              await WorkspaceModuleActions.transitionOrder(
+                context,
+                widget.services,
+                item.raw!,
+              )) {
+            await refresh();
+          }
+          return;
+        case WorkspaceModule.forms:
+          if (item.raw?['_kind'] == 'template' &&
+              await WorkspaceModuleActions.submitForm(
+                context,
+                widget.services,
+                item.raw!,
+              )) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Form yanıtı gönderildi.')),
+              );
+            }
+            await refresh();
+          }
+          return;
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is MobileApiException
+                ? error.message
+                : 'İşlem tamamlanamadı. Tekrar deneyin.',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(widget.module.title)),
+    floatingActionButton: _canCreate
+        ? FloatingActionButton.extended(
+            onPressed: actionBusy ? null : createRecord,
+            icon: actionBusy
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(_actionIcon),
+            label: Text(actionBusy ? 'İşleniyor…' : _actionLabel),
+          )
+        : null,
     body: FutureBuilder<List<_ModuleItem>>(
       future: items,
       builder: (context, snapshot) {
@@ -472,11 +660,10 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                   leading: Icon(item.icon),
                   title: Text(item.title),
                   subtitle: item.subtitle.isEmpty ? null : Text(item.subtitle),
-                  onTap: widget.module == WorkspaceModule.notifications
-                      ? () => markNotificationRead(item)
-                      : _isOpenableDocument(item)
-                      ? () => openDocument(item)
+                  trailing: _canActivate(item)
+                      ? const Icon(Icons.chevron_right)
                       : null,
+                  onTap: _canActivate(item) ? () => activateItem(item) : null,
                 ),
               );
             },
@@ -505,7 +692,7 @@ List<Map<String, dynamic>> _list(dynamic value) =>
     List<Map<String, dynamic>>.from(value as List? ?? []);
 
 String? _company(Map<String, dynamic> item) =>
-    (item['company'] as Map?)?['name']?.toString();
+    item['company'] is Map ? customerDisplayName(item['company'] as Map) : null;
 
 String _parts(List<dynamic> values) => values
     .where((value) => value != null && value.toString().trim().isNotEmpty)

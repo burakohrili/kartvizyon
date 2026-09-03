@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     if (!context.ok) return context.response;
     const { data, error } = await context.supabase
       .from("opportunities")
-      .select("*,company:companies(name)")
+      .select("*,company:companies(name,display_name)")
       .eq("workspace_id", context.workspaceId)
       .order("updated_at", { ascending: false });
     if (error) throw error;

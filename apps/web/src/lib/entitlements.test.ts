@@ -238,7 +238,14 @@ describe("assertQuota", () => {
 
   it("deneme aktifken müşteri limiti uygulanmaz", async () => {
     const state = baseState({ companies: 500 });
-    expect(await assertQuota(CONTEXT(state), "companies")).toBeNull();
+    const entitlement = await resolveEntitlement(
+      fakeSupabase(state),
+      "workspace-1",
+      NOW,
+    );
+    expect(
+      await assertQuota(CONTEXT(state), "companies", { entitlement }),
+    ).toBeNull();
   });
 
   it("AI dakikası dolduğunda 402 döner", async () => {

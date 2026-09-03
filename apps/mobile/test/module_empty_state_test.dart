@@ -62,7 +62,8 @@ void main() {
 
     // Eskiden burada yalnız "Fırsatlar için henüz kayıt bulunmuyor." yazıyordu.
     expect(find.text('Fırsat kaydı yok'), findsOneWidget);
-    expect(find.textContaining('web çalışma alanında'), findsOneWidget);
+    expect(find.textContaining('web çalışma alanında'), findsNothing);
+    expect(find.text('Yeni fırsat'), findsOneWidget);
     expect(find.text('Yenile'), findsOneWidget);
   });
 }

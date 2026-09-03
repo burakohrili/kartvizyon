@@ -35,19 +35,20 @@ class _ReadyGeolocator extends GeolocatorPlatform
       LocationPermission.whileInUse;
 
   @override
-  Future<Position> getCurrentPosition({LocationSettings? locationSettings}) async =>
-      Position(
-        latitude: 38.46,
-        longitude: 27.21,
-        timestamp: DateTime.utc(2026, 8, 18),
-        accuracy: 12,
-        altitude: 0,
-        altitudeAccuracy: 0,
-        heading: 0,
-        headingAccuracy: 0,
-        speed: 0,
-        speedAccuracy: 0,
-      );
+  Future<Position> getCurrentPosition({
+    LocationSettings? locationSettings,
+  }) async => Position(
+    latitude: 38.46,
+    longitude: 27.21,
+    timestamp: DateTime.utc(2026, 8, 18),
+    accuracy: 12,
+    altitude: 0,
+    altitudeAccuracy: 0,
+    heading: 0,
+    headingAccuracy: 0,
+    speed: 0,
+    speedAccuracy: 0,
+  );
 }
 
 void main() {
@@ -74,10 +75,8 @@ void main() {
         baseUrl: Uri.parse(config.apiBaseUrl),
         sessions: const _EmptySessionStore(),
         client: MockClient(
-          (_) async => http.Response(
-            jsonEncode({'error': 'Oturum gerekli.'}),
-            401,
-          ),
+          (_) async =>
+              http.Response(jsonEncode({'error': 'Oturum gerekli.'}), 401),
         ),
       ),
       sync: SyncEngine(

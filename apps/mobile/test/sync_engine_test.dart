@@ -12,10 +12,8 @@ class _FakeSessionStore extends SecureSessionStore {
   const _FakeSessionStore();
 
   @override
-  Future<({String accessToken, String refreshToken})?> read() async => (
-    accessToken: 'token',
-    refreshToken: 'refresh',
-  );
+  Future<({String accessToken, String refreshToken})?> read() async =>
+      (accessToken: 'token', refreshToken: 'refresh');
 }
 
 void main() {
@@ -73,9 +71,10 @@ void main() {
       await enqueue('second', DateTime.utc(2026, 8, 18, 10));
 
       final seen = <Uri>[];
-      final result = await engineReturning([413, 200], seen).run(
-        ownerId: 'user-a',
-      );
+      final result = await engineReturning([
+        413,
+        200,
+      ], seen).run(ownerId: 'user-a');
 
       // Eski davranış: 413 sonrası döngü kırılıyor ve ikinci kayıt hiç
       // denenmiyordu.
@@ -109,9 +108,10 @@ void main() {
       await enqueue('second', DateTime.utc(2026, 8, 18, 10));
 
       final seen = <Uri>[];
-      final result = await engineReturning([409, 200], seen).run(
-        ownerId: 'user-a',
-      );
+      final result = await engineReturning([
+        409,
+        200,
+      ], seen).run(ownerId: 'user-a');
 
       expect(seen, hasLength(2));
       expect(result.synced, 1);
@@ -153,9 +153,9 @@ void main() {
       isTrue,
       reason: 'ses parçası tür beyan etmeden gönderilemez',
     );
-    final media = RegExp("MediaType[(]'([^']+)', *'([^']+)'[)]").firstMatch(
-      call,
-    );
+    final media = RegExp(
+      "MediaType[(]'([^']+)', *'([^']+)'[)]",
+    ).firstMatch(call);
     expect(media, isNotNull, reason: 'beyan edilen tür okunamadı');
     expect(accepted, contains('${media!.group(1)}/${media.group(2)}'));
   });

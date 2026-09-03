@@ -350,3 +350,25 @@ describe("müşteri web sitesi normalizasyonu", () => {
     ).toBe(false);
   });
 });
+
+describe("müşteri kısa adı", () => {
+  const base = {
+    workspaceId: "00000000-0000-4000-8000-000000000001",
+    organizationId: null,
+    name: "Ohrili Makina Sanayi ve Ticaret Limited Şirketi",
+  };
+
+  it("kısa adı kırpar ve kabul eder", () => {
+    expect(
+      companyCreateSchema.parse({ ...base, displayName: "  Ohrili Makina  " })
+        .displayName,
+    ).toBe("Ohrili Makina");
+  });
+
+  it("80 karakteri aşan kısa adı reddeder", () => {
+    expect(
+      companyCreateSchema.safeParse({ ...base, displayName: "x".repeat(81) })
+        .success,
+    ).toBe(false);
+  });
+});

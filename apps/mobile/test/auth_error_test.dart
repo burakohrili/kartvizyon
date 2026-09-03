@@ -15,9 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// adresinden döndüğü için tarayıcıda vazgeçmek de buraya düşer. Bu yüzden
 /// dinleyici `onError` olmadan bırakılamaz.
 void main() {
-  final source = File(
-    'lib/features/auth/login_screen.dart',
-  ).readAsStringSync();
+  final source = File('lib/features/auth/login_screen.dart').readAsStringSync();
 
   test('auth akışı dinleyicisi onError olmadan kurulmaz', () {
     final start = source.indexOf('onAuthStateChange.listen(');

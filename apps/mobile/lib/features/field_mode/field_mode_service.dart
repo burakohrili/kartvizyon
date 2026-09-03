@@ -62,7 +62,25 @@ class FieldModeService {
   DateTime? get endsAt {
     final startedAt = _startedAt;
     if (startedAt == null) return null;
-    return startedAt.add(_remainingSessionTime(from: startedAt));
+    return sessionEndFor(startedAt);
+  }
+
+  /// Yerel başlangıç için kesin kapanış anı.
+  ///
+  /// Akşam sınırı geçmişse başlangıç anını döndürür; start bu durumda modu
+  /// açmaz. Önceki hesap, 21.00'den sonra akşam sınırını yok sayıp sekiz saat
+  /// eklediği için unutulan mod ertesi sabaha kadar açık kalabiliyordu.
+  @visibleForTesting
+  static DateTime sessionEndFor(DateTime startedAt) {
+    final evening = DateTime(
+      startedAt.year,
+      startedAt.month,
+      startedAt.day,
+      autoStopHour,
+    );
+    if (!startedAt.isBefore(evening)) return startedAt;
+    final durationLimit = startedAt.add(sessionLimit);
+    return durationLimit.isBefore(evening) ? durationLimit : evening;
   }
 
   Future<void> initialise() async {
@@ -149,6 +167,14 @@ class FieldModeService {
 
   Future<bool> start() async {
     if (isActive.value) return true;
+    final startedAt = DateTime.now();
+    final endAt = sessionEndFor(startedAt);
+    if (!endAt.isAfter(startedAt)) {
+      lastMessage.value =
+          'Saha modu saat 21.00’den sonra başlatılamaz. '
+          'Yarın çalışma saatinde yeniden deneyin.';
+      return false;
+    }
     if (!await _ensureLocationPermission()) return false;
     if (!await _ensureNotificationPermission()) {
       lastMessage.value =
@@ -156,7 +182,7 @@ class FieldModeService {
       return false;
     }
 
-    _startedAt = DateTime.now();
+    _startedAt = startedAt;
     _notifiedCompanyIds.clear();
     isActive.value = true;
     lastMessage.value = null;
@@ -171,7 +197,7 @@ class FieldModeService {
           },
         );
 
-    _sessionTimer = Timer(_remainingSessionTime(), () {
+    _sessionTimer = Timer(endAt.difference(startedAt), () {
       stop(reason: 'Saha modu süre dolduğu için kapandı.');
     });
     _markSentryState(true);
@@ -207,17 +233,6 @@ class FieldModeService {
         },
       ),
     );
-  }
-
-  /// Sekiz saatlik sınır ile akşam kapanışından hangisi önce geliyorsa o.
-  Duration _remainingSessionTime({DateTime? from}) {
-    final now = from ?? DateTime.now();
-    final limit = now.add(sessionLimit);
-    final evening = DateTime(now.year, now.month, now.day, autoStopHour);
-    final stopAt = evening.isAfter(now) && evening.isBefore(limit)
-        ? evening
-        : limit;
-    return stopAt.difference(now);
   }
 
   Future<void> stop({String? reason}) async {

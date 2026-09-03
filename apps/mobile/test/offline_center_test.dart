@@ -78,10 +78,7 @@ void main() {
           createdAt: DateTime.utc(2026, 8, 18),
         ),
       );
-      await database.markFailure(
-        'mutation-1',
-        '${syncBlockedPrefix}http_413',
-      );
+      await database.markFailure('mutation-1', '${syncBlockedPrefix}http_413');
     });
 
     tearDown(() => database.close());

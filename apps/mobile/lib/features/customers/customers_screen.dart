@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -5,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
+import 'customer_identity.dart';
 
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key, required this.services});
@@ -30,9 +33,15 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   final searchController = TextEditingController();
   String query = '';
+  final visibleCustomers = <Map<String, dynamic>>[];
+  Timer? searchDebounce;
+  bool hasMore = false;
+  bool loadingMore = false;
+  int loadGeneration = 0;
 
   @override
   void dispose() {
+    searchDebounce?.cancel();
     searchController.dispose();
     super.dispose();
   }
@@ -43,16 +52,47 @@ class _CustomersScreenState extends State<CustomersScreen> {
     customers = load();
   }
 
-  Future<List<Map<String, dynamic>>> load() async {
+  Future<List<Map<String, dynamic>>> load({bool append = false}) async {
     if (!widget.services.config.hasSupabase) return const [];
+    final generation = append ? loadGeneration : ++loadGeneration;
     await widget.services.refreshContext();
     final search = query.isEmpty ? '' : '&q=${Uri.encodeQueryComponent(query)}';
+    final offset = append ? visibleCustomers.length : 0;
     final result =
         await widget.services.api.get(
-              '/api/customers?workspaceId=${widget.services.workspaceId}$search',
+              '/api/customers?workspaceId=${widget.services.workspaceId}'
+              '&limit=40&offset=$offset$search',
             )
             as Map<String, dynamic>;
-    return List<Map<String, dynamic>>.from(result['data'] as List? ?? []);
+    if (generation != loadGeneration) return visibleCustomers;
+    final next = List<Map<String, dynamic>>.from(
+      result['data'] as List? ?? const [],
+    );
+    if (!append) visibleCustomers.clear();
+    visibleCustomers.addAll(next);
+    hasMore = (result['page'] as Map?)?['hasMore'] == true;
+    return List.unmodifiable(visibleCustomers);
+  }
+
+  void search(String value) {
+    searchDebounce?.cancel();
+    searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      setState(() {
+        query = value.trim();
+        customers = load();
+      });
+    });
+  }
+
+  Future<void> loadMoreCustomers() async {
+    if (loadingMore || !hasMore) return;
+    setState(() {
+      loadingMore = true;
+      customers = load(append: true);
+    });
+    await customers;
+    if (mounted) setState(() => loadingMore = false);
   }
 
   /// Kartvizit kaynağını sorar.
@@ -195,6 +235,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 'workspaceId': widget.services.workspaceId,
                 'organizationId': widget.services.organizationId,
                 'name': draft.companyName.trim(),
+                'displayName': draft.displayName.trim(),
                 'phone': draft.phone.trim(),
                 'email': draft.email.trim(),
                 'website': draft.website.trim(),
@@ -279,6 +320,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       icon: const Icon(Icons.clear),
                       tooltip: 'Aramayı temizle',
                       onPressed: () {
+                        searchDebounce?.cancel();
                         searchController.clear();
                         setState(() {
                           query = '';
@@ -287,10 +329,14 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       },
                     ),
             ),
-            onSubmitted: (value) => setState(() {
-              query = value.trim();
-              customers = load();
-            }),
+            onSubmitted: (value) {
+              searchDebounce?.cancel();
+              setState(() {
+                query = value.trim();
+                customers = load();
+              });
+            },
+            onChanged: search,
           ),
         ),
         Expanded(child: _buildList()),
@@ -301,7 +347,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
   Widget _buildList() => FutureBuilder<List<Map<String, dynamic>>>(
     future: customers,
     builder: (context, snapshot) {
-      if (snapshot.connectionState != ConnectionState.done) {
+      if (snapshot.connectionState != ConnectionState.done &&
+          !snapshot.hasData &&
+          visibleCustomers.isEmpty) {
         return const Center(child: CircularProgressIndicator());
       }
       if (snapshot.hasError) {
@@ -364,20 +412,40 @@ class _CustomersScreenState extends State<CustomersScreen> {
         child: ListView.separated(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
-          itemCount: items.length,
+          itemCount: items.length + (hasMore || loadingMore ? 1 : 0),
           separatorBuilder: (_, __) => const SizedBox(height: 8),
           itemBuilder: (_, index) {
+            if (index == items.length) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: loadingMore
+                      ? const CircularProgressIndicator()
+                      : OutlinedButton.icon(
+                          onPressed: loadMoreCustomers,
+                          icon: const Icon(Icons.expand_more),
+                          label: const Text('Daha fazla müşteri yükle'),
+                        ),
+                ),
+              );
+            }
             final item = items[index];
-            final name = item['name']?.toString() ?? 'Firma';
+            final name = customerDisplayName(item);
+            final legalName = customerLegalName(item);
             final initials = name.isEmpty
                 ? 'M'
                 : name.substring(0, name.length < 2 ? name.length : 2);
             return Card(
               child: ListTile(
                 leading: CircleAvatar(child: Text(initials.toUpperCase())),
-                title: Text(name),
+                title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: Text(
-                  item['address']?.toString() ?? 'Adres belirtilmedi',
+                  [
+                    if (legalName != null) legalName,
+                    item['address']?.toString() ?? 'Adres belirtilmedi',
+                  ].join(' · '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push('/customers/${item['id']}'),
@@ -397,6 +465,7 @@ Future<_CustomerDraft?> _showCustomerDialog(
 }) {
   final formKey = GlobalKey<FormState>();
   final companyName = TextEditingController(text: initial.companyName);
+  final displayName = TextEditingController(text: initial.displayName);
   final address = TextEditingController(text: initial.address);
   final firstName = TextEditingController(text: initial.firstName);
   final lastName = TextEditingController(text: initial.lastName);
@@ -435,6 +504,16 @@ Future<_CustomerDraft?> _showCustomerDialog(
                     validator: (value) => (value?.trim().length ?? 0) < 2
                         ? 'Firma adı en az 2 karakter olmalı.'
                         : null,
+                  ),
+                  TextFormField(
+                    controller: displayName,
+                    textInputAction: TextInputAction.next,
+                    maxLength: 80,
+                    decoration: const InputDecoration(
+                      labelText: 'Kısa ad / saha adı',
+                      helperText:
+                          'Uzun ticari unvan yerine listelerde görünür.',
+                    ),
                   ),
                   TextFormField(
                     controller: address,
@@ -503,6 +582,7 @@ Future<_CustomerDraft?> _showCustomerDialog(
                             dialogContext,
                             _CustomerDraft(
                               companyName: companyName.text,
+                              displayName: displayName.text,
                               address: address.text,
                               firstName: firstName.text,
                               lastName: lastName.text,
@@ -526,6 +606,7 @@ Future<_CustomerDraft?> _showCustomerDialog(
     ),
   ).whenComplete(() {
     companyName.dispose();
+    displayName.dispose();
     address.dispose();
     firstName.dispose();
     lastName.dispose();
@@ -539,6 +620,7 @@ Future<_CustomerDraft?> _showCustomerDialog(
 class _CustomerDraft {
   const _CustomerDraft({
     this.companyName = '',
+    this.displayName = '',
     this.address = '',
     this.firstName = '',
     this.lastName = '',
@@ -549,6 +631,7 @@ class _CustomerDraft {
   });
 
   final String companyName;
+  final String displayName;
   final String address;
   final String firstName;
   final String lastName;

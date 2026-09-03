@@ -124,7 +124,10 @@ class _BriefingScreenState extends State<BriefingScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(snapshot.error.toString(), textAlign: TextAlign.center),
-                  TextButton(onPressed: refresh, child: const Text('Tekrar dene')),
+                  TextButton(
+                    onPressed: refresh,
+                    child: const Text('Tekrar dene'),
+                  ),
                 ],
               ),
             ),

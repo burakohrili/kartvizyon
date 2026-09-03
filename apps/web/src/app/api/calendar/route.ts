@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       context.supabase
         .from("visits")
         .select(
-          "id,purpose,planned_start_at,planned_end_at,status,company:companies(name)",
+          "id,purpose,planned_start_at,planned_end_at,status,company:companies(name,display_name)",
         )
         .eq("workspace_id", context.workspaceId)
         .gte("planned_start_at", from)
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
         .order("planned_start_at"),
       context.supabase
         .from("tasks")
-        .select("id,title,due_at,status,company:companies(name)")
+        .select("id,title,due_at,status,company:companies(name,display_name)")
         .eq("workspace_id", context.workspaceId)
         .gte("due_at", from)
         .lte("due_at", until)

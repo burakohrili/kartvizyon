@@ -14,15 +14,15 @@ akışına, web uygulaması ise geniş ekran ve yönetici işlemlerine öncelik 
 | Brifing     | Müşteri/Ziyaret  | Sıradaki ziyaret     | Hafıza kartı ve açık görevler                           |
 | Görevler    | Görevler         | Görevler             | Oluşturma, tamamlama ve müşteri bağlantısı              |
 | Harita      | Harita           | Saha haritası        | Açık kullanıcı işlemiyle konum; sürekli takip yok       |
-| Takvim      | Takvim           | Takvim               | Ziyaret ve tarihli görev listesi                        |
+| Takvim      | Takvim           | Takvim               | Listeleme ve yeni planlı ziyaret oluşturma              |
 | Aktivite    | Aktivite         | Aktivite             | Son onaylanan saha ziyaretleri                          |
 | Raporlar    | Raporlar         | Rapor özeti          | Müşteri, onay, inceleme ve açık görev göstergeleri      |
 | Bildirimler | Bildirimler      | Bildirimler          | Listeleme ve okundu işaretleme                          |
-| Fırsatlar   | Fırsatlar        | Fırsatlar            | Saha için salt okunur pipeline görünümü                 |
-| Ürünler     | Ürün ve Fiyatlar | Ürün ve fiyatlar     | Saha için aktif katalog ve PDF fiyat listesi (okuma)    |
-| Siparişler  | Siparişler       | Sipariş taslakları   | Durum ve tutar görünümü                                 |
-| Formlar     | Formlar          | Saha formları        | Aktif şablonlar ve gönderimler                          |
-| Belgeler    | Belgeler         | Belgeler             | Dosya ve zararlı yazılım tarama durumu                  |
+| Fırsatlar   | Fırsatlar        | Fırsatlar            | Oluşturma, listeleme ve aşama güncelleme                |
+| Ürünler     | Ürün ve Fiyatlar | Ürün ve fiyatlar     | Aktif katalog, ürün ekleme ve fiyat listesi okuma       |
+| Siparişler  | Siparişler       | Sipariş taslakları   | Taslak oluşturma ve durum geçişleri                     |
+| Formlar     | Formlar          | Saha formları        | Şablon oluşturma, doldurma ve gönderimleri görme        |
+| Belgeler    | Belgeler         | Belgeler             | Fotoğraf yükleme, tarama durumu ve temiz belgeyi açma   |
 | KVKK        | KVKK             | KVKK ve veri hakları | Rıza, dışa aktarma ve silme talebi                      |
 | Güvenlik    | Hesap Güvenliği  | Menü                 | Tüm cihazlardan çıkış                                   |
 
@@ -39,13 +39,18 @@ akışına, web uygulaması ise geniş ekran ve yönetici işlemlerine öncelik 
 - Paket, kullanım kotası ve ödeme yönetimi
 - Entegrasyon kurulumu ve secret yönetimi
 - Toplu müşteri içe aktarma ve geri alma
-- PDF fiyat listesi yükleme (sahada yalnız okunur, bkz. ADR-0007)
+- PDF/DOCX toplu belge ve fiyat listesi yönetimi (mobil tekil belge fotoğrafı yükler)
 - PDF/XLSX rapor dışa aktarma ve paylaşım bağlantıları
 - Çalışma alanı oluşturma/değiştirme
 
 Bu işlemler saha çalışanına gereksiz yetki vermemek, mağaza ödeme kurallarını
 ihlal etmemek ve küçük ekranda hatalı toplu işlem riskini azaltmak için webde
 tutulur. Mobilde bu alanlara satın alma veya yönetici CTA'sı eklenmez.
+
+Firma kayıtlarında yasal `name` korunur; isteğe bağlı `display_name` mobil
+listelerde ve aramalı seçim pencerelerinde kısa saha adı olarak kullanılır.
+Müşteri uç noktası sayfalıdır; mobil liste ve görev/ziyaret seçicileri kayıt
+sayısı büyüdüğünde arama ve devam sayfalarıyla çalışır.
 
 ## Yayın kapısı
 

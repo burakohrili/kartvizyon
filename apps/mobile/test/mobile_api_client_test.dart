@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:kartvizyon_mobile/core/mobile_services.dart';
 import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 
@@ -77,11 +79,7 @@ void main() {
       throwsA(
         isA<MobileApiException>()
             .having((error) => error.statusCode, 'statusCode', 408)
-            .having(
-              (error) => error.message,
-              'message',
-              contains('zaman'),
-            ),
+            .having((error) => error.message, 'message', contains('zaman')),
       ),
     );
   });
@@ -107,6 +105,46 @@ void main() {
 
     // Değer kopyalanmaz; oturum bağlamı değiştiğinde başlık da değişmeli.
     expect(seen, ['workspace-1', 'workspace-2']);
+  });
+
+  test('dosya yükleme JSON başlığı yerine multipart sınırı taşır', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'kartvizyon-upload-test-',
+    );
+    final file = File('${directory.path}/belge.jpg');
+    await file.writeAsBytes([0xff, 0xd8, 0xff, 0xd9]);
+    addTearDown(() => directory.delete(recursive: true));
+
+    String? contentType;
+    String? body;
+    final client = MobileApiClient(
+      baseUrl: Uri.parse('https://app.kartvizyon.app'),
+      sessions: const _EmptySessionStore(),
+      client: MockClient((request) async {
+        contentType = request.headers['content-type'];
+        body = latin1.decode(request.bodyBytes);
+        return http.Response(
+          jsonEncode({
+            'data': {'id': 'document-1'},
+          }),
+          200,
+        );
+      }),
+    );
+
+    await client.postFile(
+      '/api/documents',
+      field: 'file',
+      filePath: file.path,
+      fields: const {'purpose': 'general'},
+      contentType: MediaType('image', 'jpeg'),
+    );
+
+    expect(contentType, startsWith('multipart/form-data; boundary='));
+    expect(contentType, isNot(contains('application/json')));
+    expect(body, contains('name="purpose"'));
+    expect(body, contains('general'));
+    expect(body, contains('image/jpeg'));
   });
 
   test('kurtarılamayan oturum bildirilir', () async {

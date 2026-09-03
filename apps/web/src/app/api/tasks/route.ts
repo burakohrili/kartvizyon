@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from("tasks")
     .select(
-      "id,title,status,due_at,company_id,visit_id,assigned_to,company:companies(name)",
+      "id,title,status,due_at,company_id,visit_id,assigned_to,company:companies(name,display_name)",
     )
     .eq("workspace_id", workspaceId)
     // Tarihi olmayan görevler sona. Varsayılan sırada bunlar öngörülemeyen

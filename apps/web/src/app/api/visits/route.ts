@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from("visits")
     .select(
-      "id,status,purpose,planned_start_at,started_at,completed_at,approved_at,company:companies(id,name),representative:profiles!visits_representative_id_fkey(full_name)",
+      "id,status,purpose,planned_start_at,started_at,completed_at,approved_at,company:companies(id,name,display_name),representative:profiles!visits_representative_id_fkey(full_name)",
     )
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false })

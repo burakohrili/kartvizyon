@@ -108,8 +108,11 @@ class _HomeScreenState extends State<HomeScreen> {
             _Metric(
               // Planlanan ziyaret yoksa açık ziyaret gösterilir; web takvimini
               // kullanmayan temsilci sürekli sıfır görmesin.
-              label: data.plannedToday > 0 ? 'Planlanan ziyaret' : 'Açık ziyaret',
-              value: '${data.plannedToday > 0 ? data.plannedToday : data.openVisits}',
+              label: data.plannedToday > 0
+                  ? 'Planlanan ziyaret'
+                  : 'Açık ziyaret',
+              value:
+                  '${data.plannedToday > 0 ? data.plannedToday : data.openVisits}',
               icon: Icons.route,
               onTap: () => context.go('/visits'),
             ),
