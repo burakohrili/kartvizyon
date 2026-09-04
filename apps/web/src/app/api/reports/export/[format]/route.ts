@@ -205,6 +205,9 @@ export async function GET(
     }
     const filters = filtersFrom(request);
     const report = await loadApprovedReport(filters, request);
+    if (!report.authenticated) {
+      return Response.json({ error: "Oturum gerekli." }, { status: 401 });
+    }
     const data =
       format === "xlsx"
         ? await buildWorkbook(report.visits)

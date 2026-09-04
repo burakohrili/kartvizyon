@@ -215,4 +215,17 @@ void main() {
 
     expect(violations, isEmpty);
   });
+
+  test('Android derlemesi API 36 hedefler', () {
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+
+    expect(gradle.contains('compileSdk = 36'), isTrue);
+    expect(
+      gradle.contains('targetSdk = 36'),
+      isTrue,
+      reason:
+          'Google Play 31 Ağustos 2026 itibarıyla güncellemelerde Android 16 '
+          '(API 36) hedefi ister; Flutter varsayılanı dolaylı kullanılmamalı.',
+    );
+  });
 }

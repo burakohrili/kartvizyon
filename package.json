@@ -13,18 +13,24 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "migration:validate": "npm run migration:validate --workspace @kartvizyon/database",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --check .github apps/web packages services scripts docs package.json vercel.json codemagic.yaml README.md CLAUDE.md",
     "mobile:check": "cd apps/mobile && flutter analyze && flutter test",
-    "check": "npm run format:check && npm run migration:validate && npm run lint && npm run typecheck && npm run test && npm run build && npm run verify:secrets && npm run mobile:check",
+    "check": "npm run format:check && npm run migration:validate && npm run lint && npm run typecheck && npm run test && npm run build && npm run verify:secrets && npm run security:audit && npm run mobile:check",
     "verify:secrets": "npm run verify:secrets --workspace @kartvizyon/web",
     "build:android": "node scripts/codemagic-build.mjs android",
     "build:ios": "node scripts/codemagic-build.mjs ios",
-    "build:ios:testflight": "node scripts/codemagic-build.mjs ios --testflight"
+    "build:ios:testflight": "node scripts/codemagic-build.mjs ios --testflight",
+    "security:audit": "npm audit --omit=dev --audit-level=moderate"
   },
   "devDependencies": {
     "prettier": "^3.6.2"
   },
   "engines": {
     "node": "24.x"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
   }
 }
