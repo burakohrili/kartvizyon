@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { audioBucketName } from "@/lib/storage-config";
 
 export const runtime = "nodejs";
 
@@ -35,9 +36,7 @@ export async function POST(request: Request) {
   if (!expired.data.length) return Response.json({ deleted: 0 });
 
   const paths = expired.data.map((asset) => asset.storage_path);
-  const removal = await supabase.storage
-    .from(process.env.SUPABASE_AUDIO_BUCKET ?? "visit-audio")
-    .remove(paths);
+  const removal = await supabase.storage.from(audioBucketName()).remove(paths);
   if (removal.error) throw removal.error;
 
   const ids = expired.data.map((asset) => asset.id);

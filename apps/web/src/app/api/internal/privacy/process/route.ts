@@ -1,7 +1,17 @@
 import { hasInternalSecret } from "@/lib/internal-auth";
+import { audioBucketName } from "@/lib/storage-config";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return "Bilinmeyen hata";
+}
 
 export async function POST(request: Request) {
   if (
@@ -165,7 +175,7 @@ export async function POST(request: Request) {
           level: "error",
           event: "privacy.export_failed",
           requestId: item.id,
-          error: error instanceof Error ? error.message : "unknown",
+          error: errorMessage(error),
         }),
       );
       failed += 1;
@@ -243,10 +253,7 @@ export async function POST(request: Request) {
       if (storageErrors.length) throw storageErrors[0];
 
       const removals = [
-        [
-          process.env.SUPABASE_AUDIO_BUCKET ?? "visit-audio",
-          (audio.data ?? []).map((row) => row.storage_path),
-        ],
+        [audioBucketName(), (audio.data ?? []).map((row) => row.storage_path)],
         [
           "document-quarantine",
           (documents.data ?? []).map((row) => row.storage_path),
@@ -290,7 +297,7 @@ export async function POST(request: Request) {
           level: "error",
           event: "privacy.deletion_failed",
           requestId: item.id,
-          error: error instanceof Error ? error.message : "unknown",
+          error: errorMessage(error),
         }),
       );
       deletionFailed += 1;

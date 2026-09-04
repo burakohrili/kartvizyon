@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { audioBucketName } from "@/lib/storage-config";
 import { z } from "zod";
 import { apiError } from "@/lib/api";
 import { assertQuota } from "@/lib/entitlements";
@@ -184,7 +185,7 @@ export async function POST(
       if (supabase && userId && visit) {
         const storagePath = `${userId}/${visit.id}/${randomUUID()}.${extensionFor(audio.type)}`;
         const upload = await supabase.storage
-          .from(process.env.SUPABASE_AUDIO_BUCKET ?? "visit-audio")
+          .from(audioBucketName())
           .upload(storagePath, bytes, {
             contentType: audio.type,
             upsert: false,
