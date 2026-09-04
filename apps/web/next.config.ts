@@ -2,7 +2,9 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Vercel supplies a Next build adapter; Next 16.3 cannot combine that adapter
+  // with standalone output. Vercel does not consume the standalone bundle.
+  output: process.env.VERCEL ? undefined : "standalone",
   transpilePackages: ["@kartvizyon/contracts"],
   outputFileTracingIncludes: {
     "/api/reports/export/*": ["./assets/fonts/*.woff"],
