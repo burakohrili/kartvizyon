@@ -103,6 +103,13 @@ const locationSourceSql = await readFile(
   ),
   "utf8",
 );
+const deletedVisitApproverSql = await readFile(
+  resolve(
+    import.meta.dirname,
+    "../migrations/0025_deleted_visit_approver.up.sql",
+  ),
+  "utf8",
+);
 
 describe("temel veri güvenliği", () => {
   it.each([
@@ -470,6 +477,17 @@ describe("müşteri konum kaynağı", () => {
     expect(locationSourceSql).toContain("companies_workspace_location_idx");
     expect(locationSourceSql).toContain(
       "where latitude is not null and longitude is not null",
+    );
+  });
+});
+
+describe("hesap silmede ziyaret onay izi", () => {
+  it("onay zamanını zorunlu tutarken silinen onaylayıcıyı anonimleştirebilir", () => {
+    expect(deletedVisitApproverSql).toContain(
+      "status = 'approved' and approved_at is not null",
+    );
+    expect(deletedVisitApproverSql).not.toContain(
+      "status = 'approved' and approved_by is not null",
     );
   });
 });
