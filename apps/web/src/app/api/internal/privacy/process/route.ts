@@ -105,7 +105,7 @@ export async function POST(request: Request) {
         supabase
           .from("visit_audio_assets")
           .select(
-            "id,visit_id,mime_type,size_bytes,duration_seconds,created_at,delete_after,deleted_at",
+            "id,visit_id,mime_type,byte_size,created_at,delete_after,deleted_at",
           )
           .eq("workspace_id", item.workspace_id)
           .eq("owner_id", item.user_id),
@@ -213,7 +213,6 @@ export async function POST(request: Request) {
         .from("organizations")
         .select("id")
         .eq("owner_id", item.user_id)
-        .is("archived_at", null)
         .limit(1);
       if (ownedOrganizations.error) throw ownedOrganizations.error;
       if (ownedOrganizations.data?.length) {
