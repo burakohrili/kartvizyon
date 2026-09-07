@@ -142,6 +142,14 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('KVKK ve veri hakları'), findsOneWidget);
+    expect(find.text('Hesabımı sil'), findsOneWidget);
+    await tester.tap(find.text('Hesabımı sil'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hesabımı kalıcı olarak sil'), findsWidgets);
+    expect(find.textContaining('İşlem geri alınamaz'), findsOneWidget);
+    expect(find.text('Vazgeç'), findsOneWidget);
+    await tester.tap(find.text('Vazgeç'));
+    await tester.pumpAndSettle();
     // Gizlilik ve ses saklama bilgi kartları listeyi uzattı.
     await tester.scrollUntilVisible(
       find.text('Tüm cihazlardan çıkış'),
