@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/mobile_services.dart';
@@ -297,7 +295,8 @@ final opened = await Supabase.instance.client.auth.signInWithOAuth(
       if (mounted) setState(() => busy = false);
     }
   }
-`r`n  void toggleRegister() {
+
+  void toggleRegister() {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       register = !register;
