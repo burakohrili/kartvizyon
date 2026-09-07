@@ -275,19 +275,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           ? 'Google güvenli giriş ekranı açılıyor…'
           : 'Apple güvenli giriş ekranı açılıyor…';
       awaitingEmailConfirmation = false;
-      awaitingOAuth =
-          provider != OAuthProvider.apple ||
-          kIsWeb ||
-          defaultTargetPlatform != TargetPlatform.iOS;
+      awaitingOAuth = true;
     });
     try {
-      if (provider == OAuthProvider.apple &&
-          !kIsWeb &&
-          defaultTargetPlatform == TargetPlatform.iOS) {
-        await _signInWithNativeApple();
-        return;
-      }
-      final opened = await Supabase.instance.client.auth.signInWithOAuth(
+final opened = await Supabase.instance.client.auth.signInWithOAuth(
         provider,
         redirectTo: authCallbackUrl,
         authScreenLaunchMode: LaunchMode.externalApplication,
@@ -296,13 +287,6 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         awaitingOAuth = false;
         _showMessage('Giriş ekranı açılamadı. Lütfen tekrar deneyin.');
       }
-    } on SignInWithAppleAuthorizationException catch (error) {
-      awaitingOAuth = false;
-      _showMessage(
-        error.code == AuthorizationErrorCode.canceled
-            ? 'Apple ile giriş iptal edildi.'
-            : 'Apple ile giriş tamamlanamadı. Lütfen tekrar deneyin.',
-      );
     } on AuthException catch (error) {
       awaitingOAuth = false;
       _showMessage(error.message);
@@ -313,30 +297,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       if (mounted) setState(() => busy = false);
     }
   }
-
-  Future<void> _signInWithNativeApple() async {
-    final client = Supabase.instance.client;
-    final rawNonce = client.auth.generateRawNonce();
-    final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
-    final credential = await SignInWithApple.getAppleIDCredential(
-      scopes: const [
-        AppleIDAuthorizationScopes.email,
-        AppleIDAuthorizationScopes.fullName,
-      ],
-      nonce: hashedNonce,
-    );
-    final identityToken = credential.identityToken;
-    if (identityToken == null || identityToken.isEmpty) {
-      throw const AuthException('Apple kimlik doğrulama bilgisi alınamadı.');
-    }
-    await client.auth.signInWithIdToken(
-      provider: OAuthProvider.apple,
-      idToken: identityToken,
-      nonce: rawNonce,
-    );
-  }
-
-  void toggleRegister() {
+`r`n  void toggleRegister() {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       register = !register;
