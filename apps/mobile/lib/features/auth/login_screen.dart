@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -276,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       awaitingOAuth = true;
     });
     try {
-final opened = await Supabase.instance.client.auth.signInWithOAuth(
+      final opened = await Supabase.instance.client.auth.signInWithOAuth(
         provider,
         redirectTo: authCallbackUrl,
         authScreenLaunchMode: LaunchMode.externalApplication,
