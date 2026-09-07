@@ -54,6 +54,14 @@ void main() {
     expect(source.contains('awaitingOAuth'), isTrue);
   });
 
+  test('kapalı sosyal sağlayıcı için bozuk düğme gösterilmez', () {
+    expect(source.contains('/auth/v1/settings'), isTrue);
+    expect(source.contains("external['apple'] == true"), isTrue);
+    expect(source.contains("external['google'] == true"), isTrue);
+    expect(source.contains('if (appleAuthAvailable)'), isTrue);
+    expect(source.contains('if (googleAuthAvailable)'), isTrue);
+  });
+
   test('iOS Apple girişi yerel kimlik akışını kullanır', () {
     expect(source.contains('SignInWithApple.getAppleIDCredential'), isTrue);
     expect(source.contains('generateRawNonce()'), isTrue);
@@ -62,4 +70,3 @@ void main() {
     expect(source.contains('nonce: rawNonce'), isTrue);
   });
 }
-
