@@ -216,7 +216,7 @@ void main() {
     expect(violations, isEmpty);
   });
 
-  test('iOS Apple girişi ve hesap silme mağaza şartlarını karşılar', () {
+  test('kapalı Apple sağlayıcısı ve hesap silme mağaza şartlarını karşılar', () {
     final auth = File(
       'lib/features/auth/login_screen.dart',
     ).readAsStringSync();
@@ -224,17 +224,13 @@ void main() {
     final privacy = File(
       'lib/features/more/privacy_screen.dart',
     ).readAsStringSync();
-    final entitlements = File(
-      'ios/Runner/Runner.entitlements',
-    ).readAsStringSync();
     final project = File(
       'ios/Runner.xcodeproj/project.pbxproj',
     ).readAsStringSync();
 
-    expect(auth.contains('SignInWithApple.getAppleIDCredential'), isTrue);
-    expect(auth.contains('signInWithIdToken'), isTrue);
-    expect(entitlements.contains('com.apple.developer.applesignin'), isTrue);
-    expect(project.contains('CODE_SIGN_ENTITLEMENTS'), isTrue);
+    expect(auth.contains('/auth/v1/settings'), isTrue);
+    expect(auth.contains('if (appleAuthAvailable)'), isTrue);
+    expect(project.contains('CODE_SIGN_ENTITLEMENTS'), isFalse);
     expect(menu.contains("'Hesabımı sil'"), isTrue);
     expect(menu.contains("'/privacy?delete=true'"), isTrue);
     expect(privacy.contains('Hesabımı kalıcı olarak sil'), isTrue);
