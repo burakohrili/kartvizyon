@@ -250,7 +250,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
           ? 'Google güvenli giriş ekranı açılıyor…'
           : 'Apple güvenli giriş ekranı açılıyor…';
       awaitingEmailConfirmation = false;
-      awaitingOAuth = provider != OAuthProvider.apple ||
+      awaitingOAuth =
+          provider != OAuthProvider.apple ||
           kIsWeb ||
           defaultTargetPlatform != TargetPlatform.iOS;
     });
