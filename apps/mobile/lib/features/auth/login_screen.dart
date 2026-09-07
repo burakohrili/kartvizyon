@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -35,6 +36,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   bool busy = false;
   bool awaitingEmailConfirmation = false;
   bool sessionHandled = false;
+  bool appleAuthAvailable = false;
+  bool googleAuthAvailable = false;
 
   /// Tarayıcı açıldı ve henüz bir sonuç dönmedi.
   ///
@@ -50,6 +53,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     if (widget.services.config.hasSupabase) {
+      unawaited(_loadProviderAvailability());
       authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
         (event) {
           final session = event.session;
@@ -57,6 +61,26 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         },
         onError: _onAuthError,
       );
+    }
+  }
+
+  Future<void> _loadProviderAvailability() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${widget.services.config.supabaseUrl}/auth/v1/settings'),
+        headers: {'apikey': widget.services.config.supabaseAnonKey},
+      );
+      if (response.statusCode != 200) return;
+      final settings = jsonDecode(response.body) as Map<String, dynamic>;
+      final external = settings['external'] as Map<String, dynamic>? ?? const {};
+      if (!mounted) return;
+      setState(() {
+        appleAuthAvailable = external['apple'] == true;
+        googleAuthAvailable = external['google'] == true;
+      });
+    } catch (_) {
+      // Sağlayıcı durumu doğrulanamazsa bozuk bir düğme göstermek yerine
+      // e-posta/parola girişini açık bırakırız.
     }
   }
 
@@ -461,22 +485,26 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                         onPressed: busy ? null : resetPassword,
                         child: const Text('Şifremi unuttum'),
                       ),
-                    const Divider(height: 30),
-                    OutlinedButton.icon(
-                      onPressed: busy
-                          ? null
-                          : () => social(OAuthProvider.google),
-                      icon: const Icon(Icons.g_mobiledata),
-                      label: const Text('Google ile devam et'),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: busy
-                          ? null
-                          : () => social(OAuthProvider.apple),
-                      icon: const Icon(Icons.apple),
-                      label: const Text('Apple ile devam et'),
-                    ),
+                    if (googleAuthAvailable || appleAuthAvailable)
+                      const Divider(height: 30),
+                    if (googleAuthAvailable)
+                      OutlinedButton.icon(
+                        onPressed: busy
+                            ? null
+                            : () => social(OAuthProvider.google),
+                        icon: const Icon(Icons.g_mobiledata),
+                        label: const Text('Google ile devam et'),
+                      ),
+                    if (googleAuthAvailable && appleAuthAvailable)
+                      const SizedBox(height: 8),
+                    if (appleAuthAvailable)
+                      OutlinedButton.icon(
+                        onPressed: busy
+                            ? null
+                            : () => social(OAuthProvider.apple),
+                        icon: const Icon(Icons.apple),
+                        label: const Text('Apple ile devam et'),
+                      ),
                     if (!widget.services.config.hasSupabase) ...[
                       const SizedBox(height: 16),
                       const Text(
