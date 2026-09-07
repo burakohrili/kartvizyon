@@ -72,7 +72,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       );
       if (response.statusCode != 200) return;
       final settings = jsonDecode(response.body) as Map<String, dynamic>;
-      final external = settings['external'] as Map<String, dynamic>? ?? const {};
+      final external =
+          settings['external'] as Map<String, dynamic>? ?? const {};
       if (!mounted) return;
       setState(() {
         appleAuthAvailable = external['apple'] == true;

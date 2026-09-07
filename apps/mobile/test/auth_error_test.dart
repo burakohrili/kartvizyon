@@ -70,4 +70,3 @@ void main() {
     expect(source.contains('nonce: rawNonce'), isTrue);
   });
 }
-
