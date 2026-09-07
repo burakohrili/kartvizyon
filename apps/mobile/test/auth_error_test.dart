@@ -62,11 +62,9 @@ void main() {
     expect(source.contains('if (googleAuthAvailable)'), isTrue);
   });
 
-  test('iOS Apple girişi yerel kimlik akışını kullanır', () {
-    expect(source.contains('SignInWithApple.getAppleIDCredential'), isTrue);
-    expect(source.contains('generateRawNonce()'), isTrue);
-    expect(source.contains('sha256.convert'), isTrue);
-    expect(source.contains('signInWithIdToken'), isTrue);
-    expect(source.contains('nonce: rawNonce'), isTrue);
+  test('kapalı Apple sağlayıcısı iOS imzalama yetkisi gerektirmez', () {
+    expect(source.contains('SignInWithApple.getAppleIDCredential'), isFalse);
+    expect(source.contains('signInWithIdToken'), isFalse);
+    expect(source.contains('signInWithOAuth'), isTrue);
   });
 }
