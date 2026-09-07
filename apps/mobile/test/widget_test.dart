@@ -142,6 +142,11 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('KVKK ve veri hakları'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Hesabımı sil'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Hesabımı sil'), findsOneWidget);
     await tester.tap(find.text('Hesabımı sil'));
     await tester.pumpAndSettle();
