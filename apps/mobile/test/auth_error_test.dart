@@ -53,4 +53,13 @@ void main() {
     expect(source.contains('didChangeAppLifecycleState'), isTrue);
     expect(source.contains('awaitingOAuth'), isTrue);
   });
+
+  test('iOS Apple girişi yerel kimlik akışını kullanır', () {
+    expect(source.contains('SignInWithApple.getAppleIDCredential'), isTrue);
+    expect(source.contains('generateRawNonce()'), isTrue);
+    expect(source.contains('sha256.convert'), isTrue);
+    expect(source.contains('signInWithIdToken'), isTrue);
+    expect(source.contains('nonce: rawNonce'), isTrue);
+  });
 }
+
