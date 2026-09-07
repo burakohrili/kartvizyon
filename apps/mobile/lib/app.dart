@@ -150,7 +150,10 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
         ),
         GoRoute(
           path: '/privacy',
-          builder: (_, __) => PrivacyScreen(services: services),
+          builder: (_, state) => PrivacyScreen(
+            services: services,
+            openDeletion: state.uri.queryParameters['delete'] == 'true',
+          ),
         ),
         ...[
           ('/calendar', WorkspaceModule.calendar),
