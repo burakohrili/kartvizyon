@@ -127,6 +127,20 @@ class MoreScreen extends StatelessWidget {
           subtitle: const Text('Aydınlatma, dışa aktarma ve silme merkezi'),
           onTap: () => context.push('/privacy'),
         ),
+        ListTile(
+          leading: Icon(
+            Icons.delete_forever_outlined,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          title: Text(
+            'Hesabımı sil',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+          subtitle: const Text(
+            'Hesabınızı ve kişisel verilerinizi kalıcı olarak silin',
+          ),
+          onTap: () => context.push('/privacy?delete=true'),
+        ),
         const Divider(),
         ListTile(
           leading: const Icon(Icons.logout),
