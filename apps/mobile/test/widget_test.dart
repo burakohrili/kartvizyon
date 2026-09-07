@@ -155,6 +155,8 @@ void main() {
     expect(find.text('Vazgeç'), findsOneWidget);
     await tester.tap(find.text('Vazgeç'));
     await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
     // Gizlilik ve ses saklama bilgi kartları listeyi uzattı.
     await tester.scrollUntilVisible(
       find.text('Tüm cihazlardan çıkış'),
