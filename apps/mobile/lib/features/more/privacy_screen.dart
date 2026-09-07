@@ -4,8 +4,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/mobile_services.dart';
 
 class PrivacyScreen extends StatefulWidget {
-  const PrivacyScreen({super.key, required this.services});
+  const PrivacyScreen({
+    super.key,
+    required this.services,
+    this.openDeletion = false,
+  });
   final MobileServices services;
+  final bool openDeletion;
   @override
   State<PrivacyScreen> createState() => _PrivacyScreenState();
 }
@@ -18,6 +23,33 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
   void initState() {
     super.initState();
     load();
+    if (widget.openDeletion) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => confirmDeletion());
+    }
+  }
+
+  Future<void> confirmDeletion() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hesabımı kalıcı olarak sil'),
+        content: const Text(
+          'Bu işlem hesabınızı, müşteri ve ziyaret kayıtlarınızı, görevlerinizi '
+          've diğer kişisel verilerinizi kalıcı olarak siler. İşlem geri alınamaz.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hesabımı sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) await createRequest('deletion');
   }
 
   Future<void> load() async {
@@ -71,7 +103,11 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
         'workspaceId': widget.services.workspaceId,
         'kind': kind,
       });
-      setState(() => message = 'Talebiniz güvenli biçimde alındı.');
+      setState(
+        () => message = kind == 'deletion'
+            ? 'Hesap silme işlemi başlatıldı. Hesabınız ve kişisel verileriniz kalıcı olarak silinecek.'
+            : 'Talebiniz güvenli biçimde alındı.',
+      );
       await load();
     } catch (error) {
       if (mounted) setState(() => message = error.toString());
@@ -143,9 +179,9 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
-          onPressed: () => createRequest('deletion'),
+          onPressed: confirmDeletion,
           icon: const Icon(Icons.delete_outline),
-          label: const Text('Silme talebi oluştur'),
+          label: const Text('Hesabımı kalıcı olarak sil'),
         ),
         if (message != null)
           Padding(

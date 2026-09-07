@@ -54,6 +54,8 @@ dependencies:
   http_parser: ^4.1.2
   intl: any
   supabase_flutter: ^2.15.4
+  crypto: ^3.0.7
+  sign_in_with_apple: ^7.0.1
   sentry_flutter: ^9.26.0
   image_picker: ^1.2.1
   record: ^6.2.1
