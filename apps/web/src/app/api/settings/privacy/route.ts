@@ -53,8 +53,7 @@ export async function POST(request: Request) {
     // Aynı açık talebin tekrar gönderilmesi istemci hatası değildir.
     // Ağ tekrarı, çift dokunma veya eski mobil sürüm aynı isteği yeniden
     // gönderirse mevcut kaydı döndürerek uç noktayı idempotent tutarız.
-    if (existing)
-      return Response.json({ data: existing, duplicate: true });
+    if (existing) return Response.json({ data: existing, duplicate: true });
     const { data, error } = await context.supabase
       .from("privacy_requests")
       .insert({
