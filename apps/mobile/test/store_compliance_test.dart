@@ -242,6 +242,24 @@ void main() {
     },
   );
 
+  test('açık gizlilik talebi tekrarında hata ve Sentry gürültüsü oluşmaz', () {
+    final api = File('lib/core/mobile_services.dart').readAsStringSync();
+    final privacy = File(
+      'lib/features/more/privacy_screen.dart',
+    ).readAsStringSync();
+
+    expect(
+      api.contains(
+        "failure.statusCode == 409 && path == '/api/settings/privacy'",
+      ),
+      isTrue,
+    );
+    expect(privacy.contains('_hasOpenRequest'), isTrue);
+    expect(privacy.contains('submittingRequest'), isTrue);
+    expect(privacy.contains('error.statusCode == 409'), isTrue);
+    expect(privacy.contains('talebiniz zaten açık'), isTrue);
+  });
+
   test('Android derlemesi API 36 hedefler', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
 

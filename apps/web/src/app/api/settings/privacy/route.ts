@@ -44,17 +44,16 @@ export async function POST(request: Request) {
       );
     const { data: existing } = await context.supabase
       .from("privacy_requests")
-      .select("id")
+      .select("id,kind,status,requested_at,due_at")
       .eq("workspace_id", context.workspaceId)
       .eq("user_id", context.user.id)
       .eq("kind", input.kind)
       .in("status", ["requested", "processing", "ready"])
       .maybeSingle();
-    if (existing)
-      return Response.json(
-        { error: "Bu türde açık bir talebiniz zaten var." },
-        { status: 409 },
-      );
+    // Aynı açık talebin tekrar gönderilmesi istemci hatası değildir.
+    // Ağ tekrarı, çift dokunma veya eski mobil sürüm aynı isteği yeniden
+    // gönderirse mevcut kaydı döndürerek uç noktayı idempotent tutarız.
+    if (existing) return Response.json({ data: existing, duplicate: true });
     const { data, error } = await context.supabase
       .from("privacy_requests")
       .insert({

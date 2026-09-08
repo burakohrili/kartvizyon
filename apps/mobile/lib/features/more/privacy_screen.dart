@@ -19,6 +19,17 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
   Map<String, bool> consents = {};
   List<Map<String, dynamic>> requests = [];
   String? message;
+  bool submittingRequest = false;
+
+  bool _hasOpenRequest(String kind) => requests.any((item) {
+    final status = item['status']?.toString();
+    return item['kind'] == kind &&
+        const {'requested', 'processing', 'ready'}.contains(status);
+  });
+
+  String _openRequestMessage(String kind) => kind == 'deletion'
+      ? 'Hesap silme talebiniz zaten açık. Güncel durumunu Taleplerim bölümünden takip edebilirsiniz.'
+      : 'Dışa aktarma talebiniz zaten açık. Hazır olduğunda Taleplerim bölümünden indirebilirsiniz.';
   @override
   void initState() {
     super.initState();
@@ -98,19 +109,48 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       setState(() => message = 'Demo modunda talep oluşturulmaz.');
       return;
     }
+    if (submittingRequest) return;
+    if (_hasOpenRequest(kind)) {
+      setState(() => message = _openRequestMessage(kind));
+      return;
+    }
+
+    setState(() {
+      submittingRequest = true;
+      message = null;
+    });
     try {
-      await widget.services.api.post('/api/settings/privacy', {
-        'workspaceId': widget.services.workspaceId,
-        'kind': kind,
-      });
+      final result =
+          await widget.services.api.post('/api/settings/privacy', {
+                'workspaceId': widget.services.workspaceId,
+                'kind': kind,
+              })
+              as Map<String, dynamic>;
+      if (!mounted) return;
       setState(
-        () => message = kind == 'deletion'
+        () => message = result['duplicate'] == true
+            ? _openRequestMessage(kind)
+            : kind == 'deletion'
             ? 'Hesap silme işlemi başlatıldı. Hesabınız ve kişisel verileriniz kalıcı olarak silinecek.'
             : 'Talebiniz güvenli biçimde alındı.',
       );
       await load();
+    } on MobileApiException catch (error) {
+      if (!mounted) return;
+      // Sunucu güncellenmeden çalışan eski dağıtımlarda da 409 kullanıcıya
+      // hata gibi görünmesin. Listeyi yenileyip mevcut talebi gösteririz.
+      if (error.statusCode == 409) {
+        await load();
+        if (mounted) {
+          setState(() => message = _openRequestMessage(kind));
+        }
+        return;
+      }
+      setState(() => message = error.message);
     } catch (error) {
       if (mounted) setState(() => message = error.toString());
+    } finally {
+      if (mounted) setState(() => submittingRequest = false);
     }
   }
 
@@ -173,15 +213,27 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
         ),
         const Divider(),
         FilledButton.tonalIcon(
-          onPressed: () => createRequest('export'),
+          onPressed: submittingRequest || _hasOpenRequest('export')
+              ? null
+              : () => createRequest('export'),
           icon: const Icon(Icons.download_outlined),
-          label: const Text('Verilerimi dışa aktar'),
+          label: Text(
+            _hasOpenRequest('export')
+                ? 'Dışa aktarma talebi açık'
+                : 'Verilerimi dışa aktar',
+          ),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
-          onPressed: confirmDeletion,
+          onPressed: submittingRequest || _hasOpenRequest('deletion')
+              ? null
+              : confirmDeletion,
           icon: const Icon(Icons.delete_outline),
-          label: const Text('Hesabımı kalıcı olarak sil'),
+          label: Text(
+            _hasOpenRequest('deletion')
+                ? 'Hesap silme talebi açık'
+                : 'Hesabımı kalıcı olarak sil',
+          ),
         ),
         if (message != null)
           Padding(

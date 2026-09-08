@@ -251,7 +251,12 @@ class MobileApiClient {
 
   void _capture(MobileApiException failure, {String? path, String? method}) {
     // 401 oturum yenilemesinin normal parçasıdır; gürültü yapmasın.
-    if (failure.statusCode == 401) return;
+    // Gizlilik talebindeki 409 da kullanıcının aynı açık talebi yeniden
+    // göndermesidir. Beklenen alan durumunu üretim hatası gibi raporlamayız.
+    if (failure.statusCode == 401 ||
+        (failure.statusCode == 409 && path == '/api/settings/privacy')) {
+      return;
+    }
     final safePath = path ?? 'bilinmiyor';
     Sentry.captureException(
       failure,
