@@ -30,6 +30,10 @@ workflows:
         - kartvizyon_upload
       vars:
         PACKAGE_NAME: app.kartvizyon.mobile
+        # Play versionCode 50'yi kaydetti ancak sürüm kütüphanesinde/API son değerinde
+        # göstermedi. 51 alt sınırı aynı kodun yeniden üretilmesini engeller; Play 51+
+        # raporlamaya başladığında normal LATEST + 1 akışı otomatik devam eder.
+        ANDROID_VERSION_CODE_FLOOR: 51
       # .github/workflows/ci.yml ile aynı sürüme sabitlenir. `stable` kayan bir
       # kanaldır; testlerin geçtiği sürümle mağazaya giden ikilinin sürümü
       # ayrışırsa release build'i hiç doğrulanmamış bir toolchain'le üretilir.
@@ -71,8 +75,12 @@ workflows:
             echo "Play'den son versionCode okunamadı; numara uydurmak yerine duruyoruz."
             exit 1
           fi
-          echo "NEXT_BUILD_NUMBER=$((LATEST + 1))" >> "$CM_ENV"
-          echo "Play'deki son versionCode $LATEST, bu build $((LATEST + 1))."
+          NEXT_BUILD_NUMBER=$((LATEST + 1))
+          if [ "$NEXT_BUILD_NUMBER" -lt "$ANDROID_VERSION_CODE_FLOOR" ]; then
+            NEXT_BUILD_NUMBER="$ANDROID_VERSION_CODE_FLOOR"
+          fi
+          echo "NEXT_BUILD_NUMBER=$NEXT_BUILD_NUMBER" >> "$CM_ENV"
+          echo "Play'deki son versionCode $LATEST, güvenli alt sınır $ANDROID_VERSION_CODE_FLOOR, bu build $NEXT_BUILD_NUMBER."
       - name: Build signed Android App Bundle
         script: |
           flutter build appbundle --release \
