@@ -115,8 +115,10 @@ En az bir gerçek iPhone (TestFlight) ve bir düşük segment Android cihaz gere
 
 ## 6. Elle yapılması gereken — mağaza uyumu
 
-- Mobil binary'de fiyat/satın alma dizesi ve pazarlama sitesi bağlantısı yok
-  (otomatik test var; yeni ekran eklendiğinde tekrar çalıştırılır).
+- Mobil bireysel abonelik yalnız App Store/Google Play yerel satın alma yüzeyi
+  kullanır; harici checkout ve pazarlama fiyat sayfası bağlantısı yoktur.
+- Premium ekranında fiyat/dönem, otomatik yenileme, kullanım koşulları,
+  gizlilik ve "Satın almaları geri yükle" görünürdür.
 - App Store Connect App Privacy formu SDK envanteriyle birebir aynı.
 - Play Data safety beyanı aynı envanterle tutarlı.
 - Reviewer hesabıyla uçtan uca giriş → demo veri → KVKK akışı çalışıyor.
@@ -128,7 +130,7 @@ En az bir gerçek iPhone (TestFlight) ve bir düşük segment Android cihaz gere
 - [ ] Bölüm 3 API yetkilendirme kontrolleri geçti
 - [ ] Bölüm 4 kota davranışı doğrulandı
 - [ ] Bölüm 5 gerçek cihaz turu tamamlandı
-- [ ] Supabase `0019`, `0020`, `0021` migration'ları uygulandı
+- [ ] Supabase `0019`–`0026` migration'ları uygulandı
 - [ ] Codemagic her iki workflow yeşil, yeni AAB/IPA üretildi
 - [ ] App Store Connect alanları dolu (`docs/APPLE_SUBMISSION_CHECKLIST.md`)
 - [ ] Play içerik derecelendirmesi ve 12 test kullanıcısı × 14 gün tamamlandı

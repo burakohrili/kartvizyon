@@ -65,9 +65,8 @@ describe("AI kesintisinde ürün çalışmaya devam eder", () => {
     );
     // Offline ilkesi: AI çalışmasa bile manuel kayıt sürmelidir.
     expect(debriefSource).toContain("manualTranscript");
-    // Kota kapısı yalnız ses işlemede uygulanır.
-    const quotaIndex = debriefSource.indexOf('"ai_minutes"');
-    const audioBranchIndex = debriefSource.indexOf("audio instanceof File");
-    expect(quotaIndex).toBeGreaterThan(audioBranchIndex);
+    // Metin notu ses dakikası tüketmez; AI özeti ayrı hak gerektirir.
+    expect(debriefSource).toContain("summaries: 1");
+    expect(debriefSource).toContain("audioSeconds: audioDurationSeconds");
   });
 });

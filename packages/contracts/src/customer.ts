@@ -42,6 +42,10 @@ export const companyCreateSchema = z.object({
   clientMutationId: z.uuid().optional(),
 });
 
+export const companyUpdateSchema = companyCreateSchema
+  .omit({ workspaceId: true, organizationId: true, clientMutationId: true })
+  .extend({ id: z.uuid() });
+
 export const duplicateCheckSchema = z.object({
   workspaceId: z.uuid(),
   name: z.string().trim().min(2).max(200),
@@ -62,6 +66,10 @@ export const contactCreateSchema = z.object({
     .optional()
     .transform((value) => value || undefined),
 });
+
+export const contactUpdateSchema = contactCreateSchema
+  .omit({ companyId: true, workspaceId: true, organizationId: true })
+  .extend({ id: z.uuid() });
 
 const nullableCardText = (max: number) => z.string().trim().max(max).nullable();
 

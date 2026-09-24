@@ -88,6 +88,7 @@ workflows:
             --dart-define=KARTVIZYON_API_URL=https://app.kartvizyon.app \
             --dart-define=SUPABASE_URL=$SUPABASE_URL \
             --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \
+            --dart-define=REVENUECAT_GOOGLE_PUBLIC_API_KEY=$REVENUECAT_GOOGLE_PUBLIC_API_KEY \
             --dart-define=SENTRY_DSN=$SENTRY_DSN
     artifacts:
       - build/app/outputs/bundle/release/*.aab
@@ -187,6 +188,7 @@ workflows:
             --dart-define=KARTVIZYON_API_URL=https://app.kartvizyon.app \
             --dart-define=SUPABASE_URL=$SUPABASE_URL \
             --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \
+            --dart-define=REVENUECAT_APPLE_PUBLIC_API_KEY=$REVENUECAT_APPLE_PUBLIC_API_KEY \
             --dart-define=SENTRY_DSN=$SENTRY_DSN
     artifacts:
       - build/ios/ipa/*.ipa

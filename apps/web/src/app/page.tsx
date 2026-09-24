@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import {
   formatTry,
   PUBLIC_PLANS,
-  TOP_UP_PACKAGES,
+  TRIAL_MESSAGE,
   TRIAL_DAYS,
 } from "@/lib/pricing";
 import Image from "next/image";
@@ -128,7 +128,7 @@ const faqs = [
           } aylık${plan.minSeats > 1 ? ` (en az ${plan.minSeats} koltuk)` : ""}`,
     ).join(
       ", ",
-    )}. Yıllık ödemede iki ay bedavadır ve fiyatlar KDV hariçtir. Her hesap ${TRIAL_DAYS} gün tam erişimli ücretsiz denemeyle başlar; deneme bitince ücretsiz katmana geçilir ve veriler silinmez.`,
+    )}. Bireysel fiyat KDV dahildir; ekip fiyatları KDV hariçtir. ${TRIAL_DAYS} günlük kartsız denemede toplam 60 tarama, 120 dakika ses işleme ve 60 AI özeti sunulur. Deneme sonunda otomatik ücret alınmaz. Abonelik başlatılana kadar yalnız mevcut kayıtları görüntüleme, dışa aktarma ve hesap silme açık kalır.`,
   },
   {
     q: "Belgelerim yüklenirken güvende mi?",
@@ -448,9 +448,10 @@ export default function MarketingHome() {
           <span>FİYATLANDIRMA</span>
           <h2>Tek kişiden kurumsal organizasyona kadar aynı ürün.</h2>
           <p>
-            Tüm planlar 14 gün tam erişimli ücretsiz denemeyle başlar; kredi
-            kartı istenmez. Deneme bitince hesabınız ücretsiz katmana geçer,
-            verileriniz silinmez. Fiyatlar KDV hariçtir.
+            {TRIAL_MESSAGE} Denemede toplam 60 tarama, 120 dakika ses işleme ve
+            60 AI özeti bulunur. Süre sonunda mevcut kayıtları görüntüleme, dışa
+            aktarma ve hesap silme açık kalır. Bireysel fiyat KDV dahildir;
+            kurumsal planların fiyatları KDV hariçtir.
           </p>
         </div>
         <div className="pricing-grid">
@@ -497,25 +498,12 @@ export default function MarketingHome() {
             </article>
           ))}
         </div>
-        <div className="pricing-topups">
-          <h3>Ek AI paketleri</h3>
-          <p>
-            Aylık AI kotanız biterse çalışmanız durmaz. Tek seferlik paketler
-            süresizdir ve aylık kota tükendikten sonra kullanılır.
-          </p>
-          <ul>
-            {TOP_UP_PACKAGES.map((pack) => (
-              <li key={pack.name}>
-                <strong>{pack.name}</strong> — {pack.detail} ·{" "}
-                {formatTry(pack.priceTry)}
-              </li>
-            ))}
-          </ul>
-        </div>
         <p className="pricing-footnote">
-          Abonelik satın alma yalnızca <strong>app.kartvizyon.app</strong>{" "}
-          üzerinden yapılır. Ödeme altyapısı bağlanana kadar planlar erken
-          erişim görüşmesiyle açılıyor.
+          Bireysel abonelik mobil uygulamada App Store veya Google Play
+          üzerinden başlatılır. Türkiye standart fiyatı KDV dahil 449 TL/aydır.
+          Satın alma onayından önce mağazanın gösterdiği toplam bedeli kontrol
+          edin. Kullanılmayan aylık haklar sonraki döneme devretmez. Kota
+          dolunca ilgili AI işlemi sonraki kullanım dönemine kadar durur.
         </p>
       </section>
 

@@ -1,28 +1,74 @@
 import {
   opportunityCreateSchema,
-  opportunityStageSchema,
+  opportunityUpdateSchema,
 } from "@kartvizyon/contracts";
-import { z } from "zod";
 import { apiError } from "@/lib/api";
 import { getApiContext } from "@/lib/api-context";
 
-const updateSchema = z.object({
-  id: z.uuid(),
-  stage: opportunityStageSchema,
-  lossReason: z.string().trim().max(500).nullable().optional(),
-});
+async function validCompany(
+  context: Awaited<ReturnType<typeof getApiContext>> & { ok: true },
+  companyId: string,
+) {
+  const result = await context.supabase
+    .from("companies")
+    .select("id")
+    .eq("id", companyId)
+    .eq("workspace_id", context.workspaceId)
+    .is("archived_at", null)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  return !!result.data;
+}
+
+async function validOwner(
+  context: Awaited<ReturnType<typeof getApiContext>> & { ok: true },
+  ownerId: string | null | undefined,
+) {
+  if (!ownerId || ownerId === context.user.id) return true;
+  if (!context.organizationId) return false;
+  const result = await context.supabase
+    .from("memberships")
+    .select("id")
+    .eq("organization_id", context.organizationId)
+    .eq("user_id", ownerId)
+    .is("revoked_at", null)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  return !!result.data;
+}
 
 export async function GET(request: Request) {
   try {
     const context = await getApiContext(request);
     if (!context.ok) return context.response;
-    const { data, error } = await context.supabase
-      .from("opportunities")
-      .select("*,company:companies(name,display_name)")
-      .eq("workspace_id", context.workspaceId)
-      .order("updated_at", { ascending: false });
+    const [opportunities, memberships] = await Promise.all([
+      context.supabase
+        .from("opportunities")
+        .select(
+          "*,company:companies(id,name,display_name,address),owner:profiles!opportunities_assigned_to_fkey(full_name)",
+        )
+        .eq("workspace_id", context.workspaceId)
+        .order("updated_at", { ascending: false }),
+      context.organizationId
+        ? context.supabase
+            .from("memberships")
+            .select("user_id,profile:profiles(full_name)")
+            .eq("organization_id", context.organizationId)
+            .is("revoked_at", null)
+        : Promise.resolve({
+            data: [
+              {
+                user_id: context.user.id,
+                profile: { full_name: context.user.email ?? "Ben" },
+              },
+            ],
+            error: null,
+          }),
+    ]);
+    const { data, error } = opportunities;
     if (error) throw error;
-    return Response.json({ data });
+    if (memberships.error) throw memberships.error;
+    return Response.json({ data, owners: memberships.data });
   } catch (error) {
     return apiError(error);
   }
@@ -37,6 +83,16 @@ export async function POST(request: Request) {
       return Response.json(
         { error: "Çalışma alanı uyuşmuyor." },
         { status: 403 },
+      );
+    if (!(await validCompany(context, input.companyId)))
+      return Response.json(
+        { error: "Müşteri bu çalışma alanında bulunamadı." },
+        { status: 400 },
+      );
+    if (!(await validOwner(context, input.assignedTo)))
+      return Response.json(
+        { error: "Sorumlu bu çalışma alanına ait değil." },
+        { status: 400 },
       );
     const { data, error } = await context.supabase
       .from("opportunities")
@@ -67,12 +123,24 @@ export async function PATCH(request: Request) {
   try {
     const context = await getApiContext(request);
     if (!context.ok) return context.response;
-    const input = updateSchema.parse(await request.json());
+    const input = opportunityUpdateSchema.parse(await request.json());
+    if (!(await validOwner(context, input.assignedTo)))
+      return Response.json(
+        { error: "Sorumlu bu çalışma alanına ait değil." },
+        { status: 400 },
+      );
     const closed = input.stage === "won" || input.stage === "lost";
     const { data, error } = await context.supabase
       .from("opportunities")
       .update({
+        title: input.title,
         stage: input.stage,
+        estimated_value: input.estimatedValue,
+        currency: input.currency,
+        probability: input.probability,
+        expected_close_date: input.expectedCloseDate ?? null,
+        competitor: input.competitor ?? null,
+        assigned_to: input.assignedTo ?? context.user.id,
         loss_reason: input.stage === "lost" ? (input.lossReason ?? null) : null,
         closed_at: closed ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),

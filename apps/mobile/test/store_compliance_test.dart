@@ -2,9 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// ADR-0004 değişmez kuralı: mobil uygulamada fiyat, satın alma yüzeyi veya
-/// `kartvizyon.app` fiyat sayfasına tıklanabilir yönlendirme bulunmaz.
-/// Apple 3.1.1 ve Google Play ödeme politikası reddi bu kuralla önlenir.
+/// Mobil dijital abonelik yalnız App Store / Google Play yerel ödeme yüzeyiyle
+/// satılır. Harici checkout veya pazarlama fiyat sayfasına yönlendirme yoktur.
 void main() {
   final dartSources = Directory('lib')
       .listSync(recursive: true)
@@ -12,36 +11,21 @@ void main() {
       .where((file) => file.path.endsWith('.dart'))
       .toList();
 
-  test('mobil kaynaklarda satın alma yüzeyi yoktur', () {
-    // Sadece ödeme/abonelik satışına özgü ifadeler aranır. Ürün kataloğundaki
-    // "ürün ve fiyatlar" ekranı müşteriye satılan malın listesidir, abonelik
-    // değildir; bu yüzden genel "fiyat" kelimesi kapsam dışıdır.
-    final forbidden = <RegExp>[
-      RegExp(r'satın al', caseSensitive: false),
-      RegExp(r'abonelik', caseSensitive: false),
-      RegExp(r'\bpaywall\b', caseSensitive: false),
-      RegExp(r'in_app_purchase'),
-      RegExp(r'billingclient', caseSensitive: false),
-      RegExp(r'planı yükselt', caseSensitive: false),
-    ];
+  test('mobil abonelik yalnız yerel mağaza SDKsını kullanır', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    final billing = File(
+      'lib/core/store_billing_service.dart',
+    ).readAsStringSync();
+    final premium = File(
+      'lib/features/more/premium_screen.dart',
+    ).readAsStringSync();
 
-    final violations = <String>[];
-    for (final file in dartSources) {
-      final content = file.readAsStringSync();
-      for (final pattern in forbidden) {
-        if (pattern.hasMatch(content)) {
-          violations.add('${file.path}: ${pattern.pattern}');
-        }
-      }
-    }
-
-    expect(
-      violations,
-      isEmpty,
-      reason:
-          'ADR-0004: mobilde satın alma yüzeyi açılacaksa önce IAP entegrasyonu '
-          've kurumsal/bireysel ayrımı uygulanmalıdır.',
-    );
+    expect(pubspec.contains('purchases_flutter:'), isTrue);
+    expect(billing.contains('Purchases.purchase('), isTrue);
+    expect(billing.contains('Purchases.restorePurchases()'), isTrue);
+    expect(premium.contains("workspaceKind'] == 'personal'"), isTrue);
+    expect(premium.contains('kartvizyon.app/pricing'), isFalse);
+    expect(premium.contains('checkout'), isFalse);
   });
 
   test('iOS yalnız fiilen kullanılan izinleri beyan eder', () {

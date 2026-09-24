@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  formatTry,
-  PUBLIC_PLANS,
-  TOP_UP_PACKAGES,
-  TRIAL_DAYS,
-} from "@/lib/pricing";
+import { formatTry, PUBLIC_PLANS, TRIAL_MESSAGE } from "@/lib/pricing";
 import { LegalPage } from "../legal-page";
 
 export const metadata: Metadata = {
@@ -17,10 +12,11 @@ export default function DistanceSalesPage() {
   return (
     <LegalPage title="Mesafeli Satış Sözleşmesi">
       <p>
-        Bu metin KartVizyon dijital aboneliğinin satışa açılmasıyla birlikte,
-        satın alma ekranında gösterilen plan, dönem, toplam bedel ve tüketici
-        bilgileriyle sözleşmenin ayrılmaz parçası olarak uygulanır. Ödeme
-        etkinleştirilmeden ücret tahsil edilmez.
+        Bu metin KartVizyon dijital aboneliğinin satışıyla birlikte, satın alma
+        ekranında gösterilen plan, dönem, toplam bedel ve tüketici bilgileriyle
+        sözleşmenin ayrılmaz parçası olarak uygulanır. Ödeme kanalına göre
+        uygulanır. Mobil App Store/Google Play satın almalarında mağazanın
+        sipariş ekranı, tahsilat ve mağaza koşulları da sözleşmenin parçasıdır.
       </p>
       <h2>Satıcı / hizmet sağlayıcı</h2>
       <p>
@@ -41,9 +37,15 @@ export default function DistanceSalesPage() {
 
       <h2>Plan, dönem ve bedel</h2>
       <p>
-        Aşağıdaki bedeller KDV hariç liste fiyatlarıdır. Vergiler dâhil tahsil
-        edilecek toplam tutar, seçtiğiniz koltuk sayısı ve dönemle birlikte
-        siparişi onaylamadan önce ödeme ekranında ayrıca gösterilir.
+        Bireysel standart aylık fiyat 449 TL olup KDV dahildir. Kurumsal
+        planların bedelleri KDV hariçtir. Vergiler dâhil tahsil edilecek toplam
+        tutar, seçtiğiniz koltuk sayısı ve dönemle birlikte siparişi onaylamadan
+        önce ödeme ekranında ayrıca gösterilir.
+      </p>
+      <p>
+        Mobil mağaza fiyatı ülke, para birimi ve vergiye göre değişebilir; bu
+        sayfadaki web liste fiyatı yerine satın alma anında App Store veya
+        Google Play tarafından gösterilen toplam tutar esas alınır.
       </p>
       <table className="legal-table">
         <thead>
@@ -65,7 +67,9 @@ export default function DistanceSalesPage() {
               </td>
               <td>
                 {plan.annualTry === null
-                  ? "Teklif usulü"
+                  ? plan.id === "individual"
+                    ? "Satışa açık değil"
+                    : "Teklif usulü"
                   : `${formatTry(plan.annualTry)}${plan.perSeat ? " / koltuk" : ""}`}
               </td>
               <td>{plan.minSeats}</td>
@@ -73,19 +77,37 @@ export default function DistanceSalesPage() {
           ))}
         </tbody>
       </table>
+      <h2>Kartsız deneme ve kullanım hakları</h2>
+      <p>{TRIAL_MESSAGE}</p>
       <p>
-        Aylık AI kotası dolduğunda kullanım durmaz; tek seferlik ek paketler
-        alınabilir:{" "}
-        {TOP_UP_PACKAGES.map(
-          (pack) => `${pack.name} (${pack.detail}) ${formatTry(pack.priceTry)}`,
-        ).join(" · ")}
-        . Ek paketlerin süresi yoktur ve aylık kota tükendikten sonra
-        kullanılır.
+        Deneme, e-posta doğrulandıktan sonraki ilk başarılı girişte başlar ve
+        kesintisiz 14 gün sürer. Hesap başına bir kez sunulur. Uygulamayı
+        yeniden yüklemek veya çalışma alanı değiştirmek yeni deneme sağlamaz.
+        Deneme boyunca toplam 60 kartvizit taraması, 120 dakika ses işleme ve 60
+        AI özeti kullanılabilir. Bireysel abonelikte her aylık kullanım
+        döneminde 125 tarama, 240 dakika ses işleme ve 125 AI özeti sunulur.
       </p>
       <p>
-        Her hesap {TRIAL_DAYS} gün tam erişimli ücretsiz denemeyle başlar.
-        Deneme süresi içinde iptal edilirse ücret tahsil edilmez; süre sonunda
-        hesap ücretsiz katmana geçer ve mevcut veriler silinmez.
+        Sesli notun yazıya çevrilmesi ses süresinden, özetlenmesi bir özet
+        hakkından düşer. Metinden AI özeti üretmek de bir özet hakkı kullanır.
+        Başarısız işlemler kullanıcı kotasından düşülmez; aynı tamamlanmış
+        işlemi yeniden görüntülemek yeni hak tüketmez. Kullanılmayan haklar
+        devretmez.
+      </p>
+      <p>
+        Deneme sonunda abonelik yoksa yeni kayıt, düzenleme, yükleme ve AI
+        işlemleri kapanır. Mevcut kayıtları ve çevrimdışı taslakları
+        görüntüleme, mevcut verileri dışa aktarma ve hesap silme açık kalır.
+        Sürenin dolması tek başına verileri silmez; gizlilik politikasındaki
+        saklama süreleri uygulanır.
+      </p>
+      <p>
+        Deneme sırasında abonelik başlatılabilir; ücretli dönem satın alma
+        doğrulandığında başlar ve tam paket hakkı verilir. Deneme tüketimi
+        ücretli paketten düşülmez. Yıllık faturalandırılan mevcut aboneliklerde
+        de kullanım hakları aylık yenilenir. Aylık dönem satın alma tarihine
+        bağlıdır; ilgili ayda aynı gün yoksa ayın son günü esas alınır. Kota
+        aşımı otomatik ek ücret doğurmaz.
       </p>
       <h2>İfa, süre ve yenileme</h2>
       <p>

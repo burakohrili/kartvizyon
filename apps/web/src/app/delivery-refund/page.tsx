@@ -18,13 +18,27 @@ export default function DeliveryRefundPage() {
       </p>
       <h2>İptal</h2>
       <p>
-        Aylık veya yıllık yenileme, web abonelik yönetimi üzerinden ya da destek
-        kanalına yazılı talep ile durdurulabilir. İptal, emredici mevzuat veya
+        App Store satın almalarında yenileme Apple hesabındaki Abonelikler,
+        Google Play satın almalarında Play hesabındaki Ödemeler ve abonelikler
+        bölümünden kapatılır. Uygulamayı veya KartVizyon hesabını silmek mağaza
+        aboneliğini kendiliğinden iptal etmez. İptal, emredici mevzuat veya
         satın alma sırasında açıklanan daha elverişli koşullar saklı kalmak
         üzere mevcut ücretli dönemin sonunda yürürlüğe girer ve sonraki dönem
         için ücret alınmaz.
       </p>
+      <h2>Kartsız deneme</h2>
+      <p>
+        14 günlük deneme için kart istenmez ve süre sonunda otomatik tahsilat
+        yapılmaz; iptal işlemi gerekmez. Ücretli abonelik yalnız ayrıca satın
+        alma onayınızla başlar. Deneme hakkı ile mevzuattaki cayma hakkı ayrı
+        konulardır.
+      </p>
       <h2>İade ve hizmet sorunu</h2>
+      <p>
+        Mağaza üzerinden ödenen tutarlar için Apple veya Google Play iade
+        başvuru kanalları kullanılabilir; destek taleplerinizi bize de
+        iletebilirsiniz. Kanuni haklarınız mağaza kurallarıyla ortadan kalkmaz.
+      </p>
       <p>
         Çifte tahsilat, yetkisiz işlem, hizmetin hiç etkinleşmemesi veya ayıplı
         sunulması iddiaları işlem bilgileriyle birlikte incelenir. Uygun bulunan

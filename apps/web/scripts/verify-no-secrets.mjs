@@ -24,6 +24,8 @@ const SERVER_ONLY_VARS = [
   "WEBHOOK_WORKER_SECRET",
   "RESEND_API_KEY",
   "SENTRY_AUTH_TOKEN",
+  "REVENUECAT_WEBHOOK_AUTHORIZATION",
+  "REVENUECAT_WEBHOOK_SIGNING_SECRET",
 ];
 
 /** Değer biçimine göre sır kalıpları (değişken adı geçmese bile yakalar). */

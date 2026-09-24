@@ -44,6 +44,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
     CustomerChoice? customer;
     var visitPurpose = '';
     try {
+      await widget.services.requireWriteAccess();
+      if (!mounted) return;
       final accepted = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(

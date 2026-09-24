@@ -1,21 +1,21 @@
 import { visitCreateSchema } from "@kartvizyon/contracts";
-import { apiError, serviceUnavailable } from "@/lib/api";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { apiError } from "@/lib/api";
+import { getApiContext } from "@/lib/api-context";
 
 export async function GET(request: Request) {
-  const supabase = await createSupabaseServerClient(request);
-  if (!supabase) return serviceUnavailable();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user)
-    return Response.json({ error: "Oturum gerekli." }, { status: 401 });
+  const context = await getApiContext(request);
+  if (!context.ok) return context.response;
   const url = new URL(request.url);
   const workspaceId = url.searchParams.get("workspaceId");
   const status = url.searchParams.get("status");
   if (!workspaceId)
     return Response.json({ error: "workspaceId gerekli." }, { status: 400 });
-  let query = supabase
+  if (workspaceId !== context.workspaceId)
+    return Response.json(
+      { error: "Çalışma alanı uyuşmuyor." },
+      { status: 403 },
+    );
+  let query = context.supabase
     .from("visits")
     .select(
       "id,status,purpose,planned_start_at,started_at,completed_at,approved_at,company:companies(id,name,display_name),representative:profiles!visits_representative_id_fkey(full_name)",
@@ -32,23 +32,42 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const input = visitCreateSchema.parse(await request.json());
-    const supabase = await createSupabaseServerClient(request);
-    if (!supabase) return serviceUnavailable();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user)
-      return Response.json({ error: "Oturum gerekli." }, { status: 401 });
+    const context = await getApiContext(request);
+    if (!context.ok) return context.response;
+    if (input.workspaceId !== context.workspaceId) {
+      return Response.json(
+        { error: "Çalışma alanı uyuşmuyor." },
+        { status: 403 },
+      );
+    }
+    const company = await context.supabase
+      .from("companies")
+      .select("id")
+      .eq("id", input.companyId)
+      .eq("workspace_id", context.workspaceId)
+      .is("archived_at", null)
+      .maybeSingle();
+    if (company.error) throw company.error;
+    if (!company.data) {
+      return Response.json(
+        { error: "Müşteri bu çalışma alanında bulunamadı." },
+        { status: 400 },
+      );
+    }
 
-    const { data, error } = await supabase
+    const { data, error } = await context.supabase
       .from("visits")
       .insert({
-        workspace_id: input.workspaceId,
-        organization_id: input.organizationId,
+        workspace_id: context.workspaceId,
+        organization_id: context.organizationId,
         company_id: input.companyId,
-        representative_id: user.id,
+        representative_id: context.user.id,
         client_mutation_id: input.clientMutationId,
         purpose: input.purpose,
+        visit_type: input.visitType,
+        planning_note: input.planningNote || null,
+        planned_start_at: input.plannedStartAt,
+        planned_end_at: input.plannedEndAt,
         started_at: input.startedAt,
         status: "draft",
       })

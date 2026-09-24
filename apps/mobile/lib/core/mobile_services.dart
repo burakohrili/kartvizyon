@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -9,6 +10,7 @@ import '../data/secure_session_store.dart';
 import '../data/sync_engine.dart';
 import '../data/sync_queue_repository.dart';
 import '../features/field_mode/field_mode_service.dart';
+import '../features/notifications/reminder_notification_service.dart';
 
 class MobileConfig {
   const MobileConfig({
@@ -16,6 +18,8 @@ class MobileConfig {
     required this.supabaseUrl,
     required this.supabaseAnonKey,
     required this.sentryDsn,
+    this.revenueCatAppleApiKey = '',
+    this.revenueCatGoogleApiKey = '',
   });
 
   factory MobileConfig.fromEnvironment() => const MobileConfig(
@@ -26,12 +30,20 @@ class MobileConfig {
     supabaseUrl: String.fromEnvironment('SUPABASE_URL'),
     supabaseAnonKey: String.fromEnvironment('SUPABASE_ANON_KEY'),
     sentryDsn: String.fromEnvironment('SENTRY_DSN'),
+    revenueCatAppleApiKey: String.fromEnvironment(
+      'REVENUECAT_APPLE_PUBLIC_API_KEY',
+    ),
+    revenueCatGoogleApiKey: String.fromEnvironment(
+      'REVENUECAT_GOOGLE_PUBLIC_API_KEY',
+    ),
   );
 
   final String apiBaseUrl;
   final String supabaseUrl;
   final String supabaseAnonKey;
   final String sentryDsn;
+  final String revenueCatAppleApiKey;
+  final String revenueCatGoogleApiKey;
   bool get hasSupabase => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 }
 
@@ -101,6 +113,22 @@ class MobileApiClient {
     };
   }
 
+  bool _isAuthenticationFailure(http.Response response) {
+    if (response.statusCode != 401) return false;
+    try {
+      final body = jsonDecode(response.body);
+      if (body is! Map) return false;
+      final code = body['code']?.toString();
+      final message = body['error']?.toString();
+      return code == 'bad_jwt' ||
+          code == 'session_not_found' ||
+          code == 'session_expired' ||
+          message == 'Oturum gerekli.';
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<http.Response> _send(
     String path,
     Future<http.Response> Function(Map<String, String> headers) request, {
@@ -123,7 +151,7 @@ class MobileApiClient {
         );
 
     var response = await attempt(_headersFor(await _accessToken()));
-    if (response.statusCode != 401 || refreshAccessToken == null) {
+    if (!_isAuthenticationFailure(response) || refreshAccessToken == null) {
       return response;
     }
     final refreshedToken = await refreshAccessToken!.call();
@@ -134,7 +162,7 @@ class MobileApiClient {
     response = await attempt(_headersFor(refreshedToken));
     // Taze token da 401 alıyorsa yenilenecek bir şey kalmamıştır; kullanıcı
     // yeniden giriş yapmalı ve bunu ona söyleyebilmeliyiz.
-    if (response.statusCode == 401) onSessionExpired?.call();
+    if (_isAuthenticationFailure(response)) onSessionExpired?.call();
     return response;
   }
 
@@ -293,6 +321,8 @@ class MobileServices {
     required this.api,
     required this.queue,
     required this.sync,
+    this.fieldModeNotificationPermissionCheck,
+    this.fieldModeNow,
   });
 
   /// Testlerde bellek içi bir veritabanı ve sahte istemcilerle kurmak için.
@@ -306,6 +336,8 @@ class MobileServices {
     required MobileApiClient api,
     required SyncEngine sync,
     SecureSessionStore sessions = const SecureSessionStore(),
+    Future<bool> Function()? fieldModeNotificationPermissionCheck,
+    DateTime Function()? fieldModeNow,
   }) => MobileServices._(
     config: config,
     database: database,
@@ -313,6 +345,8 @@ class MobileServices {
     api: api,
     queue: SyncQueueRepository(database),
     sync: sync,
+    fieldModeNotificationPermissionCheck: fieldModeNotificationPermissionCheck,
+    fieldModeNow: fieldModeNow,
   );
 
   factory MobileServices.create(MobileConfig config) {
@@ -344,9 +378,21 @@ class MobileServices {
                   refreshToken: session.refreshToken ?? '',
                 );
                 return session.accessToken;
-              } on AuthException {
+              } on AuthSessionMissingException {
                 await sessions.clear();
                 return null;
+              } on AuthApiException catch (error) {
+                if (const {
+                  'refresh_token_not_found',
+                  'refresh_token_already_used',
+                  'session_not_found',
+                  'session_expired',
+                  'invalid_credentials',
+                }.contains(error.code)) {
+                  await sessions.clear();
+                  return null;
+                }
+                rethrow;
               }
             }
           : null,
@@ -373,25 +419,86 @@ class MobileServices {
   final MobileApiClient api;
   final SyncQueueRepository queue;
   final SyncEngine sync;
+  final Future<bool> Function()? fieldModeNotificationPermissionCheck;
+  final DateTime Function()? fieldModeNow;
 
   /// Saha modu vardiya boyunca yaşadığı için servislerle birlikte tutulur;
   /// ekran değiştirildiğinde oturum kopmamalıdır.
-  late final FieldModeService fieldMode = FieldModeService(this);
+  late final FieldModeService fieldMode = FieldModeService(
+    this,
+    notificationPermissionCheck: fieldModeNotificationPermissionCheck,
+    now: fieldModeNow,
+  );
+  late final ReminderNotificationService reminders =
+      ReminderNotificationService(this);
 
   /// Kayıtlı oturum ölünce true olur; yönlendirici bunu dinleyip kullanıcıyı
   /// giriş ekranına alır. Girişten sonra tekrar false'a çekilir.
+  final ValueNotifier<Map<String, dynamic>?> entitlement = ValueNotifier(null);
+  Timer? _accessTimer;
+  bool get canWrite {
+    if (!config.hasSupabase) return true;
+    final data = entitlement.value;
+    final endsAt = DateTime.tryParse(data?['accessEndsAt']?.toString() ?? '');
+    return data?['readOnly'] == false &&
+        endsAt != null &&
+        DateTime.now().isBefore(endsAt);
+  }
+
+  void updateEntitlement(Map? data) {
+    entitlement.value = data == null ? null : Map<String, dynamic>.from(data);
+    _accessTimer?.cancel();
+    final endsAt = DateTime.tryParse(data?['accessEndsAt']?.toString() ?? '');
+    if (canWrite && endsAt != null) {
+      _accessTimer = Timer(endsAt.difference(DateTime.now()), () {
+        entitlement.value = {...?entitlement.value, 'readOnly': true};
+        unawaited(fieldMode.stop());
+      });
+    } else if (fieldMode.isActive.value) {
+      unawaited(fieldMode.stop());
+    }
+  }
+
+  Future<void> requireWriteAccess() async {
+    try {
+      await refreshContext();
+    } catch (_) {
+      // Son doğrulanmış erişim bitişi çevrimdışıyken de uygulanır.
+    }
+    if (!canWrite) {
+      throw const MobileApiException(
+        402,
+        'Yeni işlemler için abonelik gerekli. Mevcut kayıtlarınız ve taslaklarınız korunur.',
+      );
+    }
+  }
+
   final ValueNotifier<bool> sessionExpired = ValueNotifier<bool>(false);
 
   String ownerId = 'demo-local';
   String workspaceId = '00000000-0000-4000-8000-000000000001';
   String? organizationId;
+  String? displayName;
+  String? workspaceCompanyName;
+  String? workspaceKind;
+  String timezone = 'UTC';
+
+  void clearIdentityContext() {
+    ownerId = 'demo-local';
+    workspaceId = '00000000-0000-4000-8000-000000000001';
+    organizationId = null;
+    displayName = null;
+    workspaceCompanyName = null;
+    workspaceKind = null;
+    timezone = 'UTC';
+    _contextReadAt = null;
+  }
 
   /// Bağlamın son başarıyla okunduğu an; `contextFreshness` içinde tekrar
   /// sorulmaz.
   DateTime? _contextReadAt;
 
-  /// Oturum bağlamı bir vardiya boyunca değişmez: mobilde çalışma alanı
-  /// değiştirme yoktur, `ownerId` ve `workspaceId` girişten çıkışa sabittir.
+  /// Aktif çalışma alanı değişene kadar bağlam kısa süre önbellekte tutulur.
   static const contextFreshness = Duration(minutes: 5);
 
   /// Oturum bağlamını tazeler.
@@ -414,13 +521,32 @@ class MobileServices {
     ownerId = result['ownerId']?.toString() ?? ownerId;
     workspaceId = result['workspaceId']?.toString() ?? workspaceId;
     organizationId = result['organizationId']?.toString();
+    displayName = result['displayName']?.toString();
+    workspaceCompanyName = result['workspaceCompanyName']?.toString();
+    workspaceKind = result['workspaceKind']?.toString();
+    timezone = result['timezone']?.toString() ?? timezone;
+    updateEntitlement(result['entitlement'] as Map?);
     // Yalnız başarıda işaretlenir; hata sonrası bir sonraki ekran tekrar dener.
     _contextReadAt = DateTime.now();
   }
 
+  Future<void> switchWorkspace(String targetId) async {
+    final previousId = workspaceId;
+    workspaceId = targetId;
+    try {
+      await refreshContext(force: true);
+    } catch (_) {
+      workspaceId = previousId;
+      rethrow;
+    }
+  }
+
   Future<void> dispose() async {
+    _accessTimer?.cancel();
+    entitlement.dispose();
     await fieldMode.stop();
     fieldMode.dispose();
+    reminders.dispose();
     sessionExpired.dispose();
     api.client.close();
     sync.client.close();

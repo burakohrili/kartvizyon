@@ -20,6 +20,7 @@ export type PublicPlan = {
   minSeats: number;
   /** Koltuk başına aylık AI dakikası. */
   aiMinutes: number;
+  aiSummaries?: number;
   /** Koltuk başına aylık kartvizit taraması. null = sınırsız. */
   ocr: number | null;
   /** Çalışma alanı başına müşteri sınırı. null = sınırsız. */
@@ -30,8 +31,15 @@ export type PublicPlan = {
 };
 
 export const TRIAL_DAYS = 14;
+export const TRIAL_LIMITS = {
+  ocr: 60,
+  aiMinutes: 120,
+  aiSummaries: 60,
+} as const;
+export const TRIAL_MESSAGE =
+  "14 gün ücretsiz deneyin. Kart gerekmez. Deneme sonunda otomatik ücret alınmaz. Devam etmek için abonelik başlatabilirsiniz.";
 
-/** Mağaza komisyonu (%15) telafi edildiği için mobil fiyat webden yüksektir. */
+/** Türkiye bireysel standart aylık fiyatı, KDV dahil. */
 export const IAP_INDIVIDUAL_MONTHLY_TRY = 449;
 
 export const PUBLIC_PLANS: PublicPlan[] = [
@@ -39,16 +47,18 @@ export const PUBLIC_PLANS: PublicPlan[] = [
     id: "individual",
     name: "Bireysel",
     audience: "Tek başına saha çalışan profesyoneller için",
-    monthlyTry: 349,
-    annualTry: 3490,
+    monthlyTry: 449,
+    annualTry: null,
     perSeat: false,
     minSeats: 1,
-    aiMinutes: 120,
-    ocr: 60,
+    aiMinutes: 240,
+    aiSummaries: 125,
+    ocr: 125,
     companies: null,
     items: [
       "Sınırsız müşteri ve ziyaret kaydı",
-      "Ayda 120 AI dakikası, 60 kartvizit taraması",
+      "Ayda 240 dakika ses işleme, 125 kartvizit taraması",
+      "Ayda 125 AI özeti",
       "Offline mobil kullanım",
       "Kişisel takip ve hatırlatmalar",
     ],
@@ -95,10 +105,10 @@ export const PUBLIC_PLANS: PublicPlan[] = [
 ];
 
 export const FREE_TIER = {
-  name: "Ücretsiz",
-  companies: 5,
-  aiMinutes: 10,
-  ocr: 5,
+  name: "Yalnız görüntüleme",
+  companies: 0,
+  aiMinutes: 0,
+  ocr: 0,
   seats: 1,
 };
 
@@ -107,6 +117,7 @@ export type TopUpPackage = {
   name: string;
   detail: string;
   aiMinutes: number;
+  aiSummaries?: number;
   ocr: number;
   priceTry: number;
 };

@@ -6,6 +6,7 @@ ClamAV tabanlı bu servis, Vercel'deki belge kuyruğunu sahiplenir, beş dakikal
 
 - `DOCUMENT_SCAN_SECRET`: Vercel ile aynı, en az 32 bayt rastgele secret.
 - `APP_BASE_URL`: `https://kartvizyon.app`.
+- `VERCEL_AUTOMATION_BYPASS_SECRET`: Yalnız Vercel korumalı Preview callback'leri için opsiyonel otomasyon bypass secret'ı. Production alan adı korumasızsa tanımlanmaz.
 - `PORT`: Cloud Run tarafından verilir; yerelde varsayılan `8080`.
 
 `APP_BASE_URL` istekten kabul edilmez; callback hedefi yalnız ortamdan okunur. `/scan` Bearer secret ister. `/health`, ClamAV motoru, uygulama URL'si ve secret hazır değilse `503` döner.

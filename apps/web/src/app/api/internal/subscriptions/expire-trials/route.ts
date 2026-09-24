@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 
 /**
- * Süresi dolan denemeleri ücretsiz katmana düşürür (ADR-0005).
+ * Eski abonelik satırlarını kapatır. Asıl sınır account_trials ve sunucu saatidir.
  *
  * Veri silinmez ve mevcut kayıtlar okunabilir kalır; yalnız yeni kayıt
  * oluşturma limiti devreye girer.
@@ -27,7 +27,7 @@ async function expireTrials(request: Request) {
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("workspace_subscriptions")
-      .update({ plan_id: "free", status: "active", updated_at: now })
+      .update({ plan_id: "free", status: "cancelled", updated_at: now })
       .eq("status", "trialing")
       .lt("trial_ends_at", now)
       .select("workspace_id");

@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:kartvizyon_mobile/core/mobile_services.dart';
 import 'package:kartvizyon_mobile/data/secure_session_store.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class _EmptySessionStore extends SecureSessionStore {
   const _EmptySessionStore();
@@ -67,10 +68,12 @@ void main() {
   test('yanıt gelmezse sonsuza kadar beklemez', () async {
     // Zaman aşımı hiç yoktu: takılan istek, tamamen hareketsiz görünen bir
     // ekran olarak sonsuza kadar bekliyordu.
+    var expired = 0;
     final client = MobileApiClient(
       baseUrl: Uri.parse('https://app.kartvizyon.app'),
       sessions: const _EmptySessionStore(),
       timeout: const Duration(milliseconds: 40),
+      onSessionExpired: () => expired++,
       client: MockClient((_) => Completer<http.Response>().future),
     );
 
@@ -82,6 +85,7 @@ void main() {
             .having((error) => error.message, 'message', contains('zaman')),
       ),
     );
+    expect(expired, 0);
   });
 
   test('her istek aktif çalışma alanını taşır', () async {
@@ -212,6 +216,68 @@ void main() {
     );
 
     await client.get('/api/customers');
+    expect(expired, 0);
+  });
+
+  test('geçici refresh ağ hatası oturumu düşürmez', () async {
+    var expired = 0;
+    final client = MobileApiClient(
+      baseUrl: Uri.parse('https://app.kartvizyon.app'),
+      sessions: const _EmptySessionStore(),
+      accessTokenProvider: () async => 'expired-token',
+      refreshAccessToken: () async => throw AuthRetryableFetchException(),
+      onSessionExpired: () => expired++,
+      client: MockClient(
+        (_) async =>
+            http.Response(jsonEncode({'error': 'Oturum gerekli.'}), 401),
+      ),
+    );
+    await expectLater(
+      client.get('/api/geofence/candidates'),
+      throwsA(isA<AuthRetryableFetchException>()),
+    );
+    expect(expired, 0);
+  });
+
+  test('tenant 401 yanıtı oturum geçersiz sayılmaz', () async {
+    var expired = 0;
+    var refreshes = 0;
+    final client = MobileApiClient(
+      baseUrl: Uri.parse('https://app.kartvizyon.app'),
+      sessions: const _EmptySessionStore(),
+      refreshAccessToken: () async {
+        refreshes++;
+        return 'fresh';
+      },
+      onSessionExpired: () => expired++,
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({'error': 'Bu çalışma alanına erişiminiz yok.'}),
+          401,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        ),
+      ),
+    );
+    await expectLater(
+      client.get('/api/geofence/candidates'),
+      throwsA(isA<MobileApiException>()),
+    );
+    expect(refreshes, 0);
+    expect(expired, 0);
+  });
+
+  test('sunucu 500 oturumu düşürmez', () async {
+    var expired = 0;
+    final client = MobileApiClient(
+      baseUrl: Uri.parse('https://app.kartvizyon.app'),
+      sessions: const _EmptySessionStore(),
+      onSessionExpired: () => expired++,
+      client: MockClient((_) async => http.Response('', 500)),
+    );
+    await expectLater(
+      client.get('/api/session'),
+      throwsA(isA<MobileApiException>()),
+    );
     expect(expired, 0);
   });
 

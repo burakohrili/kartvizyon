@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function LegalPage({
   title,
-  updated = "3 Ağustos 2026",
+  updated = "12 Eylül 2026",
   children,
 }: {
   title: string;

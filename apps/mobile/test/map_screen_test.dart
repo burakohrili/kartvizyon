@@ -51,8 +51,179 @@ class _ReadyGeolocator extends GeolocatorPlatform
   );
 }
 
+class _DeniedGeolocator extends _ReadyGeolocator {
+  @override
+  Future<LocationPermission> checkPermission() async =>
+      LocationPermission.deniedForever;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('mesafe ve eksik bağlam kullanıcı dilinde gösterilir', () {
+    expect(formatNearbyDistance(0.35), '350 m');
+    expect(formatNearbyDistance(1.4), '1,4 km');
+    expect(formatNearbyDistance(null), 'Mesafe bilinmiyor');
+    expect(nearbyVisitLabel({}), 'Henüz ziyaret edilmedi');
+    expect(nearbyTaskLabel({}), 'Geciken görev yok');
+    expect(nearbyTaskLabel({'overdueTaskCount': 2}), '2 geciken görev');
+  });
+
+  testWidgets('konum izni reddi müşteri arama alternatifini gösterir', (
+    tester,
+  ) async {
+    GeolocatorPlatform.instance = _DeniedGeolocator();
+    const config = MobileConfig(
+      apiBaseUrl: 'https://app.kartvizyon.app',
+      supabaseUrl: '',
+      supabaseAnonKey: '',
+      sentryDsn: '',
+    );
+    final services = MobileServices.create(config);
+    addTearDown(services.dispose);
+    await tester.pumpWidget(MaterialApp(home: MapScreen(services: services)));
+    await tester.tap(find.text('Yakınımdakileri bul'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Müşterilerinizi konum kullanmadan'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('yakında müşteri yoksa boş durum gösterir', (tester) async {
+    GeolocatorPlatform.instance = _ReadyGeolocator();
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    const config = MobileConfig(
+      apiBaseUrl: 'https://app.kartvizyon.app',
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseAnonKey: 'anon',
+      sentryDsn: '',
+    );
+    const sessions = _EmptySessionStore();
+    final client = MockClient(
+      (request) async => http.Response(
+        jsonEncode(
+          request.url.path == '/api/session'
+              ? {
+                  'ownerId': 'user-1',
+                  'workspaceId': 'workspace-1',
+                  'organizationId': null,
+                  'entitlement': null,
+                }
+              : {'data': []},
+        ),
+        200,
+      ),
+    );
+    final services = MobileServices.forTesting(
+      config: config,
+      database: database,
+      sessions: sessions,
+      api: MobileApiClient(
+        baseUrl: Uri.parse(config.apiBaseUrl),
+        sessions: sessions,
+        client: client,
+      ),
+      sync: SyncEngine(
+        database: database,
+        sessions: sessions,
+        baseUrl: Uri.parse(config.apiBaseUrl),
+        client: client,
+      ),
+    );
+    await tester.pumpWidget(MaterialApp(home: MapScreen(services: services)));
+    await tester.tap(find.text('Yakınımdakileri bul'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bu bölgede kayıtlı müşteri bulunamadı.'), findsOneWidget);
+  });
+
+  testWidgets('harita 20 müşteriyi mesafeye dizer; iç puanı göstermez', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(720, 1280);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    GeolocatorPlatform.instance = _ReadyGeolocator();
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    const config = MobileConfig(
+      apiBaseUrl: 'https://app.kartvizyon.app',
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseAnonKey: 'anon',
+      sentryDsn: '',
+    );
+    final candidates = List.generate(
+      20,
+      (index) => {
+        'id': 'customer-$index',
+        'name': index == 0
+            ? 'Çok Uzun İsimli Anadolu Makina Sanayi ve Ticaret Anonim Şirketi'
+            : 'Müşteri $index',
+        'distanceKm': index == 0 ? 0.35 : index / 10 + 0.5,
+        'daysSinceVisit': null,
+        'overdueTaskCount': index == 0 ? 2 : null,
+        'priority': {'total': 57},
+      },
+    );
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/session') {
+        return http.Response(
+          jsonEncode({
+            'ownerId': 'user-1',
+            'workspaceId': 'workspace-1',
+            'organizationId': null,
+            'entitlement': null,
+          }),
+          200,
+        );
+      }
+      expect(request.url.queryParameters['sort'], 'distance');
+      return http.Response(
+        jsonEncode({'data': candidates.reversed.toList()}),
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
+    });
+    const sessions = _EmptySessionStore();
+    final services = MobileServices.forTesting(
+      config: config,
+      database: database,
+      sessions: sessions,
+      api: MobileApiClient(
+        baseUrl: Uri.parse(config.apiBaseUrl),
+        sessions: sessions,
+        client: client,
+      ),
+      sync: SyncEngine(
+        database: database,
+        sessions: sessions,
+        baseUrl: Uri.parse(config.apiBaseUrl),
+        client: client,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: MapScreen(services: services),
+        ),
+      ),
+    );
+    await tester.drag(find.byType(ListView), const Offset(0, -280));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Yakınımdakileri bul'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('350 m'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('350 m'), findsOneWidget);
+    expect(find.text('2 geciken görev'), findsOneWidget);
+    expect(find.text('57'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('sunucu hatası konum hatası gibi gösterilmez', (tester) async {
     GeolocatorPlatform.instance = _ReadyGeolocator();

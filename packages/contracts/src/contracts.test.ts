@@ -7,6 +7,8 @@ import {
   visitSummarySchema,
   workspaceContextSchema,
   companyCreateSchema,
+  companyUpdateSchema,
+  contactUpdateSchema,
   duplicateCheckSchema,
   taskCreateSchema,
   calculateVisitPriority,
@@ -14,8 +16,11 @@ import {
   reportFiltersSchema,
   reportShareCreateSchema,
   opportunityCreateSchema,
+  opportunityUpdateSchema,
   orderDraftCreateSchema,
+  orderDraftUpdateSchema,
   plannedVisitCreateSchema,
+  visitCreateSchema,
   activityCommentCreateSchema,
   formTemplateCreateSchema,
   documentMetadataSchema,
@@ -245,6 +250,51 @@ describe("satış operasyonları sözleşmesi", () => {
     ).toBe(false);
   });
 
+  it("fırsat para birimi ve olasılık sınırlarını uygular", () => {
+    const base = {
+      workspaceId: "00000000-0000-4000-8000-000000000001",
+      companyId: "00000000-0000-4000-8000-000000000002",
+      title: "Yeni sistem",
+    };
+    for (const currency of ["TRY", "USD", "EUR"]) {
+      expect(
+        opportunityCreateSchema.safeParse({
+          ...base,
+          currency,
+          probability: 50,
+        }).success,
+      ).toBe(true);
+    }
+    expect(
+      opportunityCreateSchema.safeParse({
+        ...base,
+        currency: "GBP",
+        probability: -1,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("kaybedilen fırsatta neden ister ve tam düzenlemeyi kabul eder", () => {
+    const input = {
+      id: "00000000-0000-4000-8000-000000000003",
+      title: "Yeni sistem",
+      stage: "lost",
+      estimatedValue: 12500.5,
+      currency: "EUR",
+      probability: 0,
+      expectedCloseDate: "2026-12-31",
+      competitor: "Rakip A",
+      assignedTo: "00000000-0000-4000-8000-000000000004",
+    };
+    expect(opportunityUpdateSchema.safeParse(input).success).toBe(false);
+    expect(
+      opportunityUpdateSchema.safeParse({
+        ...input,
+        lossReason: "Fiyat beklentisi karşılanmadı",
+      }).success,
+    ).toBe(true);
+  });
+
   it("ürünsüz sipariş taslağını reddeder", () => {
     expect(
       orderDraftCreateSchema.safeParse({
@@ -255,17 +305,87 @@ describe("satış operasyonları sözleşmesi", () => {
     ).toBe(false);
   });
 
+  it("sipariş düzenlemede kimlik, müşteri ve geçerli kalem değerlerini zorunlu tutar", () => {
+    const valid = {
+      id: crypto.randomUUID(),
+      companyId: crypto.randomUUID(),
+      currency: "EUR" as const,
+      items: [
+        {
+          productId: crypto.randomUUID(),
+          quantity: 2,
+          unitPrice: 125.5,
+          discountPercent: 10,
+        },
+      ],
+    };
+    expect(orderDraftUpdateSchema.safeParse(valid).success).toBe(true);
+    expect(
+      orderDraftUpdateSchema.safeParse({
+        ...valid,
+        items: [{ ...valid.items[0], quantity: -1 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      orderDraftUpdateSchema.safeParse({
+        ...valid,
+        items: [{ ...valid.items[0], unitPrice: -1 }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("bitişi başlangıçtan önce olan ziyaret planını reddeder", () => {
     expect(
       plannedVisitCreateSchema.safeParse({
         workspaceId: crypto.randomUUID(),
         companyId: crypto.randomUUID(),
         representativeId: crypto.randomUUID(),
+        clientMutationId: crypto.randomUUID(),
         purpose: "Teknik keşif",
         plannedStartAt: "2026-08-03T12:00:00.000Z",
         plannedEndAt: "2026-08-03T11:00:00.000Z",
       }).success,
     ).toBe(false);
+  });
+
+  it("ziyaret türü, planlama notu ve geçerli süreyi kabul eder", () => {
+    expect(
+      plannedVisitCreateSchema.safeParse({
+        workspaceId: crypto.randomUUID(),
+        companyId: crypto.randomUUID(),
+        representativeId: crypto.randomUUID(),
+        clientMutationId: crypto.randomUUID(),
+        purpose: "Yeni teklif üzerinden geçmek",
+        visitType: "quote_follow_up",
+        planningNote: "Satın alma müdürü de katılacak.",
+        plannedStartAt: "2026-09-22T07:00:00.000Z",
+        plannedEndAt: "2026-09-22T08:30:00.000Z",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("çevrimdışı planlı ziyaret sözleşmesinde iki zamanı birlikte ister", () => {
+    const base = {
+      workspaceId: "00000000-0000-4000-8000-000000000001",
+      organizationId: null,
+      companyId: "00000000-0000-4000-8000-000000000002",
+      purpose: "Teklif takibi",
+      clientMutationId: "00000000-0000-4000-8000-000000000003",
+    };
+    expect(
+      visitCreateSchema.safeParse({
+        ...base,
+        plannedStartAt: "2026-09-22T07:00:00.000Z",
+      }).success,
+    ).toBe(false);
+    expect(
+      visitCreateSchema.safeParse({
+        ...base,
+        visitType: "quote_follow_up",
+        plannedStartAt: "2026-09-22T07:00:00.000Z",
+        plannedEndAt: "2026-09-22T08:30:00.000Z",
+      }).success,
+    ).toBe(true);
   });
 });
 
@@ -370,5 +490,27 @@ describe("müşteri kısa adı", () => {
       companyCreateSchema.safeParse({ ...base, displayName: "x".repeat(81) })
         .success,
     ).toBe(false);
+  });
+});
+
+describe("müşteri yaşam döngüsü güncellemeleri", () => {
+  it("tenant kimliği taşımayan firma güncellemesini doğrular", () => {
+    expect(
+      companyUpdateSchema.parse({
+        id: "00000000-0000-4000-8000-000000000101",
+        name: "ABC Makina",
+        website: "abc.com",
+      }),
+    ).toMatchObject({ name: "ABC Makina", website: "https://abc.com" });
+  });
+
+  it("tenant ve firma kimliği taşımayan kişi güncellemesini doğrular", () => {
+    expect(
+      contactUpdateSchema.parse({
+        id: "00000000-0000-4000-8000-000000000102",
+        firstName: "Ayşe",
+        lastName: "Yılmaz",
+      }),
+    ).toMatchObject({ firstName: "Ayşe", lastName: "Yılmaz" });
   });
 });

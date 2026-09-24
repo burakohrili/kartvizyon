@@ -1,7 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/mobile_services.dart';
+
+String formatNearbyDistance(num? distanceKm) {
+  if (distanceKm == null || !distanceKm.toDouble().isFinite) {
+    return 'Mesafe bilinmiyor';
+  }
+  final distance = distanceKm.toDouble();
+  if (distance < 1) return '${(distance * 1000).round()} m';
+  return '${distance.toStringAsFixed(1).replaceAll('.', ',')} km';
+}
+
+String nearbyVisitLabel(Map<String, dynamic> candidate) {
+  final days = candidate['daysSinceVisit'] as int?;
+  return days == null
+      ? 'Henüz ziyaret edilmedi'
+      : 'Son ziyaret: $days gün önce';
+}
+
+String nearbyTaskLabel(Map<String, dynamic> candidate) {
+  final count = (candidate['overdueTaskCount'] as num?)?.toInt() ?? 0;
+  return count > 0 ? '$count geciken görev' : 'Geciken görev yok';
+}
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key, required this.services});
@@ -13,6 +35,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   bool busy = false;
   String? message;
+  bool searched = false;
   List<Map<String, dynamic>> candidates = const [];
 
   void _updateState(VoidCallback callback) {
@@ -44,7 +67,8 @@ class _MapScreenState extends State<MapScreen> {
         permission == LocationPermission.deniedForever) {
       _updateState(
         () => message =
-            'Konum izni verilmedi. Uygulama sürekli konum takibi yapmaz.',
+            'Yakındaki müşterileri göstermek için konum izni gerekiyor. '
+            'Müşterilerinizi konum kullanmadan da arayabilirsiniz.',
       );
       return null;
     }
@@ -94,13 +118,21 @@ class _MapScreenState extends State<MapScreen> {
         await widget.services.refreshContext();
         final result =
             await widget.services.api.get(
-                  '/api/geofence/candidates?workspaceId=${widget.services.workspaceId}&latitude=${position.latitude}&longitude=${position.longitude}',
+                  '/api/geofence/candidates?workspaceId=${widget.services.workspaceId}&latitude=${position.latitude}&longitude=${position.longitude}&sort=distance',
                 )
                 as Map<String, dynamic>;
         _updateState(() {
-          candidates = List<Map<String, dynamic>>.from(
-            result['data'] as List? ?? [],
-          );
+          candidates =
+              List<Map<String, dynamic>>.from(result['data'] as List? ?? [])
+                ..sort(
+                  (a, b) =>
+                      ((a['distanceKm'] as num?)?.toDouble() ?? double.infinity)
+                          .compareTo(
+                            (b['distanceKm'] as num?)?.toDouble() ??
+                                double.infinity,
+                          ),
+                );
+          searched = true;
           message =
               'Konum yalnızca aday hesaplamak için kullanıldı; sunucuda saklanmadı.';
         });
@@ -111,6 +143,11 @@ class _MapScreenState extends State<MapScreen> {
               : 'Yakındaki müşteriler getirilemedi. Tekrar deneyin.',
         );
       }
+    } catch (_) {
+      _updateState(
+        () => message =
+            'Konum alınamadı. Konum ayarlarınızı kontrol edip tekrar deneyin.',
+      );
     } finally {
       _updateState(() => busy = false);
     }
@@ -152,20 +189,55 @@ class _MapScreenState extends State<MapScreen> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(message!),
           ),
+        if (searched && candidates.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Text('Bu bölgede kayıtlı müşteri bulunamadı.'),
+          ),
         ...candidates.map((item) {
-          final priority = item['priority'] as Map?;
           return Card(
-            child: ListTile(
-              leading: CircleAvatar(child: Text('${priority?['total'] ?? 0}')),
-              title: Text(item['name']?.toString() ?? 'Firma'),
-              subtitle: Text(
-                '${item['address'] ?? ''}\n${(item['distanceKm'] as num? ?? 0).toStringAsFixed(1)} km',
-              ),
-              isThreeLine: true,
-              trailing: IconButton(
-                icon: const Icon(Icons.navigation_outlined),
-                tooltip: 'Navigasyonu aç',
-                onPressed: () => navigate(item),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item['name']?.toString() ?? 'Firma',
+                    style: Theme.of(context).textTheme.titleMedium,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(formatNearbyDistance(item['distanceKm'] as num?)),
+                  if ((item['address']?.toString() ?? '').isNotEmpty)
+                    Text(
+                      item['address'].toString(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  const SizedBox(height: 8),
+                  Text(nearbyVisitLabel(item)),
+                  Text(nearbyTaskLabel(item)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      TextButton.icon(
+                        onPressed: item['id'] == null
+                            ? null
+                            : () => context.push('/briefings/${item['id']}'),
+                        icon: const Icon(Icons.summarize_outlined),
+                        label: const Text('Brifing'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => navigate(item),
+                        icon: const Icon(Icons.navigation_outlined),
+                        label: const Text('Navigasyon'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           );

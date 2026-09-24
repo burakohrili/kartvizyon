@@ -1,0 +1,133 @@
+{
+  "checkedAt": "2026-09-24T05:55:23.401Z",
+  "scope": "Deployed production only; not proof of current local worktree",
+  "results": [
+    {
+      "url": "https://kartvizyon.app/",
+      "method": "PRICING",
+      "pass": false,
+      "expected": "Individual monthly 449 TRY, 125 quota, no annual offer",
+      "actual": "Bireysel Tek başına saha çalışan profesyoneller için ₺349 / ay Yıllık ₺3.490 — iki ay bedava Sınırsız müşteri ve ziyaret kaydı Ayda 120 AI dakikası, 60 kartvizit taraması Offline mobil kullanım Kişisel takip ve hatırlatmalar Plan bilgisi al"
+    },
+    {
+      "url": "https://kartvizyon.app/",
+      "method": "GET",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true,
+      "pricing": {
+        "individual": "Bireysel Tek başına saha çalışan profesyoneller için ₺349 / ay Yıllık ₺3.490 — iki ay bedava Sınırsız müşteri ve ziyaret kaydı Ayda 120 AI dakikası, 60 kartvizit taraması Offline mobil kullanım Kişisel takip ve hatırlatmalar Plan bilgisi al"
+      }
+    },
+    {
+      "url": "https://kartvizyon.app/privacy",
+      "method": "GET",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://kartvizyon.app/terms",
+      "method": "GET",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://kartvizyon.app/account-deletion",
+      "method": "GET",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://app.kartvizyon.app/login",
+      "method": "GET",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://app.kartvizyon.app/api/session",
+      "method": "GET",
+      "status": 401,
+      "expected": [
+        401
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://app.kartvizyon.app/api/customers",
+      "method": "GET",
+      "status": 401,
+      "expected": [
+        401
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://app.kartvizyon.app/api/visits",
+      "method": "GET",
+      "status": 401,
+      "expected": [
+        401
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://app.kartvizyon.app/api/tasks",
+      "method": "GET",
+      "status": 401,
+      "expected": [
+        401
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://app.kartvizyon.app/api/settings/billing",
+      "method": "GET",
+      "status": 401,
+      "expected": [
+        401
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://app.kartvizyon.app/api/invitations",
+      "method": "GET",
+      "status": 401,
+      "expected": [
+        401
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://app.kartvizyon.app/api/reports/export/pdf",
+      "method": "GET",
+      "status": 401,
+      "expected": [
+        401
+      ],
+      "pass": true
+    },
+    {
+      "url": "https://app.kartvizyon.app/api/internal/webhooks/revenuecat",
+      "method": "POST",
+      "status": 404,
+      "expected": [
+        401
+      ],
+      "pass": false
+    }
+  ]
+}

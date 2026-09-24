@@ -79,6 +79,28 @@ void main() {
   });
 
   group('manuel müşteri formu', () {
+    testWidgets('iki kat yazıda Ad ve Soyad alanları taşmaz', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final errors = await overflowErrorsWhile(tester, () async {
+        await tester.pumpWidget(
+          const MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: KartVizyonApp(),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Müşteriler'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(Icons.person_add_alt_1_outlined));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.widgetWithText(TextFormField, 'Ad'));
+        await tester.ensureVisible(find.widgetWithText(TextFormField, 'Soyad'));
+      });
+      expect(errors.where((error) => error.contains('overflowed')), isEmpty);
+    });
+
     testWidgets('zorunlu alan boşken kaydetmeyi engeller', (tester) async {
       tester.view.physicalSize = const Size(1080, 2280);
       tester.view.devicePixelRatio = 3;

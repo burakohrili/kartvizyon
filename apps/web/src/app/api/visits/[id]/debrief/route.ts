@@ -2,7 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { audioBucketName } from "@/lib/storage-config";
 import { z } from "zod";
 import { apiError } from "@/lib/api";
-import { assertQuota } from "@/lib/entitlements";
+import { parseBuffer } from "music-metadata";
+import { reserveAiQuota, finishAiQuota, releaseAiQuota } from "@/lib/ai-quota";
 import {
   summarizeVisitTranscript,
   transcribeVisitAudio,
@@ -41,11 +42,13 @@ export async function POST(
   let userId: string | null = null;
   let submissionId: string | null = null;
   let visitTouched = false;
+  let operationId: string | null = null;
   let visit: {
     id: string;
     workspace_id: string;
     organization_id: string | null;
     representative_id: string;
+    company_id: string;
   } | null = null;
 
   try {
@@ -58,14 +61,14 @@ export async function POST(
 
       const visitResult = await supabase
         .from("visits")
-        .select("id,workspace_id,organization_id,representative_id")
+        .select("id,workspace_id,organization_id,representative_id,company_id")
         .eq("id", id)
         .eq("representative_id", userId)
         .single();
       visit = visitResult.data;
       if (!visit)
         return Response.json({ error: "Ziyaret bulunamadı." }, { status: 404 });
-    } else if (!id.startsWith("demo-")) {
+    } else {
       return Response.json(
         {
           error:
@@ -92,6 +95,7 @@ export async function POST(
         : "";
     let audioAssetId: string | null = null;
     let transcriptionModel: string | null = null;
+    let audioDurationSeconds = 0;
 
     // Doğrulama, `debrief_submissions` satırı yazılmadan ÖNCE yapılır.
     //
@@ -113,19 +117,6 @@ export async function POST(
           { error: "Ses biçimi desteklenmiyor." },
           { status: 415 },
         );
-      }
-      // AI dakika kotası yalnız ses işlemede uygulanır; metin notu ve manuel
-      // ziyaret kaydı kotadan bağımsız çalışmaya devam eder (offline ilkesi).
-      if (supabase && visit) {
-        const quotaDenied = await assertQuota(
-          {
-            supabase,
-            workspaceId: visit.workspace_id,
-            organizationId: visit.organization_id,
-          },
-          "ai_minutes",
-        );
-        if (quotaDenied) return quotaDenied;
       }
     }
 
@@ -153,6 +144,33 @@ export async function POST(
           { status: 409 },
         );
       }
+
+      if (audio) {
+        const metadata = await parseBuffer(
+          new Uint8Array(await audio.arrayBuffer()),
+          { mimeType: audio.type, size: audio.size },
+          { duration: true },
+        );
+        const duration = metadata.format.duration;
+        if (!duration || !Number.isFinite(duration) || duration <= 0) {
+          return Response.json(
+            { error: "Ses süresi doğrulanamadı. Kaydı yeniden oluşturun." },
+            { status: 422 },
+          );
+        }
+        audioDurationSeconds = Math.ceil(duration);
+      }
+      const reservation = await reserveAiQuota({
+        workspaceId: visit.workspace_id,
+        userId,
+        key: `debrief:${id}:${clientMutationId}`,
+        summaries: 1,
+        audioSeconds: audioDurationSeconds,
+      });
+      if (reservation.denied) return reservation.denied;
+      if (reservation.operation.completed)
+        return Response.json(reservation.operation.response);
+      operationId = reservation.operation.id;
 
       const submission = await supabase
         .from("debrief_submissions")
@@ -215,7 +233,36 @@ export async function POST(
     }
 
     transcript = transcriptSchema.parse(transcript);
-    const generated = await summarizeVisitTranscript(transcript);
+    const [workspaceResult, customerResult, organizationResult] =
+      await Promise.all([
+        supabase
+          .from("workspaces")
+          .select("name")
+          .eq("id", visit.workspace_id)
+          .single(),
+        supabase
+          .from("companies")
+          .select("name")
+          .eq("id", visit.company_id)
+          .eq("workspace_id", visit.workspace_id)
+          .single(),
+        visit.organization_id
+          ? supabase
+              .from("organizations")
+              .select("name")
+              .eq("id", visit.organization_id)
+              .single()
+          : Promise.resolve(null),
+      ]);
+    if (workspaceResult.error) throw workspaceResult.error;
+    if (customerResult.error) throw customerResult.error;
+    if (organizationResult?.error) throw organizationResult.error;
+    const sourceName =
+      organizationResult?.data?.name ?? workspaceResult.data.name;
+    const generated = await summarizeVisitTranscript(transcript, {
+      workspaceCompanyName: sourceName === "Kişisel Alanım" ? null : sourceName,
+      customerCompanyName: customerResult.data.name,
+    });
 
     if (supabase && userId && visit) {
       const transcriptResult = await supabase.from("visit_transcripts").upsert(
@@ -269,6 +316,7 @@ export async function POST(
       await supabase.from("ai_jobs").insert(jobs);
 
       const usageRows = [
+        ["audio_seconds", audioDurationSeconds],
         ["input_tokens", generated.usage.inputTokens],
         ["output_tokens", generated.usage.outputTokens],
       ]
@@ -280,7 +328,7 @@ export async function POST(
           visit_id: visit!.id,
           metric,
           quantity,
-          unit: "token",
+          unit: metric === "audio_seconds" ? "second" : "token",
           provider: "openai",
           model: generated.model,
         }));
@@ -295,6 +343,7 @@ export async function POST(
       summary: generated.summary,
       reviewUrl: `/visits/${id}/review`,
     };
+    if (operationId) await finishAiQuota(operationId, responsePayload);
     if (supabase && submissionId) {
       await supabase
         .from("debrief_submissions")
@@ -307,6 +356,7 @@ export async function POST(
     }
     return Response.json(responsePayload);
   } catch (error) {
+    if (operationId) await releaseAiQuota(operationId);
     if (supabase && userId && visit) {
       // Ziyaret yalnız gerçekten dokunulduysa geri alınır. Önce koşulsuzdu ve
       // ses yüklemesinde patlayan bir istek, o ziyaretin daha önce üretilmiş

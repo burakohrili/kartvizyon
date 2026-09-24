@@ -1,0 +1,101 @@
+[
+  {
+    "name": "initial purchase grants paid quota",
+    "ok": true,
+    "actual": {
+      "topUp": {
+        "ocr": 0,
+        "aiMinutes": 0
+      },
+      "limits": {
+        "ocr": 125,
+        "seats": 1,
+        "aiMinutes": 240,
+        "companies": null,
+        "aiSummaries": 125,
+        "documentBytes": 5368709120
+      },
+      "planId": "individual",
+      "status": "active",
+      "planName": "Bireysel",
+      "readOnly": false,
+      "periodStart": "2026-09-23T09:16:11.5+03:00",
+      "trialActive": false,
+      "trialEndsAt": null,
+      "accessEndsAt": "2026-10-19T09:16:11.5+03:00",
+      "seatsPurchased": 1
+    },
+    "status": "PASS"
+  },
+  {
+    "name": "duplicate and older same-transaction events are ignored",
+    "ok": true,
+    "actual": {
+      "duplicate": "duplicate",
+      "stale": "stale"
+    },
+    "status": "PASS"
+  },
+  {
+    "name": "cancellation preserves access until paid expiry",
+    "ok": true,
+    "actual": "cancelled",
+    "status": "PASS"
+  },
+  {
+    "name": "expired subscription becomes read-only",
+    "ok": true,
+    "actual": "read_only",
+    "status": "PASS"
+  },
+  {
+    "name": "organization workspace rejects native store billing",
+    "ok": true,
+    "actual": "Store billing only supports the owner personal workspace",
+    "status": "PASS"
+  },
+  {
+    "name": "sandbox must not overwrite a production paid subscription",
+    "ok": true,
+    "actual": "2026-10-19T09:16:11.5+03:00",
+    "expected": "2026-10-19T06:16:11.500Z",
+    "status": "PASS"
+  },
+  {
+    "name": "transaction reassignment must not retain two paid workspaces",
+    "ok": true,
+    "actual": {
+      "oldOwnerReadOnly": true,
+      "newOwnerReadOnly": false
+    },
+    "status": "PASS"
+  },
+  {
+    "name": "transfer event moves access atomically",
+    "ok": true,
+    "actual": {
+      "outcome": "processed",
+      "oldOwnerReadOnly": true,
+      "newOwnerReadOnly": false
+    },
+    "status": "PASS"
+  },
+  {
+    "name": "older other-transaction expiry must not revoke newer purchase",
+    "ok": true,
+    "actual": "active",
+    "status": "PASS"
+  },
+  {
+    "name": "scheduled pause must preserve unexpired paid access",
+    "ok": true,
+    "actual": "past_due",
+    "status": "PASS"
+  },
+  {
+    "name": "billing issue must preserve remaining paid access",
+    "ok": true,
+    "actual": "past_due",
+    "status": "PASS"
+  }
+]

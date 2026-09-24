@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:flutter/material.dart';
 
@@ -57,6 +59,48 @@ class _OfflineCenterScreenState extends State<OfflineCenterScreen> {
     if (!mounted) return;
     reload();
     await sync();
+  }
+
+  Future<void> exportDraft(SyncQueueItem item) async {
+    final attachment = item.attachmentPath;
+    final box = context.findRenderObject() as RenderBox?;
+    await SharePlus.instance.share(
+      ShareParams(
+        title: 'KartVizyon taslağı',
+        text: const JsonEncoder.withIndent(
+          '  ',
+        ).convert(jsonDecode(item.payloadJson)),
+        files: attachment != null && await File(attachment).exists()
+            ? [XFile(attachment)]
+            : null,
+        sharePositionOrigin: box == null
+            ? null
+            : box.localToGlobal(Offset.zero) & box.size,
+      ),
+    );
+  }
+
+  Future<void> viewDraft(SyncQueueItem item) async {
+    final payload = jsonDecode(item.payloadJson) as Map;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Çevrimdışı taslak'),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            payload['transcript']?.toString() ??
+                payload['purpose']?.toString() ??
+                'Ses kaydı taslağı. Dışa aktararak dinleyebilirsiniz.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> discard(SyncQueueItem item) async {
@@ -140,11 +184,16 @@ class _OfflineCenterScreenState extends State<OfflineCenterScreen> {
                         : Icons.schedule,
                   ),
                   title: Text(
-                    item.entityType == 'visit_debrief'
+                    '${item.entityType == 'visit_debrief'
                         ? 'Ziyaret notu'
                         : item.entityType == 'visit_create'
                         ? 'Ziyaret kaydı'
-                        : item.entityType,
+                        : item.entityType} · '
+                    '${isSyncBlocked(item.lastError)
+                        ? 'Müdahale gerekiyor'
+                        : busy
+                        ? 'Gönderiliyor'
+                        : 'Bekliyor'}',
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,9 +209,24 @@ class _OfflineCenterScreenState extends State<OfflineCenterScreen> {
                     ],
                   ),
                   trailing: PopupMenuButton<String>(
-                    onSelected: (value) =>
-                        value == 'retry' ? retry(item) : discard(item),
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'view':
+                          viewDraft(item);
+                        case 'export':
+                          exportDraft(item);
+                        case 'retry':
+                          retry(item);
+                        case 'discard':
+                          discard(item);
+                      }
+                    },
                     itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'view',
+                        child: Text('Taslağı görüntüle'),
+                      ),
+                      PopupMenuItem(value: 'export', child: Text('Dışa aktar')),
                       PopupMenuItem(value: 'retry', child: Text('Tekrar dene')),
                       PopupMenuItem(value: 'discard', child: Text('Kaydı sil')),
                     ],

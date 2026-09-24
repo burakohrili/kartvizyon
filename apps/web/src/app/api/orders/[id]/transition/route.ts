@@ -3,14 +3,20 @@ import { z } from "zod";
 import { apiError } from "@/lib/api";
 import { getApiContext } from "@/lib/api-context";
 
-const transitionSchema = z.object({
-  status: orderDraftStatusSchema.extract([
-    "pending_approval",
-    "approved",
-    "rejected",
-  ]),
-  rejectionReason: z.string().trim().min(2).max(500).nullable().optional(),
-});
+const transitionSchema = z
+  .object({
+    status: orderDraftStatusSchema.extract([
+      "draft",
+      "pending_approval",
+      "approved",
+      "rejected",
+    ]),
+    rejectionReason: z.string().trim().min(2).max(500).nullable().optional(),
+  })
+  .refine(
+    ({ status, rejectionReason }) => status !== "rejected" || !!rejectionReason,
+    "Red nedeni gereklidir.",
+  );
 
 export async function POST(
   request: Request,

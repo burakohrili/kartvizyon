@@ -26,6 +26,7 @@ Vercel cronları aşağıdaki uçlara `GET` gönderir; rotalar aynı işleyiciyi
 - `GET|POST /api/internal/webhooks/deliver` — 5 dakikada bir, `CRON_SECRET` veya `WEBHOOK_WORKER_SECRET`
 - `GET|POST /api/internal/documents/dispatch` — 5 dakikada bir, `CRON_SECRET`; private ClamAV servisini çağırır
 - `GET|POST /api/internal/subscriptions/expire-trials` — günlük 03:30 UTC, `CRON_SECRET`; süresi dolan 14 günlük denemeleri ücretsiz katmana düşürür (ADR-0005)
+- `GET|POST /api/internal/reminders/process` — 5 dakikada bir, `CRON_SECRET`; ziyaret/görev ve yerel saat 08:30 saha planı bildirimlerini idempotent üretir
 - `POST /api/internal/documents/scan-jobs` — tarayıcı iş sahiplenme, `DOCUMENT_SCAN_SECRET`
 - `POST /api/internal/documents/scan-result` — ClamAV callback, `DOCUMENT_SCAN_SECRET`
 
@@ -107,6 +108,33 @@ parametresiyle daraltılır) ve `/api/geofence/events` (`shown`,
 
 `geofence_events` kullanıcının enlem/boylamını **saklamaz**; yalnız firma
 kimliği, mesafe, öncelik puanı ve sonuç tutulur.
+
+## Hatırlatmalar
+
+Hatırlatma worker'ı kayıt zamanlarını UTC saklar; gün ve 08:30 hesabını her
+kullanıcının `profiles.timezone` IANA bölgesinde yapar. Aynı olayın tekrar
+üretilmesi veritabanındaki kullanıcı + semantik olay anahtarı unique indeksiyle
+engellenir. Planlı ziyaret hatırlatmaları varsayılan olarak 24 ve 2 saat önce,
+kaçırılan ziyaret bildirimi plan bitiminden 30 dakika sonra oluşturulur.
+
+Push token/provider altyapısı bulunmadığından bu release'in güvenilir teslim
+katmanı Notification Center kaydıdır. Kayıt üretimi push tesliminden bağımsızdır.
+Saha Modu aktifliği yalnız cihazda bilindiği için sunucu sabah bildiriminin
+metninde sadece doğrulayabildiği “bugün planlı ziyaret var” bilgisini kullanır.
+
+Mobil uygulama açılışta, girişten sonra ve foreground'a döndüğünde önündeki 31
+günü eşitler; ziyaret T-24/T-2, görev 08:30/due+1 saat ve saha sabah 08:30
+bildirimlerini `flutter_local_notifications` ile cihazda programlar. Kimlikler
+semantic key'den deterministik üretilir; yeniden planlama eski zamanı ezer,
+tamamlanan/iptal edilen kayıtlar ve kapatılan tercihler pending bildirimi iptal
+eder. Saat hesabı `profiles.timezone` IANA bölgesini kullanır. Android inexact
+alarm ve reboot restore kullanır; exact-alarm izni istenmez.
+
+Bu local model, önceden cihazla eşitlenmiş kayıtları uygulama sonlandırılmışken
+de OS seviyesinde gösterebilir. Fakat web'de cihazın son açılışından sonra
+oluşturulan veya değiştirilen kayıt cihaza taşınamaz. Bu senaryo için tam teslim
+garantisi ancak APNs/FCM token kaydı, token lifecycle ve server-side push worker
+ile sağlanabilir; mevcut release'e körlemesine üçüncü taraf push eklenmemiştir.
 
 ## Domain ve e-posta
 

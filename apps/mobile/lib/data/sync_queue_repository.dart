@@ -37,6 +37,42 @@ class SyncQueueRepository {
     return mutationId;
   }
 
+  Future<String> enqueuePlannedVisitCreate({
+    required String ownerId,
+    required String workspaceId,
+    required String? organizationId,
+    required String companyId,
+    required String purpose,
+    required String visitType,
+    required String planningNote,
+    required DateTime plannedStartAt,
+    required DateTime plannedEndAt,
+    required String clientMutationId,
+  }) async {
+    await database.enqueue(
+      SyncQueueItemsCompanion.insert(
+        id: _uuid.v4(),
+        ownerId: ownerId,
+        workspaceId: workspaceId,
+        entityType: 'visit_create',
+        clientMutationId: clientMutationId,
+        payloadJson: jsonEncode({
+          'workspaceId': workspaceId,
+          'organizationId': organizationId,
+          'companyId': companyId,
+          'purpose': purpose,
+          'visitType': visitType,
+          'planningNote': planningNote.isEmpty ? null : planningNote,
+          'plannedStartAt': plannedStartAt.toUtc().toIso8601String(),
+          'plannedEndAt': plannedEndAt.toUtc().toIso8601String(),
+          'clientMutationId': clientMutationId,
+        }),
+        createdAt: DateTime.now().toUtc(),
+      ),
+    );
+    return clientMutationId;
+  }
+
   /// [clientMutationId] verilirse aynı not için tekrar çağrıldığında kuyrukta
   /// ikinci bir kayıt oluşmaz ve sunucudaki
   /// `unique(user_id, client_mutation_id)` sayesinde çift işleme de olmaz.

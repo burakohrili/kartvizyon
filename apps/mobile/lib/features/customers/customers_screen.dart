@@ -448,7 +448,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/customers/${item['id']}'),
+                onTap: () async {
+                  await context.push('/customers/${item['id']}');
+                  if (mounted) setState(() => customers = load());
+                },
               ),
             );
           },

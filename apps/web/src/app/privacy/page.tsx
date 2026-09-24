@@ -7,6 +7,16 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <LegalPage title="Gizlilik Politikası">
+      <h2>Deneme ve abonelik kayıtları</h2>
+      <p>
+        Denemenin başlangıç/bitiş zamanı, kullanım sayaçları ve mağaza işlem
+        kimlikleri; hizmetin sunulması, satın almaların doğrulanması ve tekrar
+        deneme kullanımının önlenmesi için işlenir. Kart bilgileri KartVizyon
+        tarafından alınmaz; ücretli mağaza satın almaları Apple veya Google
+        tarafından yönetilir. Deneme bittiğinde veri hakları erişimi kapanmaz.
+        Hesap silme talebi abonelik yönetiminden ayrı yürütülür; yasal saklama
+        yükümlülükleri saklıdır.
+      </p>
       <h2>Veri sorumlusu</h2>
       <p>
         KartVizyon, Noesis Social - Burak OHRİLİ tarafından işletilir. Gizlilik
@@ -39,9 +49,19 @@ export default function PrivacyPage() {
       </p>
       <h2>Aktarımlar ve hizmet sağlayıcılar</h2>
       <p>
-        Barındırma, kimlik, e-posta, hata izleme ve AI hizmetleri için
-        sözleşmeli altyapı sağlayıcıları kullanılabilir. Aktarım ve saklama
-        süreçlerinde KVKK’nın yurt dışı aktarım hükümleri gözetilir.
+        Barındırma ve kimlik için Supabase, AI işleme için OpenAI, hata izleme
+        için Sentry, mobil abonelik doğrulama için RevenueCat; ödeme ve mağaza
+        hesabı işlemleri için Apple veya Google kullanılabilir. Bu sağlayıcılara
+        yalnız hizmet için gerekli veri aktarılır. Yurt dışı aktarımlarda KVKK
+        madde 9 kapsamındaki uygun güvence mekanizması, aktarım envanteri ve
+        gerekli standart sözleşme/bildirim adımları tamamlanır.
+      </p>
+      <h2>Ödeme verileri</h2>
+      <p>
+        KartVizyon tam kart veya mağaza ödeme bilgilerini görmez ve saklamaz.
+        Mağaza, ürün, işlem kimliği, abonelik durumu ve dönem sonu gibi hak
+        tanımlamak için gerekli sınırlı kayıtlar sahteciliği önleme ve destek
+        amacıyla tutulur.
       </p>
       <h2>Haklarınız</h2>
       <p>

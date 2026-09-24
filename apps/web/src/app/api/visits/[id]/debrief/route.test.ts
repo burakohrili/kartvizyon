@@ -15,6 +15,7 @@ type QueryResult = { data: unknown; error: unknown };
 
 const touchedTables: string[] = [];
 const results = new Map<string, QueryResult[]>();
+const insertedRows = new Map<string, unknown[]>();
 
 function nextResult(table: string): QueryResult {
   const queue = results.get(table);
@@ -36,6 +37,10 @@ function chain(table: string) {
   ]) {
     builder[method] = () => builder;
   }
+  builder.insert = (value: unknown) => {
+    insertedRows.set(table, [value]);
+    return builder;
+  };
   builder.single = settle;
   builder.maybeSingle = settle;
   builder.then = (resolve: (value: QueryResult) => unknown) =>
@@ -58,8 +63,15 @@ vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: async () => supabase,
 }));
 
-vi.mock("@/lib/entitlements", () => ({
-  assertQuota: async () => null,
+vi.mock("music-metadata", () => ({
+  parseBuffer: async () => ({ format: { duration: 75 } }),
+}));
+vi.mock("@/lib/ai-quota", () => ({
+  reserveAiQuota: vi.fn(async () => ({
+    operation: { id: "11111111-1111-4111-8111-111111111111", completed: false },
+  })),
+  finishAiQuota: vi.fn(async () => {}),
+  releaseAiQuota: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/openai/visit-ai", async () => {
@@ -71,6 +83,7 @@ vi.mock("@/lib/openai/visit-ai", async () => {
     transcribeVisitAudio: async () => ({
       text: "Ziyaret sırasında konuşulanlar burada.",
       model: "test-transcribe",
+      durationSeconds: 75,
     }),
     summarizeVisitTranscript: async () => ({
       summary: {
@@ -91,6 +104,7 @@ const visitRow = {
   workspace_id: "00000000-0000-4000-8000-000000000002",
   organization_id: null,
   representative_id: "user-1",
+  company_id: "00000000-0000-4000-8000-000000000003",
 };
 
 function request(body: FormData) {
@@ -113,7 +127,10 @@ function formWith(audio: File | null, transcript = "") {
 beforeEach(() => {
   touchedTables.length = 0;
   results.clear();
+  insertedRows.clear();
   results.set("visits", [{ data: visitRow, error: null }]);
+  results.set("workspaces", [{ data: { name: "Ohrili Makina" }, error: null }]);
+  results.set("companies", [{ data: { name: "ABC Market" }, error: null }]);
 });
 
 describe("ziyaret sonrası not ucu", () => {
@@ -171,5 +188,34 @@ describe("ziyaret sonrası not ucu", () => {
     );
 
     expect(response.status).toBe(200);
+  });
+
+  it("başarılı ses işlemesinde gerçek süreyi kullanım sayacına yazar", async () => {
+    results.set("debrief_submissions", [
+      { data: null, error: null },
+      { data: { id: "sub-1" }, error: null },
+    ]);
+    results.set("visit_audio_assets", [
+      { data: { id: "asset-1" }, error: null },
+    ]);
+    const audio = new File([new Uint8Array(32)], "note.m4a", {
+      type: "audio/mp4",
+    });
+
+    const response = await POST(request(formWith(audio)), { params });
+
+    expect(response.status).toBe(200);
+    const rows = insertedRows.get("usage_records")?.[0] as Array<{
+      metric: string;
+      quantity: number;
+      unit: string;
+    }>;
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        metric: "audio_seconds",
+        quantity: 75,
+        unit: "second",
+      }),
+    );
   });
 });

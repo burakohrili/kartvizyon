@@ -25,6 +25,7 @@ export const formFieldSchema = z.object({
     "contact",
   ]),
   required: z.boolean().default(false),
+  helpText: z.string().trim().max(240).nullable().optional(),
   options: z.array(z.string().trim().min(1).max(100)).max(100).optional(),
 });
 

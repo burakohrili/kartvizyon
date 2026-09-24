@@ -38,6 +38,13 @@ export function configuredAppUrl(raw = process.env.APP_BASE_URL) {
   return url;
 }
 
+export function appRequestHeaders(headers = {}) {
+  const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  return bypass
+    ? { ...headers, "x-vercel-protection-bypass": bypass }
+    : headers;
+}
+
 function runClamScan(path) {
   return new Promise((resolve, reject) => {
     const child = spawn("clamscan", ["--no-summary", "--infected", path], {
@@ -66,10 +73,10 @@ async function callback(appUrl, job, result) {
     new URL("/api/internal/documents/scan-result", appUrl),
     {
       method: "POST",
-      headers: {
+      headers: appRequestHeaders({
         authorization: `Bearer ${process.env.DOCUMENT_SCAN_SECRET}`,
         "content-type": "application/json",
-      },
+      }),
       body: JSON.stringify({
         documentId: job.documentId,
         sha256: job.sha256,
@@ -165,10 +172,10 @@ export function createAppServer() {
         new URL("/api/internal/documents/scan-jobs", appUrl),
         {
           method: "POST",
-          headers: {
+          headers: appRequestHeaders({
             authorization: `Bearer ${process.env.DOCUMENT_SCAN_SECRET}`,
             "content-type": "application/json",
-          },
+          }),
           body: JSON.stringify({
             limit: Math.min(Math.max(Number(input.limit) || 5, 1), 20),
           }),

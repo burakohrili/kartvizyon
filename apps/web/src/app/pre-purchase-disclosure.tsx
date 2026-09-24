@@ -26,8 +26,8 @@ export function PrePurchaseDisclosure({
   seats: number;
   vatRate?: number;
 }) {
-  const net = periodTotalTry(plan, period, seats);
-  if (net === null) {
+  const listed = periodTotalTry(plan, period, seats);
+  if (listed === null) {
     return (
       <div className="purchase-disclosure">
         <p>
@@ -38,8 +38,15 @@ export function PrePurchaseDisclosure({
     );
   }
 
-  const vat = Math.round(net * vatRate);
-  const gross = net + vat;
+  const gross =
+    plan.id === "individual"
+      ? listed
+      : Math.round(listed * (1 + vatRate) * 100) / 100;
+  const net =
+    plan.id === "individual"
+      ? Math.round((gross / (1 + vatRate)) * 100) / 100
+      : listed;
+  const vat = Math.round((gross - net) * 100) / 100;
   const periodLabel = period === "monthly" ? "aylık" : "yıllık";
   const effectiveSeats = plan.perSeat ? Math.max(seats, plan.minSeats) : 1;
 
@@ -83,13 +90,15 @@ export function PrePurchaseDisclosure({
             {plan.perSeat ? " / koltuk (havuzlanmış)" : ""}
             {" · "}
             {plan.ocr === null ? "Sınırsız tarama" : `${plan.ocr} tarama`}
+            {plan.aiSummaries ? ` · Ayda ${plan.aiSummaries} AI özeti` : ""}
           </dd>
         </div>
         <div>
           <dt>Deneme</dt>
           <dd>
-            İlk {TRIAL_DAYS} gün ücretsizdir; deneme süresi bitmeden iptal
-            ederseniz ücret tahsil edilmez.
+            İlk {TRIAL_DAYS} gün kart gerekmeden denenebilir. Otomatik ücret
+            alınmaz; devam etmek için ayrıca abonelik başlatmanız gerekir. Erken
+            abonelikte ücretli dönem hemen başlar.
           </dd>
         </div>
         <div>

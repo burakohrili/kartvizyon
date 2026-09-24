@@ -18,11 +18,19 @@ import '../../core/mobile_services.dart';
 ///
 /// Gerekçe ve reddedilen alternatifler: docs/product/decisions/0006-field-mode.md
 class FieldModeService {
-  FieldModeService(this.services, {FlutterLocalNotificationsPlugin? plugin})
-    : _notifications = plugin ?? FlutterLocalNotificationsPlugin();
+  FieldModeService(
+    this.services, {
+    FlutterLocalNotificationsPlugin? plugin,
+    Future<bool> Function()? notificationPermissionCheck,
+    DateTime Function()? now,
+  }) : _notifications = plugin ?? FlutterLocalNotificationsPlugin(),
+       _notificationPermissionCheck = notificationPermissionCheck,
+       _now = now ?? DateTime.now;
 
   final MobileServices services;
   final FlutterLocalNotificationsPlugin _notifications;
+  final Future<bool> Function()? _notificationPermissionCheck;
+  final DateTime Function() _now;
 
   /// Vardiya bu süre sonunda kendiliğinden kapanır.
   ///
@@ -42,6 +50,7 @@ class FieldModeService {
   static const _nearbyChannelId = 'kartvizyon_nearby_customer';
 
   StreamSubscription<Position>? _positionSubscription;
+  bool _starting = false;
   Timer? _sessionTimer;
   DateTime? _startedAt;
 
@@ -84,15 +93,7 @@ class FieldModeService {
   }
 
   Future<void> initialise() async {
-    const settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-      iOS: DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: false,
-        requestSoundPermission: false,
-      ),
-    );
-    await _notifications.initialize(settings);
+    await services.reminders.initialise();
   }
 
   /// Bildirim iznini saha modu başlarken ister — onboarding'de topluca değil.
@@ -167,41 +168,80 @@ class FieldModeService {
 
   Future<bool> start() async {
     if (isActive.value) return true;
-    final startedAt = DateTime.now();
-    final endAt = sessionEndFor(startedAt);
-    if (!endAt.isAfter(startedAt)) {
-      lastMessage.value =
-          'Saha modu saat 21.00’den sonra başlatılamaz. '
-          'Yarın çalışma saatinde yeniden deneyin.';
+    if (_starting) return false;
+    _starting = true;
+    try {
+      // İlk konum akışı açılmadan gerçek oturum ve aktif workspace doğrulanır.
+      // Önbellekteki yazma hakkı, ağ/oturum hatasını gizlememelidir.
+      await services.refreshContext(force: true);
+      await services.requireWriteAccess();
+      final startedAt = _now();
+      final endAt = sessionEndFor(startedAt);
+      if (!endAt.isAfter(startedAt)) {
+        lastMessage.value =
+            'Saha modu saat 21.00’den sonra başlatılamaz. '
+            'Yarın çalışma saatinde yeniden deneyin.';
+        return false;
+      }
+      // Ortak local-notification platformu ve tap callback'i bir kez kurulur.
+      // Yakınlık kanalı ayrı kalır; reminder kanalını değiştirmez.
+      if (_notificationPermissionCheck == null) {
+        await services.reminders.initialise();
+      }
+      if (!await _ensureLocationPermission()) return false;
+      if (!await (_notificationPermissionCheck?.call() ??
+          _ensureNotificationPermission())) {
+        lastMessage.value =
+            'Bildirim izni verilmedi; saha modu hatırlatma gönderemez.';
+        return false;
+      }
+      var streamFailed = false;
+      final subscription =
+          Geolocator.getPositionStream(
+            locationSettings: _locationSettings(),
+          ).listen(
+            _onPosition,
+            onError: (Object _) {
+              streamFailed = true;
+              unawaited(
+                stop(
+                  reason:
+                      'Konum alınamadı. Konum ayarlarınızı kontrol edip yeniden deneyin.',
+                ),
+              );
+            },
+          );
+      if (streamFailed) {
+        await subscription.cancel();
+        lastMessage.value =
+            'Konum alınamadı. Konum ayarlarınızı kontrol edip yeniden deneyin.';
+        return false;
+      }
+      _positionSubscription = subscription;
+      _startedAt = startedAt;
+      _notifiedCompanyIds.clear();
+      isActive.value = true;
+      lastMessage.value = null;
+      unawaited(services.reminders.cancelTodayMorningReminder());
+      _sessionTimer = Timer(endAt.difference(startedAt), () {
+        unawaited(stop(reason: 'Saha modu süre dolduğu için kapandı.'));
+      });
+      _markSentryState(true);
+      return true;
+    } on MobileApiException catch (error) {
+      lastMessage.value = error.statusCode == 402
+          ? error.message
+          : error.statusCode == 401
+          ? 'Oturumunuz sona erdi. Yeniden giriş yapın.'
+          : 'Saha Modu başlatılamadı. Bağlantınızı kontrol edip tekrar deneyin.';
       return false;
-    }
-    if (!await _ensureLocationPermission()) return false;
-    if (!await _ensureNotificationPermission()) {
+    } catch (_) {
       lastMessage.value =
-          'Bildirim izni verilmedi; saha modu hatırlatma gönderemez.';
+          'Saha Modu başlatılamadı. Bağlantınızı veya konum izinlerini kontrol edip tekrar deneyin.';
       return false;
+    } finally {
+      _starting = false;
     }
-
-    _startedAt = startedAt;
-    _notifiedCompanyIds.clear();
-    isActive.value = true;
-    lastMessage.value = null;
-
-    _positionSubscription =
-        Geolocator.getPositionStream(
-          locationSettings: _locationSettings(),
-        ).listen(
-          _onPosition,
-          onError: (Object error) {
-            lastMessage.value = error.toString();
-          },
-        );
-
-    _sessionTimer = Timer(endAt.difference(startedAt), () {
-      stop(reason: 'Saha modu süre dolduğu için kapandı.');
-    });
-    _markSentryState(true);
-    return true;
   }
 
   /// Saha modunun açık olduğunu Sentry olaylarına iliştir.
@@ -219,25 +259,33 @@ class FieldModeService {
   ///
   /// Yalnız açık/kapalı bilgisi ve süre gider; konum gitmez.
   void _markSentryState(bool active) {
-    Sentry.configureScope((scope) {
-      scope.setTag('field_mode.active', active.toString());
-    });
-    Sentry.addBreadcrumb(
-      Breadcrumb(
-        category: 'field_mode',
-        message: active ? 'saha modu başladı' : 'saha modu durdu',
-        level: SentryLevel.info,
-        data: {
-          if (active && _startedAt != null)
-            'endsAt': endsAt?.toIso8601String() ?? 'bilinmiyor',
-        },
-      ),
-    );
+    try {
+      Sentry.configureScope((scope) {
+        scope.setTag('field_mode.active', active.toString());
+      });
+      Sentry.addBreadcrumb(
+        Breadcrumb(
+          category: 'field_mode',
+          message: active ? 'saha modu başladı' : 'saha modu durdu',
+          level: SentryLevel.info,
+          data: {
+            if (active && _startedAt != null)
+              'endsAt': endsAt?.toIso8601String() ?? 'bilinmiyor',
+          },
+        ),
+      );
+    } catch (_) {
+      // Telemetri başlatılamadıysa saha servisini yarı açık bırakma.
+    }
   }
 
   Future<void> stop({String? reason}) async {
     if (!isActive.value) return;
-    await _positionSubscription?.cancel();
+    try {
+      await _positionSubscription?.cancel();
+    } catch (_) {
+      // Platform servisi kapanmış olabilir; yerel durum yine temizlenir.
+    }
     _positionSubscription = null;
     _sessionTimer?.cancel();
     _sessionTimer = null;
@@ -270,9 +318,10 @@ class FieldModeService {
 
       await _notifyNearby(candidate);
       await recordOutcome(candidate, 'shown');
-    } catch (error) {
+    } catch (_) {
       // Saha modu ağ hatasında sessizce devam eder; vardiyayı bölmez.
-      lastMessage.value = error.toString();
+      lastMessage.value =
+          'Yakındaki müşteriler güncellenemedi. Bağlantınızı kontrol edin.';
     }
   }
 
@@ -280,7 +329,7 @@ class FieldModeService {
     final distanceKm = (candidate['distanceKm'] as num?)?.toDouble() ?? 0;
     final distance = distanceKm < 1
         ? '${(distanceKm * 1000).round()} m'
-        : '${distanceKm.toStringAsFixed(1)} km';
+        : '${distanceKm.toStringAsFixed(1).replaceAll('.', ',')} km';
     final days = candidate['daysSinceVisit'] as int?;
     final visit = days == null
         ? 'Henüz ziyaret edilmedi'

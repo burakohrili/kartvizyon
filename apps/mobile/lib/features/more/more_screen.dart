@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/mobile_services.dart';
+import '../../core/store_billing_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class MoreScreen extends StatelessWidget {
@@ -12,11 +13,59 @@ class MoreScreen extends StatelessWidget {
   });
   final MobileServices services;
   final VoidCallback onSignedOut;
+  Future<void> chooseWorkspace(BuildContext context) async {
+    try {
+      final response =
+          await services.api.get('/api/workspaces') as Map<String, dynamic>;
+      if (!context.mounted) return;
+      final workspaces = List<Map<String, dynamic>>.from(
+        response['data'] as List? ?? [],
+      );
+      final target = await showModalBottomSheet<String>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const ListTile(title: Text('Çalışma alanı seçin')),
+              for (final item in workspaces)
+                ListTile(
+                  title: Text(item['name']?.toString() ?? 'Çalışma alanı'),
+                  trailing: item['id'] == services.workspaceId
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () =>
+                      Navigator.pop(sheetContext, item['id']?.toString()),
+                ),
+            ],
+          ),
+        ),
+      );
+      if (target == null || target == services.workspaceId) return;
+      await services.switchWorkspace(target);
+      if (context.mounted) context.go('/');
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Çalışma alanı değiştirilemedi. Tekrar deneyin.'),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> signOut() async {
+    try {
+      await StoreBillingService.signOutIfConfigured();
+    } catch (_) {
+      // Mağaza servisi çıkışı, uygulama oturumundan çıkmayı engellememeli.
+    }
     if (services.config.hasSupabase) {
       await Supabase.instance.client.auth.signOut(scope: SignOutScope.global);
     }
     await services.sessions.clear();
+    services.clearIdentityContext();
     onSignedOut();
   }
 
@@ -46,6 +95,12 @@ class MoreScreen extends StatelessWidget {
           onTap: () => context.push('/offline'),
         ),
         const Divider(),
+        if (services.config.hasSupabase)
+          ListTile(
+            leading: const Icon(Icons.swap_horiz_outlined),
+            title: const Text('Çalışma alanı değiştir'),
+            onTap: () => chooseWorkspace(context),
+          ),
         ListTile(
           leading: const Icon(Icons.calendar_month_outlined),
           title: const Text('Takvim'),
@@ -55,7 +110,7 @@ class MoreScreen extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.history_toggle_off_outlined),
           title: const Text('Aktivite'),
-          subtitle: const Text('Son onaylanan saha ziyaretleri'),
+          subtitle: const Text('Ziyaret, görev, fırsat ve sipariş geçmişi'),
           onTap: () => context.push('/activity'),
         ),
         ListTile(
@@ -101,6 +156,20 @@ class MoreScreen extends StatelessWidget {
           onTap: () => context.push('/forms'),
         ),
         const Divider(),
+        ListTile(
+          leading: const Icon(Icons.business_outlined),
+          title: const Text('Firma bilgileri'),
+          subtitle: const Text('Çalışma alanınızın firma adını düzenleyin'),
+          onTap: () => context.push('/company-info'),
+        ),
+        ListTile(
+          leading: const Icon(Icons.workspace_premium_outlined),
+          title: const Text('Premium ve abonelik'),
+          subtitle: const Text(
+            'Planınızı görüntüleyin veya mağaza satın alımını yönetin',
+          ),
+          onTap: () => context.push('/premium'),
+        ),
         // Bu iki madde ayar değil, ürünün verdiği söz. Daha önce `ListTile`
         // olarak duruyorlardı ve tıklanmadıkları için bozuk düğme gibi
         // görünüyorlardı. "Dil" satırı kaldırıldı: alt metni İngilizce

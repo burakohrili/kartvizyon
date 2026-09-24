@@ -44,13 +44,14 @@ const { GET } = await import("./route");
 // İzmir Bornova çevresi.
 const here = { latitude: 38.46, longitude: 27.21 };
 
-function request(radius?: number) {
+function request(radius?: number, sort?: string) {
   const params = new URLSearchParams({
     workspaceId: "11111111-1111-4111-8111-111111111111",
     latitude: String(here.latitude),
     longitude: String(here.longitude),
   });
   if (radius) params.set("maxDistanceKm", String(radius));
+  if (sort) params.set("sort", sort);
   return new Request(
     `https://app.kartvizyon.app/api/geofence/candidates?${params}`,
   );
@@ -115,6 +116,22 @@ describe("yakındaki müşteri adayları", () => {
     const body = await response.json();
     expect(body.data.map((row: Row) => row.id)).toEqual(["cok-yakin"]);
     expect(body.maxDistanceKm).toBe(1.5);
+  });
+
+  it("harita isteğinde en yakını önce verir ve 25 km sınırını korur", async () => {
+    tables.set("companies", [
+      { id: "uzak", name: "Uzak", latitude: 38.49, longitude: 27.21 },
+      { id: "yakin", name: "Yakın", latitude: 38.461, longitude: 27.21 },
+      { id: "orta", name: "Orta", latitude: 38.47, longitude: 27.21 },
+    ]);
+    const response = await GET(request(undefined, "distance"));
+    const body = await response.json();
+    expect(body.data.map((row: Row) => row.id)).toEqual([
+      "yakin",
+      "orta",
+      "uzak",
+    ]);
+    expect(body.maxDistanceKm).toBe(25);
   });
 
   it("geçersiz konum 400 döner", async () => {

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { authorized, configuredAppUrl } from "../src/server.mjs";
+import {
+  appRequestHeaders,
+  authorized,
+  configuredAppUrl,
+} from "../src/server.mjs";
 
 test("Bearer sırrını sabit zamanlı karşılaştırır", () => {
   assert.equal(
@@ -31,4 +35,24 @@ test("callback hedefi production ortamında HTTPS olmak zorundadır", () => {
   );
   assert.throws(() => configuredAppUrl("http://example.com"), /HTTPS/);
   assert.throws(() => configuredAppUrl(""), /tanımlı değil/);
+});
+
+test("korumalı Preview callback'ine yalnız yapılandırılmış bypass başlığını ekler", () => {
+  const previous = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  try {
+    delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    assert.deepEqual(appRequestHeaders({ authorization: "Bearer scan" }), {
+      authorization: "Bearer scan",
+    });
+
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET = "preview-bypass";
+    assert.deepEqual(appRequestHeaders({ authorization: "Bearer scan" }), {
+      authorization: "Bearer scan",
+      "x-vercel-protection-bypass": "preview-bypass",
+    });
+  } finally {
+    if (previous === undefined)
+      delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    else process.env.VERCEL_AUTOMATION_BYPASS_SECRET = previous;
+  }
 });

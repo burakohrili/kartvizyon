@@ -24,6 +24,17 @@ export const opportunityCreateSchema = z.object({
   assignedTo: nullableUuid,
 });
 
+export const opportunityUpdateSchema = opportunityCreateSchema
+  .omit({ workspaceId: true, companyId: true })
+  .extend({
+    id: z.uuid(),
+    lossReason: z.string().trim().min(2).max(500).nullable().optional(),
+  })
+  .refine(
+    ({ stage, lossReason }) => stage !== "lost" || !!lossReason,
+    "Kaybedilen fırsat için kaybetme nedeni gereklidir.",
+  );
+
 export const productCreateSchema = z.object({
   workspaceId: z.uuid(),
   sku: z.string().trim().min(1).max(80),
@@ -51,12 +62,28 @@ export const orderDraftCreateSchema = z.object({
   items: z.array(orderItemSchema).min(1).max(200),
 });
 
+export const orderDraftUpdateSchema = orderDraftCreateSchema
+  .omit({ workspaceId: true })
+  .extend({ id: z.uuid() });
+
 export const plannedVisitCreateSchema = z
   .object({
     workspaceId: z.uuid(),
     companyId: z.uuid(),
     representativeId: z.uuid(),
+    clientMutationId: z.uuid(),
     purpose: z.string().trim().min(2).max(500),
+    visitType: z
+      .enum([
+        "sales_meeting",
+        "quote_follow_up",
+        "order_follow_up",
+        "introduction",
+        "technical",
+        "other",
+      ])
+      .optional(),
+    planningNote: z.string().trim().max(2000).nullable().optional(),
     plannedStartAt: z.iso.datetime(),
     plannedEndAt: z.iso.datetime(),
   })
@@ -80,5 +107,7 @@ export const teamCreateSchema = z.object({
 });
 
 export type OpportunityCreate = z.infer<typeof opportunityCreateSchema>;
+export type OpportunityUpdate = z.infer<typeof opportunityUpdateSchema>;
 export type ProductCreate = z.infer<typeof productCreateSchema>;
 export type OrderDraftCreate = z.infer<typeof orderDraftCreateSchema>;
+export type OrderDraftUpdate = z.infer<typeof orderDraftUpdateSchema>;

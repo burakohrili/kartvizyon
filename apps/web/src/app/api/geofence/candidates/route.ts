@@ -35,6 +35,7 @@ async function handle(request: Request) {
   // Harita ekranı geniş listeyi ister; saha modu bildirimi yalnız gerçekten
   // yakındakini bildirmeli. Varsayılan korunur ki mevcut çağrılar değişmesin.
   const requestedRadius = Number(url.searchParams.get("maxDistanceKm"));
+  const distanceSort = url.searchParams.get("sort") === "distance";
   const maxDistanceKm =
     Number.isFinite(requestedRadius) && requestedRadius > 0
       ? Math.min(requestedRadius, 25)
@@ -154,7 +155,11 @@ async function handle(request: Request) {
         overdueTaskCount: overdue.get(company.id) ?? 0,
       };
     })
-    .sort((a, b) => b.priority.total - a.priority.total)
+    .sort((a, b) =>
+      distanceSort
+        ? a.distanceKm - b.distanceKm
+        : b.priority.total - a.priority.total,
+    )
     .slice(0, 20);
   return Response.json({
     data: candidates,

@@ -14,6 +14,7 @@ function Status({ message }: { message: string }) {
 
 export function BillingPanel({ enabled }: { enabled: boolean }) {
   const [data, setData] = useState<JsonRecord | null>(null);
+  const [loadedAt, setLoadedAt] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   useEffect(() => {
     if (!enabled) return;
@@ -21,8 +22,10 @@ export function BillingPanel({ enabled }: { enabled: boolean }) {
     void fetch("/api/settings/billing", { signal: controller.signal })
       .then((response) => Promise.all([response.ok, response.json()]))
       .then(([ok, result]) => {
-        if (ok) setData(result);
-        else setMessage(result.error ?? "Kullanım bilgisi alınamadı.");
+        if (ok) {
+          setData(result);
+          setLoadedAt(Date.now());
+        } else setMessage(result.error ?? "Kullanım bilgisi alınamadı.");
       })
       .catch((error: Error) => {
         if (error.name !== "AbortError")
@@ -36,19 +39,31 @@ export function BillingPanel({ enabled }: { enabled: boolean }) {
         Canlı paket bilgisi için Supabase oturumu gerekir.
       </div>
     );
-  if (!data)
+  if (!data || loadedAt === null)
     return <Status message={message || "Kullanım bilgisi yükleniyor…"} />;
   const plans = (data.plans as JsonRecord[]) ?? [];
-  const subscription = data.subscription as JsonRecord | null;
+  const entitlement = data.entitlement as JsonRecord;
+  const limits = entitlement.limits as JsonRecord;
+  const daysLeft = Math.max(
+    0,
+    Math.ceil(
+      (Date.parse(String(entitlement.trialEndsAt)) - loadedAt) / 86400000,
+    ),
+  );
   const usage = (data.usage as JsonRecord) ?? {};
   return (
     <div className="settings-stack">
+      <p role="status">
+        {entitlement.readOnly
+          ? "Erişim süreniz doldu. Mevcut verileri görüntüleme, dışa aktarma ve hesap silme açık. Yeni işlemler için abonelik başlatın."
+          : entitlement.trialActive
+            ? `Denemenizin ${daysLeft <= 1 ? "son günü" : `bitmesine ${daysLeft} gün kaldı`}. Otomatik ücret alınmaz.`
+            : "Aboneliğiniz etkin. Haklarınız her ay yenilenir."}
+      </p>
       <section className="settings-summary">
         <article>
           <small>Aktif paket</small>
-          <strong>
-            {String((subscription?.plan as JsonRecord)?.name ?? "Başlangıç")}
-          </strong>
+          <strong>{String(entitlement.planName)}</strong>
         </article>
         <article>
           <small>Kullanılan koltuk</small>
@@ -56,12 +71,21 @@ export function BillingPanel({ enabled }: { enabled: boolean }) {
         </article>
         <article>
           <small>AI ses</small>
-          <strong>{Math.ceil(Number(usage.audio_seconds ?? 0) / 60)} dk</strong>
+          <strong>
+            {(Number(usage.audio_seconds ?? 0) / 60).toFixed(1)} /{" "}
+            {String(limits.aiMinutes)} dk
+          </strong>
         </article>
         <article>
-          <small>Dosya alanı</small>
+          <small>Kartvizit tarama</small>
           <strong>
-            {(Number(usage.storage_bytes ?? 0) / 1048576).toFixed(1)} MB
+            {String(usage.ocr ?? 0)} / {String(limits.ocr ?? "Sınırsız")}
+          </strong>
+        </article>
+        <article>
+          <small>AI özeti</small>
+          <strong>
+            {String(usage.ai_summary ?? 0)} / {String(limits.aiSummaries)}
           </strong>
         </article>
       </section>
@@ -87,8 +111,11 @@ export function BillingPanel({ enabled }: { enabled: boolean }) {
         ))}
       </section>
       <p className="muted">
-        Paket değişikliği ödeme sağlayıcısı bağlandıktan sonra etkinleşir; bu
-        ekran kota ve tüketimi güvenli biçimde izler.
+        Bireysel abonelik mobil uygulamada App Store veya Google Play üzerinden
+        başlatılır. Standart fiyat KDV dahil 449 TL/aydır. Deneme: 60 tarama,
+        120 dakika ses, 60 AI özeti. Ücretli: ayda 125 tarama, 240 dakika ses,
+        125 AI özeti. Kart gerekmeden 14 gün deneyebilirsiniz; deneme sonunda
+        otomatik ücret alınmaz.
       </p>
     </div>
   );

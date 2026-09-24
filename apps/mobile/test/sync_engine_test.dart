@@ -31,6 +31,9 @@ void main() {
     expect(classifySyncStatus(503), SyncDisposition.retryRun);
     expect(classifySyncStatus(422), SyncDisposition.permanentFailure);
     expect(classifySyncStatus(413), SyncDisposition.permanentFailure);
+    // Abonelik çevrimdışıyken sona ererse taslak korunur ve otomatik olarak
+    // sonsuza kadar denenmez.
+    expect(classifySyncStatus(402), SyncDisposition.permanentFailure);
   });
 
   group('kuyruk tek bir kayıt yüzünden durmaz', () {

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assertWorkspaceWritable } from "@/lib/entitlements";
 
 export async function getApiContext(request: Request) {
   const supabase = await createSupabaseServerClient(request);
@@ -78,6 +79,16 @@ export async function getApiContext(request: Request) {
         { status: 403 },
       ),
     };
+  }
+  // Gizlilik talepleri ve mevcut verilerin dışa aktarımı ödeme gerektirmez.
+  const exempt =
+    routeKey === "/api/settings/privacy" ||
+    routeKey.startsWith("/api/settings/privacy/") ||
+    routeKey === "/api/settings/notifications" ||
+    routeKey.startsWith("/api/reports/export/");
+  if (!["GET", "HEAD", "OPTIONS"].includes(request.method) && !exempt) {
+    const denied = await assertWorkspaceWritable(supabase, workspaceId);
+    if (denied) return { ok: false as const, response: denied };
   }
   return {
     ok: true as const,

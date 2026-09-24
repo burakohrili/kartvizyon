@@ -73,6 +73,10 @@ class _DebriefScreenState extends State<DebriefScreen> {
       setState(() => recording = false);
       return;
     }
+    try { await widget.services.requireWriteAccess(); } on MobileApiException catch (error) {
+      if (mounted) setState(() => message = error.message);
+      return;
+    }
     if (!await recorder.hasPermission()) {
       setState(
         () => message = 'Mikrofon izni verilmedi. Metinle devam edebilirsiniz.',
@@ -95,6 +99,11 @@ class _DebriefScreenState extends State<DebriefScreen> {
     _tick?.cancel();
     _tick = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
+      if (!widget.services.canWrite) {
+        recorder.stop().then((path) { if (mounted) setState(() { audioPath = path; recording = false; message = 'Erişim süreniz doldu. Ses taslağınız korunur.'; }); });
+        _tick?.cancel();
+        return;
+      }
       setState(() => elapsed += const Duration(seconds: 1));
     });
     setState(() {

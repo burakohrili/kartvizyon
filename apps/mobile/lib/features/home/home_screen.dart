@@ -55,7 +55,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> refresh() async {
     final next = load();
-    setState(() => summary = next);
+    setState(() {
+      summary = next;
+    });
     await settleRefresh(next);
   }
 
@@ -94,15 +96,40 @@ class _HomeScreenState extends State<HomeScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20),
           children: [
-            Text('Günaydın', style: Theme.of(context).textTheme.labelLarge),
+            Text(
+              widget.services.displayName?.trim().isNotEmpty == true
+                  ? 'Merhaba ${widget.services.displayName!.trim()}'
+                  : 'Merhaba',
+              style: Theme.of(context).textTheme.labelLarge,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 6),
             Text(
-              'Bugünün saha özeti',
+              widget.services.workspaceCompanyName?.trim().isNotEmpty == true
+                  ? '${widget.services.workspaceCompanyName!.trim()} için bugünün saha özeti'
+                  : 'Bugünün saha özeti',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 20),
+            if (widget.services.workspaceCompanyName == null &&
+                widget.services.config.hasSupabase) ...[
+              Card(
+                child: ListTile(
+                  title: const Text('Firma bilgilerinizi tamamlayın'),
+                  subtitle: const Text(
+                    'Saha özetleri şirketinizin bağlamını doğru kullansın.',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/company-setup'),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             FieldModeCard(service: widget.services.fieldMode),
             const SizedBox(height: 12),
             _Metric(

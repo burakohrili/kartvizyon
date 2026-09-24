@@ -148,6 +148,8 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Hesabımı sil'), findsOneWidget);
+    await tester.ensureVisible(find.text('Hesabımı sil'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Hesabımı sil'));
     await tester.pumpAndSettle();
     expect(find.text('Hesabımı kalıcı olarak sil'), findsWidgets);

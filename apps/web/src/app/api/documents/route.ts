@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { documentMetadataSchema } from "@kartvizyon/contracts";
 import { apiError } from "@/lib/api";
 import { getApiContext } from "@/lib/api-context";
+import { assertQuota } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 
@@ -67,6 +68,10 @@ export async function POST(request: Request) {
         { error: "Dosya tipi veya boyutu desteklenmiyor." },
         { status: 400 },
       );
+    const quotaDenied = await assertQuota(context, "storage_bytes", {
+      amount: file.size,
+    });
+    if (quotaDenied) return quotaDenied;
     // Fiyat listesi ayrı bir hat değil, aynı karantina hattının bir amacı.
     const purposeInput = form.get("purpose")?.toString() ?? "general";
     if (purposeInput !== "general" && purposeInput !== "price_list")

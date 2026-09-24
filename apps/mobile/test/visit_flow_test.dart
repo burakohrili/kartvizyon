@@ -11,6 +11,7 @@ import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/visits/briefing_screen.dart';
 import 'package:kartvizyon_mobile/features/visits/review_screen.dart';
+import 'package:kartvizyon_mobile/features/visits/visit_planning_screen.dart';
 
 class _EmptySessionStore extends SecureSessionStore {
   const _EmptySessionStore();
@@ -59,6 +60,136 @@ void main() {
   setUp(() => database = AppDatabase.forTesting(NativeDatabase.memory()));
   tearDown(() => database.close());
 
+  testWidgets('planlama formu süreyi ve lokal zamanı doğru gönderir', (
+    tester,
+  ) async {
+    Map<String, dynamic>? posted;
+    final services = servicesWith(database, (request) async {
+      if (request.url.path == '/api/session') {
+        return jsonResponse({
+          'ownerId': '00000000-0000-4000-8000-000000000001',
+          'workspaceId': '00000000-0000-4000-8000-000000000002',
+          'organizationId': null,
+          'entitlement': {
+            'readOnly': false,
+            'accessEndsAt': DateTime.now()
+                .add(const Duration(days: 1))
+                .toUtc()
+                .toIso8601String(),
+          },
+        });
+      }
+      if (request.url.path == '/api/customers') {
+        return jsonResponse({
+          'data': [
+            {
+              'id': '00000000-0000-4000-8000-000000000003',
+              'name': 'Çok Uzun ABC Makina Sanayi ve Ticaret Anonim Şirketi',
+              'address': 'Bornova / İzmir',
+            },
+          ],
+          'page': {'hasMore': false},
+        });
+      }
+      if (request.method == 'POST' && request.url.path == '/api/calendar') {
+        posted = Map<String, dynamic>.from(jsonDecode(request.body) as Map);
+        return http.Response(
+          jsonEncode({
+            'data': {'id': 'visit-1'},
+          }),
+          201,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }
+      if (request.url.path == '/api/settings/notifications') {
+        return jsonResponse({
+          'data': {
+            'visitReminders': true,
+            'taskReminders': true,
+            'fieldModeMorning': true,
+          },
+        });
+      }
+      return jsonResponse({'visits': [], 'tasks': []});
+    });
+    services.updateEntitlement({
+      'readOnly': false,
+      'accessEndsAt': DateTime.now()
+          .add(const Duration(days: 1))
+          .toUtc()
+          .toIso8601String(),
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(home: VisitPlanningScreen(services: services)),
+    );
+    await tester.tap(find.text('Müşteri seç *'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Çok Uzun ABC Makina'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Amaç *'),
+      'Yeni teklif üzerinden geçmek',
+    );
+    final durationField = find.widgetWithText(
+      DropdownButtonFormField<int>,
+      'Süre',
+    );
+    await tester.ensureVisible(durationField);
+    await tester.pumpAndSettle();
+    await tester.tap(durationField);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1 saat 30 dk').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ziyareti planla'));
+    await tester.pumpAndSettle();
+
+    expect(posted, isNotNull);
+    final start = DateTime.parse(posted!['plannedStartAt'] as String);
+    final end = DateTime.parse(posted!['plannedEndAt'] as String);
+    expect(end.difference(start), const Duration(minutes: 90));
+    expect(start.isUtc, isTrue);
+    expect(posted!['visitType'], 'sales_meeting');
+    await services.dispose();
+  });
+
+  testWidgets(
+    'planlama formu 360dp ve yüzde 200 yazıda taşmaz, girdiyi korur',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final services = servicesWith(
+        database,
+        (_) async => jsonResponse({'data': []}),
+      );
+      services.updateEntitlement({
+        'readOnly': false,
+        'accessEndsAt': DateTime.now()
+            .add(const Duration(days: 1))
+            .toUtc()
+            .toIso8601String(),
+      });
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: MaterialApp(home: VisitPlanningScreen(services: services)),
+        ),
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Amaç *'),
+        'Korunacak uzun ziyaret amacı',
+      );
+      await tester.tap(find.text('Ziyareti planla'));
+      await tester.pump();
+
+      expect(find.text('Müşteri seçin.'), findsWidgets);
+      expect(find.text('Korunacak uzun ziyaret amacı'), findsOneWidget);
+      await services.dispose();
+    },
+  );
+
   testWidgets('brifing verilen sözleri, son ziyareti ve gecikmeyi gösterir', (
     tester,
   ) async {
@@ -96,6 +227,7 @@ void main() {
         home: BriefingScreen(services: services, companyId: 'firma-1'),
       ),
     );
+    addTearDown(services.dispose);
     await tester.pumpAndSettle();
 
     // Sunucu bu üçünü de döndürüyordu, ekran hiçbirini basmıyordu.

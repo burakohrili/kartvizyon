@@ -20,6 +20,7 @@ class CustomerDetailScreen extends StatefulWidget {
 class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   late Future<Map<String, dynamic>> _detail;
   bool _pinning = false;
+  bool _mutating = false;
 
   @override
   void initState() {
@@ -45,6 +46,105 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _editCompany(Map company) async {
+    final draft = await _showCompanyEditor(context, company);
+    if (draft == null || !mounted) return;
+    setState(() => _mutating = true);
+    try {
+      await widget.services.api.patch(
+        '/api/customers/${widget.companyId}',
+        draft,
+      );
+      if (!mounted) return;
+      setState(() => _detail = _load());
+      _notify('Müşteri bilgileri güncellendi.');
+    } catch (error) {
+      _notify(
+        error is MobileApiException ? error.message : 'Müşteri güncellenemedi.',
+      );
+    } finally {
+      if (mounted) setState(() => _mutating = false);
+    }
+  }
+
+  Future<void> _editContact([Map? contact]) async {
+    final draft = await _showContactEditor(context, contact);
+    if (draft == null || !mounted) return;
+    setState(() => _mutating = true);
+    try {
+      if (contact == null) {
+        await widget.services.api.post('/api/contacts', {
+          ...draft,
+          'companyId': widget.companyId,
+          'workspaceId': widget.services.workspaceId,
+          'organizationId': widget.services.organizationId,
+        });
+      } else {
+        await widget.services.api.patch('/api/contacts', {
+          ...draft,
+          'id': contact['id'],
+        });
+      }
+      if (!mounted) return;
+      setState(() => _detail = _load());
+      _notify(
+        contact == null ? 'İlgili kişi eklendi.' : 'İlgili kişi güncellendi.',
+      );
+    } catch (error) {
+      _notify(
+        error is MobileApiException
+            ? error.message
+            : 'İlgili kişi kaydedilemedi.',
+      );
+    } finally {
+      if (mounted) setState(() => _mutating = false);
+    }
+  }
+
+  Future<void> _archive(String companyName, Map dependencies) async {
+    String count(String key, String label) =>
+        '${dependencies[key] ?? 0} $label';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('$companyName arşivlensin mi?'),
+        content: Text(
+          'Bu müşteriye bağlı:\n\n'
+          '${count('contacts', 'ilgili kişi')}\n'
+          '${count('visits', 'ziyaret')}\n'
+          '${count('openTasks', 'açık görev')}\n'
+          '${count('opportunities', 'fırsat')}\n'
+          '${count('orders', 'sipariş taslağı')}\n'
+          '${count('documents', 'belge')}\n\n'
+          'Bu kayıtlar silinmeyecek. Müşteri aktif müşteri listenizden kaldırılacak.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Arşivle'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _mutating = true);
+    try {
+      await widget.services.api.patch('/api/customers/${widget.companyId}', {
+        'action': 'archive',
+      });
+      if (mounted) context.pop(true);
+    } catch (error) {
+      _notify(
+        error is MobileApiException ? error.message : 'Müşteri arşivlenemedi.',
+      );
+      if (mounted) setState(() => _mutating = false);
+    }
   }
 
   /// Ne kaydedileceğini, basmadan önce açıkça söyler.
@@ -148,6 +248,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         final memory = data['memory'] as Map?;
         final contacts = data['contacts'] as List? ?? [];
         final tasks = data['tasks'] as List? ?? [];
+        final dependencies = data['dependencies'] as Map? ?? {};
         final companyName = company['name']?.toString() ?? 'Firma';
         final hasLocation =
             company['latitude'] != null && company['longitude'] != null;
@@ -161,6 +262,18 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             Text(company['address']?.toString() ?? ''),
+            if ((company['phone']?.toString() ?? '').isNotEmpty)
+              Text(company['phone'].toString()),
+            if ((company['email']?.toString() ?? '').isNotEmpty)
+              Text(company['email'].toString()),
+            if ((company['website']?.toString() ?? '').isNotEmpty)
+              Text(company['website'].toString()),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _mutating ? null : () => _editCompany(company),
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Müşteriyi düzenle'),
+            ),
             const SizedBox(height: 14),
             // Brifinge yalnız Bugün ekranındaki "sıradaki ziyaret" kartından
             // ve onaylanmış ziyaret satırından gidilebiliyordu. Ziyarete
@@ -232,9 +345,20 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              'İlgili kişiler (${contacts.length})',
-              style: Theme.of(context).textTheme.titleMedium,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'İlgili kişiler (${contacts.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _mutating ? null : () => _editContact(),
+                  icon: const Icon(Icons.person_add_alt_1_outlined),
+                  label: const Text('Kişi ekle'),
+                ),
+              ],
             ),
             ...contacts.map((item) {
               final value = item as Map;
@@ -244,6 +368,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                   '${value['first_name'] ?? ''} ${value['last_name'] ?? ''}',
                 ),
                 subtitle: Text(value['title']?.toString() ?? ''),
+                trailing: const Icon(Icons.edit_outlined),
+                onTap: _mutating ? null : () => _editContact(value),
               );
             }),
             const Divider(),
@@ -257,9 +383,219 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                 title: Text((item as Map)['title']?.toString() ?? 'Görev'),
               ),
             ),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: _mutating
+                  ? null
+                  : () => _archive(companyName, dependencies),
+              icon: const Icon(Icons.archive_outlined),
+              label: const Text('Müşteriyi arşivle'),
+            ),
           ],
         );
       },
     ),
   );
 }
+
+Future<Map<String, dynamic>?> _showCompanyEditor(
+  BuildContext context,
+  Map company,
+) {
+  final formKey = GlobalKey<FormState>();
+  final fields = {
+    'name': TextEditingController(text: company['name']?.toString() ?? ''),
+    'displayName': TextEditingController(
+      text: company['display_name']?.toString() ?? '',
+    ),
+    'address': TextEditingController(
+      text: company['address']?.toString() ?? '',
+    ),
+    'phone': TextEditingController(text: company['phone']?.toString() ?? ''),
+    'email': TextEditingController(text: company['email']?.toString() ?? ''),
+    'website': TextEditingController(
+      text: company['website']?.toString() ?? '',
+    ),
+  };
+  return showDialog<Map<String, dynamic>>(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Müşteriyi düzenle',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  _field(
+                    fields['name']!,
+                    'Firma adı *',
+                    validator: (value) => (value?.trim().length ?? 0) < 2
+                        ? 'Firma adı en az 2 karakter olmalı.'
+                        : null,
+                  ),
+                  _field(fields['displayName']!, 'Görünen ad / kısa ad'),
+                  _field(fields['address']!, 'Adres'),
+                  _field(
+                    fields['phone']!,
+                    'Telefon',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  _field(
+                    fields['email']!,
+                    'E-posta',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  _field(
+                    fields['website']!,
+                    'Web sitesi',
+                    keyboardType: TextInputType.url,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('Vazgeç'),
+                      ),
+                      FilledButton(
+                        onPressed: () {
+                          if (!formKey.currentState!.validate()) return;
+                          Navigator.pop(dialogContext, {
+                            for (final entry in fields.entries)
+                              entry.key: entry.value.text.trim(),
+                          });
+                        },
+                        child: const Text('Kaydet'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ).whenComplete(() {
+    for (final controller in fields.values) {
+      controller.dispose();
+    }
+  });
+}
+
+Future<Map<String, dynamic>?> _showContactEditor(
+  BuildContext context, [
+  Map? contact,
+]) {
+  final formKey = GlobalKey<FormState>();
+  final fields = {
+    'firstName': TextEditingController(
+      text: contact?['first_name']?.toString() ?? '',
+    ),
+    'lastName': TextEditingController(
+      text: contact?['last_name']?.toString() ?? '',
+    ),
+    'title': TextEditingController(text: contact?['title']?.toString() ?? ''),
+    'phone': TextEditingController(text: contact?['phone']?.toString() ?? ''),
+    'email': TextEditingController(text: contact?['email']?.toString() ?? ''),
+  };
+  return showDialog<Map<String, dynamic>>(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    contact == null
+                        ? 'Yeni ilgili kişi'
+                        : 'İlgili kişiyi düzenle',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  _field(
+                    fields['firstName']!,
+                    'Ad *',
+                    validator: (value) =>
+                        (value?.trim().isEmpty ?? true) ? 'Ad gerekli.' : null,
+                  ),
+                  _field(fields['lastName']!, 'Soyad'),
+                  _field(fields['title']!, 'Görev / Ünvan'),
+                  _field(
+                    fields['phone']!,
+                    'Telefon',
+                    keyboardType: TextInputType.phone,
+                  ),
+                  _field(
+                    fields['email']!,
+                    'E-posta',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('Vazgeç'),
+                      ),
+                      FilledButton(
+                        onPressed: () {
+                          if (!formKey.currentState!.validate()) return;
+                          Navigator.pop(dialogContext, {
+                            for (final entry in fields.entries)
+                              entry.key: entry.value.text.trim(),
+                          });
+                        },
+                        child: const Text('Kaydet'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ).whenComplete(() {
+    for (final controller in fields.values) {
+      controller.dispose();
+    }
+  });
+}
+
+Widget _field(
+  TextEditingController controller,
+  String label, {
+  TextInputType? keyboardType,
+  String? Function(String?)? validator,
+}) => TextFormField(
+  controller: controller,
+  keyboardType: keyboardType,
+  textInputAction: TextInputAction.next,
+  decoration: InputDecoration(labelText: label),
+  validator: validator,
+);

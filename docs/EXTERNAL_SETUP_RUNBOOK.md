@@ -41,6 +41,10 @@ Aşağıdaki değişkenlerin `app.kartvizyon.app` projesinde (Production scope) 
 - `INTEGRATION_ENCRYPTION_KEY` (32 rastgele bayt, Base64)
 - `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` (adım 5'ten)
 - Supabase URL/anon key, `OPENAI_API_KEY`, Resend API key
+- RevenueCat webhook için `REVENUECAT_WEBHOOK_AUTHORIZATION`,
+  `REVENUECAT_WEBHOOK_SIGNING_SECRET` ve ortama göre yalnız `PRODUCTION` veya
+  `SANDBOX` olan `REVENUECAT_ALLOWED_ENVIRONMENT`; mobil build ortamında yalnız public
+  `REVENUECAT_APPLE_PUBLIC_API_KEY` / `REVENUECAT_GOOGLE_PUBLIC_API_KEY`
 
 Değişkenler girildikten sonra yeni bir production deploy tetikle.
 

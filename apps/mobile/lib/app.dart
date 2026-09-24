@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,6 +11,11 @@ import 'features/customers/customers_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/map/map_screen.dart';
 import 'features/more/more_screen.dart';
+import 'features/more/company_identity_screen.dart';
+import 'features/more/premium_screen.dart';
+import 'features/more/opportunity_form_screen.dart';
+import 'features/more/order_draft_form_screen.dart';
+import 'features/more/form_template_screen.dart';
 import 'features/more/privacy_screen.dart';
 import 'features/more/workspace_module_screen.dart';
 import 'features/offline/offline_center_screen.dart';
@@ -17,6 +24,7 @@ import 'features/visits/debrief_screen.dart';
 import 'features/visits/briefing_screen.dart';
 import 'features/visits/review_screen.dart';
 import 'features/visits/visits_screen.dart';
+import 'features/visits/visit_planning_screen.dart';
 import 'l10n/app_localizations.dart';
 
 class KartVizyonApp extends StatefulWidget {
@@ -27,7 +35,8 @@ class KartVizyonApp extends StatefulWidget {
   State<KartVizyonApp> createState() => _KartVizyonAppState();
 }
 
-class _KartVizyonAppState extends State<KartVizyonApp> {
+class _KartVizyonAppState extends State<KartVizyonApp>
+    with WidgetsBindingObserver {
   late final MobileServices services;
   late final bool ownsServices;
   late final GoRouter router;
@@ -67,6 +76,7 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
             onSignedIn: () async {
               authenticated = true;
               services.sessionExpired.value = false;
+              services.clearIdentityContext();
               try {
                 // Zorunlu: `MobileServices` çıkış ve girişten sağ çıkıyor.
                 // Önbelleğe güvenilirse başka bir kullanıcıyla giren cihaz,
@@ -76,13 +86,19 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
                 // Oturum geçerlidir; geçici ağ/API hatasında çevrimdışı açılışa
                 // izin ver ve sonraki eşitlemede bağlamı yeniden yükle.
               }
-              router.go('/');
+              router.go(
+                services.workspaceCompanyName == null ? '/company-setup' : '/',
+              );
+              unawaited(services.reminders.sync());
             },
           ),
         ),
         ShellRoute(
-          builder: (context, state, child) =>
-              _MobileShell(location: state.uri.path, child: child),
+          builder: (context, state, child) => _MobileShell(
+            location: state.uri.path,
+            services: services,
+            child: child,
+          ),
           routes: [
             GoRoute(
               path: '/',
@@ -117,6 +133,10 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
           ],
         ),
         GoRoute(
+          path: '/visits/plan',
+          builder: (_, __) => VisitPlanningScreen(services: services),
+        ),
+        GoRoute(
           path: '/visits/:id/debrief',
           builder: (_, state) => DebriefScreen(
             services: services,
@@ -149,6 +169,37 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
           builder: (_, __) => OfflineCenterScreen(services: services),
         ),
         GoRoute(
+          path: '/company-setup',
+          builder: (_, __) =>
+              CompanyIdentityScreen(services: services, onboarding: true),
+        ),
+        GoRoute(
+          path: '/company-info',
+          builder: (_, __) => CompanyIdentityScreen(services: services),
+        ),
+        GoRoute(
+          path: '/opportunities/form',
+          builder: (_, state) => OpportunityFormScreen(
+            services: services,
+            opportunity: state.extra as Map<String, dynamic>?,
+          ),
+        ),
+        GoRoute(
+          path: '/orders/form',
+          builder: (_, state) => OrderDraftFormScreen(
+            services: services,
+            order: state.extra as Map<String, dynamic>?,
+          ),
+        ),
+        GoRoute(
+          path: '/forms/new',
+          builder: (_, __) => FormTemplateScreen(services: services),
+        ),
+        GoRoute(
+          path: '/premium',
+          builder: (_, __) => PremiumScreen(services: services),
+        ),
+        GoRoute(
           path: '/privacy',
           builder: (_, state) => PrivacyScreen(
             services: services,
@@ -174,7 +225,33 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
         ),
       ],
     );
-    if (authenticated) services.refreshContext().catchError((_) {});
+    WidgetsBinding.instance.addObserver(this);
+    services.reminders.pendingRoute.addListener(_onReminderTap);
+    if (authenticated) unawaited(_syncReminders());
+  }
+
+  Future<void> _syncReminders() async {
+    try {
+      await services.refreshContext();
+      await services.reminders.sync();
+    } catch (_) {
+      // Notification Center canonical kalır; açılış/resume scheduling hatası
+      // uygulamanın kullanılmasını engellemez.
+    }
+  }
+
+  void _onReminderTap() {
+    final route = services.reminders.pendingRoute.value;
+    if (route == null || !authenticated) return;
+    services.reminders.pendingRoute.value = null;
+    router.go(route);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && authenticated) {
+      unawaited(_syncReminders());
+    }
   }
 
   /// Kayıtlı oturum ölünce kullanıcıyı giriş ekranına al.
@@ -188,6 +265,7 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
   void _onSessionExpired() {
     if (!services.sessionExpired.value || !authenticated) return;
     authenticated = false;
+    services.clearIdentityContext();
     // Ölü oturum cihazda kalırsa uygulama bir sonraki açılışta yine kendini
     // girişli sanır. `local` kapsam sunucuya gitmez; ağ yokken de temizler.
     if (services.config.hasSupabase) {
@@ -201,6 +279,8 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
   @override
   void dispose() {
     services.sessionExpired.removeListener(_onSessionExpired);
+    WidgetsBinding.instance.removeObserver(this);
+    services.reminders.pendingRoute.removeListener(_onReminderTap);
     router.dispose();
     if (ownsServices) services.dispose();
     super.dispose();
@@ -219,7 +299,12 @@ class _KartVizyonAppState extends State<KartVizyonApp> {
 }
 
 class _MobileShell extends StatelessWidget {
-  const _MobileShell({required this.location, required this.child});
+  const _MobileShell({
+    required this.location,
+    required this.services,
+    required this.child,
+  });
+  final MobileServices services;
   final String location;
   final Widget child;
 
@@ -238,7 +323,44 @@ class _MobileShell extends StatelessWidget {
       _ => -1,
     };
     return Scaffold(
-      body: SafeArea(bottom: false, child: child),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            ValueListenableBuilder<Map<String, dynamic>?>(
+              valueListenable: services.entitlement,
+              builder: (context, data, _) {
+                if (data == null) return const SizedBox.shrink();
+                final trial = data['trialActive'] == true;
+                final readOnly = !services.canWrite;
+                if (!trial && !readOnly) return const SizedBox.shrink();
+                final end = DateTime.tryParse(
+                  data['trialEndsAt']?.toString() ?? '',
+                );
+                final days = end == null
+                    ? 0
+                    : (end.difference(DateTime.now()).inSeconds / 86400)
+                          .ceil()
+                          .clamp(0, 14);
+                return MaterialBanner(
+                  content: Text(
+                    readOnly
+                        ? 'Yalnız görüntüleme. Yeni işlemler için abonelik başlatın.'
+                        : 'Ücretsiz deneme: ${days <= 1 ? "son gün" : "$days gün kaldı"}. Otomatik ücret alınmaz.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => context.push('/premium'),
+                      child: const Text('Abonelik'),
+                    ),
+                  ],
+                );
+              },
+            ),
+            Expanded(child: child),
+          ],
+        ),
+      ),
       bottomNavigationBar: _FieldNavigation(
         selectedIndex: index,
         onSelected: (value) =>

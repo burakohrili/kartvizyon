@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { plannedVisitCreateSchema } from "@kartvizyon/contracts";
 import { apiError } from "@/lib/api";
 import { getApiContext } from "@/lib/api-context";
@@ -48,6 +47,26 @@ export async function POST(request: Request) {
         { error: "Çalışma alanı uyuşmuyor." },
         { status: 403 },
       );
+    if (input.representativeId !== context.user.id) {
+      return Response.json(
+        { error: "Temsilci oturumla uyuşmuyor." },
+        { status: 403 },
+      );
+    }
+    const company = await context.supabase
+      .from("companies")
+      .select("id")
+      .eq("id", input.companyId)
+      .eq("workspace_id", context.workspaceId)
+      .is("archived_at", null)
+      .maybeSingle();
+    if (company.error) throw company.error;
+    if (!company.data) {
+      return Response.json(
+        { error: "Müşteri bu çalışma alanında bulunamadı." },
+        { status: 400 },
+      );
+    }
     const { data, error } = await context.supabase
       .from("visits")
       .insert({
@@ -55,8 +74,10 @@ export async function POST(request: Request) {
         organization_id: context.organizationId,
         company_id: input.companyId,
         representative_id: input.representativeId,
-        client_mutation_id: randomUUID(),
+        client_mutation_id: input.clientMutationId,
         purpose: input.purpose,
+        visit_type: input.visitType,
+        planning_note: input.planningNote || null,
         planned_start_at: input.plannedStartAt,
         planned_end_at: input.plannedEndAt,
         status: "draft",

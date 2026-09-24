@@ -19,8 +19,8 @@ String syncErrorLabel(String? lastError) {
     'http_401' ||
     'http_403' => 'Oturum süresi doldu. Çıkıp yeniden giriş yapın.',
     'http_402' =>
-      'AI dakika kotanız doldu. Metin notu kotasız gönderilir; '
-          'sesli notu silip notu yazarak gönderebilirsiniz.',
+      'Abonelik veya kullanım kotası gerekli. Taslağınız korunur; '
+          'abonelik ekranını kontrol edip yeniden deneyebilirsiniz.',
     'http_404' =>
       'Bu notun bağlı olduğu ziyaret bulunamadı. Kayıt silinebilir.',
     'http_409' =>
