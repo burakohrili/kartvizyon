@@ -49,7 +49,7 @@ Son doğrulama: 18 Ağustos 2026, konsollar canlı okunarak.
 - **Veritabanı:** `0019`, `0020` ve `0021` migration'ları production'a uygulandı;
   plan limitleri, deneme ve ek AI paketleri artık canlı şemada.
 - **CI/CD:** Codemagic `main`'e push'ta otomatik derliyor (eksik GitHub webhook
-  eklendi) ve Flutter sürümü CI ile aynı (`3.32.6`) olacak şekilde sabitlendi.
+  eklendi) ve Flutter sürümü CI ile aynı (`3.47.1`) olacak şekilde sabitlendi.
 
 ### Kalan
 

@@ -79,7 +79,7 @@ tetiklenmelidir; aksi halde her commit dış testçilere sürüm gönderir.
 ## Flutter sürümü sabittir
 
 `codemagic.yaml` daha önce `flutter: stable` kullanıyordu. `stable` kayan bir
-kanaldır ve `.github/workflows/ci.yml` 3.32.6'ya sabitlenmiş olduğu için
+kanaldır ve `.github/workflows/ci.yml` 3.47.1'e sabitlenmiş olduğu için
 **testlerin geçtiği sürüm ile mağazaya giden ikilinin sürümü ayrışıyordu** —
 release build'i hiç doğrulanmamış bir toolchain'le üretiliyordu.
 
@@ -92,7 +92,7 @@ Your project's Gradle version (8.12.0) is lower than Flutter's
 minimum supported version of 8.14.0.
 ```
 
-Her iki workflow artık `flutter: 3.32.6` ile sabittir. Flutter yükseltmesi
+Her iki workflow artık `flutter: 3.47.1` ile sabittir. Flutter yükseltmesi
 yapılacağında Gradle wrapper'ı (`apps/mobile/android/gradle/wrapper/gradle-wrapper.properties`,
 şu an 8.12) birlikte yükseltilmeli ve değişiklik `npm run check` ile
 doğrulandıktan sonra üç yerde birden (yerel, CI, Codemagic) aynı sürüme
