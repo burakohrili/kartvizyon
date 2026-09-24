@@ -39,7 +39,7 @@ workflows:
       # ayrışırsa release build'i hiç doğrulanmamış bir toolchain'le üretilir.
       # Nitekim stable 8.14+ Gradle istemeye başlayınca build kırıldı.
       # Flutter yükseltmesi ayrı ve test edilmiş bir değişiklik olmalıdır.
-      flutter: 3.32.6
+      flutter: 3.47.1
       java: 17
     cache:
       cache_paths:
@@ -151,7 +151,7 @@ workflows:
       # ayrışırsa release build'i hiç doğrulanmamış bir toolchain'le üretilir.
       # Nitekim stable 8.14+ Gradle istemeye başlayınca build kırıldı.
       # Flutter yükseltmesi ayrı ve test edilmiş bir değişiklik olmalıdır.
-      flutter: 3.32.6
+      flutter: 3.47.1
       xcode: latest
       cocoapods: default
     cache:
