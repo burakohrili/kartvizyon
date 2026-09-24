@@ -37,8 +37,8 @@ workflows:
       # .github/workflows/ci.yml ile aynı sürüme sabitlenir. `stable` kayan bir
       # kanaldır; testlerin geçtiği sürümle mağazaya giden ikilinin sürümü
       # ayrışırsa release build'i hiç doğrulanmamış bir toolchain'le üretilir.
-      # Nitekim stable 8.14+ Gradle istemeye başlayınca build kırıldı.
-      # Flutter yükseltmesi ayrı ve test edilmiş bir değişiklik olmalıdır.
+      # Flutter 3.47.1'in istediği Gradle 8.14, Android wrapper ile birlikte
+      # sabitlenir; CI toolchain'i ile proje wrapper'ı birlikte yükseltilir.
       flutter: 3.47.1
       java: 17
     cache:
@@ -149,8 +149,8 @@ workflows:
       # .github/workflows/ci.yml ile aynı sürüme sabitlenir. `stable` kayan bir
       # kanaldır; testlerin geçtiği sürümle mağazaya giden ikilinin sürümü
       # ayrışırsa release build'i hiç doğrulanmamış bir toolchain'le üretilir.
-      # Nitekim stable 8.14+ Gradle istemeye başlayınca build kırıldı.
-      # Flutter yükseltmesi ayrı ve test edilmiş bir değişiklik olmalıdır.
+      # Android workflow ile aynı Flutter sürümüne sabitlenir; iki platformun
+      # analiz/test sonucu aynı Dart ve Flutter toolchain'inden gelir.
       flutter: 3.47.1
       xcode: latest
       cocoapods: default

@@ -17,11 +17,11 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "app.kartvizyon.mobile"
     compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
-        // flutter_local_notifications 19.x, minSdk 23'te bulunmayan java.time
-        // sınıflarını kullanır ve desugaring açık değilse
+        // flutter_local_notifications 19.x, eski Android sürümlerinde bulunmayan
+        // java.time sınıflarını kullanır ve desugaring açık değilse
         // `checkReleaseAarMetadata` görevi build'i durdurur. Saha modu bu
         // paketi getirdiği için 18 Ağustos 2026'da bütün Android release
         // build'leri bu hatayla düştü.
@@ -38,7 +38,8 @@ android {
         applicationId = "app.kartvizyon.mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23
+        // Flutter 3.47'nin destek tabanını izler (şu anda API 24).
+        minSdk = flutter.minSdkVersion
         // Explicit for Google Play's Android 16 requirement; do not inherit an older Flutter default.
         targetSdk = 36
         versionCode = flutter.versionCode
