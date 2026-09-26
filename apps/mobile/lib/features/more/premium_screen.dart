@@ -144,6 +144,8 @@ class _PremiumScreenState extends State<PremiumScreen> {
     _ => 'Abonelik',
   };
 
+  String get storeName => Platform.isIOS ? 'App Store' : 'Google Play';
+
   @override
   Widget build(BuildContext context) {
     final entitlement = status?['entitlement'] as Map?;
@@ -167,7 +169,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 Text(
                   organization
                       ? 'Bu çalışma alanının planı kurum yöneticiniz tarafından yönetilir.'
-                      : 'Ödeme App Store veya Google Play hesabınız üzerinden güvenle tamamlanır.',
+                      : 'Ödeme $storeName hesabınız üzerinden güvenle tamamlanır.',
                 ),
                 const SizedBox(height: 12),
                 if (!organization) ...[
@@ -209,7 +211,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   ),
                   TextButton(
                     onPressed: manageSubscription,
-                    child: const Text('Mağazada aboneliği yönet'),
+                    child: Text('$storeName’da aboneliği yönet'),
                   ),
                   const SizedBox(height: 12),
                   const Text(

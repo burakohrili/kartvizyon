@@ -26,6 +26,16 @@ void main() {
     expect(premium.contains("workspaceKind'] == 'personal'"), isTrue);
     expect(premium.contains('kartvizyon.app/pricing'), isFalse);
     expect(premium.contains('checkout'), isFalse);
+    expect(
+      premium.contains('App Store veya Google Play'),
+      isFalse,
+      reason: 'iOS ekranında üçüncü taraf mağaza adı gösterilmemeli.',
+    );
+    expect(
+      premium.contains("Platform.isIOS ? 'App Store' : 'Google Play'"),
+      isTrue,
+      reason: 'Ödeme ve yönetim metni yalnız cihazın kendi mağazasını anmalı.',
+    );
   });
 
   test('iOS yalnız fiilen kullanılan izinleri beyan eder', () {
