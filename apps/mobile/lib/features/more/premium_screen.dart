@@ -50,7 +50,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
           throw const StoreBillingException('Oturum gerekli.');
         }
         await billing.identify(userId);
-        packages = (await billing.packages()).where((p) => p.packageType == PackageType.monthly).toList();
+        packages = (await billing.packages())
+            .where((p) => p.packageType == PackageType.monthly)
+            .toList();
       }
     } catch (error) {
       message = error is StoreBillingException
@@ -80,8 +82,10 @@ class _PremiumScreenState extends State<PremiumScreen> {
       if (mounted) setState(() => message = error.message);
     } on MobileApiException catch (_) {
       if (mounted) {
-        setState(() => message =
-            'Satın alma mağazada tamamlandı; sunucu doğrulaması bekleniyor. Biraz sonra yeniden açarak kontrol edin.');
+        setState(
+          () => message =
+              'Satın alma mağazada tamamlandı; sunucu doğrulaması bekleniyor. Biraz sonra yeniden açarak kontrol edin.',
+        );
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -104,8 +108,10 @@ class _PremiumScreenState extends State<PremiumScreen> {
       if (mounted) setState(() => message = error.message);
     } on MobileApiException catch (_) {
       if (mounted) {
-        setState(() => message =
-            'Geri yükleme mağazada tamamlandı; sunucu doğrulaması bekleniyor. Biraz sonra yeniden deneyin.');
+        setState(
+          () => message =
+              'Geri yükleme mağazada tamamlandı; sunucu doğrulaması bekleniyor. Biraz sonra yeniden deneyin.',
+        );
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -114,12 +120,16 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
   Future<void> refreshServerStatus() async {
     for (var attempt = 0; attempt < 5; attempt++) {
-      final data = Map<String, dynamic>.from(await widget.services.api.get('/api/settings/billing') as Map);
+      final data = Map<String, dynamic>.from(
+        await widget.services.api.get('/api/settings/billing') as Map,
+      );
       if (!mounted) return;
       setState(() => status = data);
       final entitlement = data['entitlement'] as Map?;
       widget.services.updateEntitlement(entitlement);
-      if (entitlement?['readOnly'] == false && entitlement?['trialActive'] == false) return;
+      if (entitlement?['readOnly'] == false &&
+          entitlement?['trialActive'] == false)
+        return;
       await Future<void>.delayed(const Duration(seconds: 2));
     }
   }
@@ -152,8 +162,15 @@ class _PremiumScreenState extends State<PremiumScreen> {
     final organization = status?['workspaceKind'] == 'organization';
     final usage = status?['usage'] as Map?;
     final limits = entitlement?['limits'] as Map?;
-    final endsAt = DateTime.tryParse(entitlement?['trialEndsAt']?.toString() ?? '');
-    final daysLeft = endsAt == null ? 0 : (endsAt.difference(DateTime.now()).inSeconds / 86400).ceil().clamp(0, 14);
+    final endsAt = DateTime.tryParse(
+      entitlement?['trialEndsAt']?.toString() ?? '',
+    );
+    final daysLeft = endsAt == null
+        ? 0
+        : (endsAt.difference(DateTime.now()).inSeconds / 86400).ceil().clamp(
+            0,
+            14,
+          );
     return Scaffold(
       appBar: AppBar(title: const Text('Premium ve abonelik')),
       body: loading
@@ -173,20 +190,38 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 ),
                 const SizedBox(height: 12),
                 if (!organization) ...[
-                  const Text('14 gün ücretsiz deneyin. Kart gerekmez. Deneme sonunda otomatik ücret alınmaz. Devam etmek için abonelik başlatabilirsiniz.'),
+                  const Text(
+                    '14 gün ücretsiz deneyin. Kart gerekmez. Deneme sonunda otomatik ücret alınmaz. Devam etmek için abonelik başlatabilirsiniz.',
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Deneme: toplam 60 tarama · 120 dakika ses işleme · 60 AI özeti.'),
-                  const Text('Bireysel: ayda 125 tarama · 240 dakika ses işleme · 125 AI özeti. Türkiye standart fiyatı KDV dahil 449 TL/ay.'),
+                  const Text(
+                    'Deneme: toplam 60 tarama · 120 dakika ses işleme · 60 AI özeti.',
+                  ),
+                  const Text(
+                    'Bireysel: ayda 125 tarama · 240 dakika ses işleme · 125 AI özeti. Güncel fiyat, mağaza hesabınızın ülke veya bölgesine göre satın alma düğmesinde gösterilir.',
+                  ),
                   if (entitlement?['trialActive'] == true)
-                    Text(daysLeft <= 1 ? 'Denemenizin son günü.' : 'Denemenizin bitmesine $daysLeft gün kaldı.'),
+                    Text(
+                      daysLeft <= 1
+                          ? 'Denemenizin son günü.'
+                          : 'Denemenizin bitmesine $daysLeft gün kaldı.',
+                    ),
                   if (entitlement?['readOnly'] == true)
-                    const Text('Yalnız görüntüleme: mevcut kayıtlarınız, dışa aktarma ve hesap silme açık. Yeni kayıt ve AI işlemleri için abonelik başlatın.'),
+                    const Text(
+                      'Yalnız görüntüleme: mevcut kayıtlarınız, dışa aktarma ve hesap silme açık. Yeni kayıt ve AI işlemleri için abonelik başlatın.',
+                    ),
                   if (limits != null) ...[
                     Text("Tarama: ${usage?['ocr'] ?? 0} / ${limits['ocr']}"),
-                    Text("Ses işleme: ${((usage?['audio_seconds'] as num? ?? 0) / 60).toStringAsFixed(1)} / ${limits['aiMinutes']} dakika"),
-                    Text("AI özeti: ${usage?['ai_summary'] ?? 0} / ${limits['aiSummaries']}"),
+                    Text(
+                      "Ses işleme: ${((usage?['audio_seconds'] as num? ?? 0) / 60).toStringAsFixed(1)} / ${limits['aiMinutes']} dakika",
+                    ),
+                    Text(
+                      "AI özeti: ${usage?['ai_summary'] ?? 0} / ${limits['aiSummaries']}",
+                    ),
                   ],
-                  const Text('Ücretli abonelik başlattığınızda tam kota açılır. Kullanılmayan haklar devretmez. Kota aşımı otomatik ücret doğurmaz.'),
+                  const Text(
+                    'Ücretli abonelik başlattığınızda tam kota açılır. Kullanılmayan haklar devretmez. Kota aşımı otomatik ücret doğurmaz.',
+                  ),
                 ],
                 const SizedBox(height: 20),
                 if (!organization)

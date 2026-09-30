@@ -36,6 +36,19 @@ void main() {
       isTrue,
       reason: 'Ödeme ve yönetim metni yalnız cihazın kendi mağazasını anmalı.',
     );
+    expect(
+      premium.contains('449 TL'),
+      isFalse,
+      reason:
+          'Mobil ekranda sabit fiyat gösterilmemeli; yerelleştirilmiş mağaza '
+          'fiyatı RevenueCat/StoreKit ürününden gelmeli.',
+    );
+    expect(
+      premium.contains('ülke veya bölgesine göre satın alma düğmesinde'),
+      isTrue,
+      reason:
+          'Kullanıcıya mağaza fiyatının bölgeye göre değiştiği açıklanmalı.',
+    );
   });
 
   test('iOS yalnız fiilen kullanılan izinleri beyan eder', () {
