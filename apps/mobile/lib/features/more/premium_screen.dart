@@ -128,8 +128,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
       final entitlement = data['entitlement'] as Map?;
       widget.services.updateEntitlement(entitlement);
       if (entitlement?['readOnly'] == false &&
-          entitlement?['trialActive'] == false)
+          entitlement?['trialActive'] == false) {
         return;
+      }
       await Future<void>.delayed(const Duration(seconds: 2));
     }
   }
