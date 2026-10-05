@@ -107,7 +107,20 @@ async function findPurchase(subscription: Subscription) {
           body && typeof body === "object" && "event" in body
             ? body.event
             : body;
-        const parsed = purchaseSchema.safeParse(event);
+        // V2 customer events carry app_id in the envelope, not in body.
+        const proof =
+          event && typeof event === "object"
+            ? {
+                ...event,
+                app_id:
+                  "app_id" in event
+                    ? event.app_id
+                    : "app_id" in item
+                      ? item.app_id
+                      : undefined,
+              }
+            : event;
+        const parsed = purchaseSchema.safeParse(proof);
         if (
           parsed.success &&
           parsed.data.transaction_id ===
@@ -136,12 +149,24 @@ export async function sandboxReadDiagnostic() {
     const source = await readList(
       `${customerPath(originalTestUser)}/events?environment=sandbox&limit=1`,
     );
+    const sourceSubscriptions = await readList(
+      `${customerPath(originalTestUser)}/subscriptions?environment=sandbox&limit=100`,
+    );
+    const sourceSubscription = sourceSubscriptions.items[0];
+    const recognized = subscriptionSchema.safeParse(sourceSubscription);
     const first = source.items[0];
     const body =
       first && typeof first === "object" && "body" in first ? first.body : null;
     return {
       connected: true,
       targetSubscriptions: subscriptions.length,
+      sourceSubscriptionRecognized: recognized.success,
+      sourceSubscriptionFields:
+        sourceSubscription && typeof sourceSubscription === "object"
+          ? Object.keys(sourceSubscription)
+          : [],
+      sourceEventEnvelopeFields:
+        first && typeof first === "object" ? Object.keys(first) : [],
       sourceEventFields:
         body && typeof body === "object" ? Object.keys(body) : [],
     };

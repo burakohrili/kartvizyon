@@ -160,6 +160,29 @@ describe("Scoped Sandbox ownership reconciliation", () => {
     );
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
+  it("verifies the real v2 envelope app_id instead of inventing it", async () => {
+    const { app_id, ...body } = purchase;
+    mocks.fetch.mockImplementation(async (url: string) =>
+      url.includes("/subscriptions?")
+        ? list([subscription])
+        : list([{ app_id, body }]),
+    );
+    expect(await reconcileSandboxCustomer(sandboxTestUser)).toBe("processed");
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  });
+  it("rejects an event from a different app envelope", async () => {
+    const { app_id: _appId, ...body } = purchase;
+    void _appId;
+    mocks.fetch.mockImplementation(async (url: string) =>
+      url.includes("/subscriptions?")
+        ? list([subscription])
+        : list([{ app_id: "other-app", body }]),
+    );
+    expect(await reconcileSandboxCustomer(sandboxTestUser)).toBe(
+      "missing_original_transaction",
+    );
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
   it("rejects production transaction proof", async () => {
     snapshots(subscription, { ...purchase, environment: "PRODUCTION" });
     expect(await reconcileSandboxCustomer(sandboxTestUser)).toBe(
