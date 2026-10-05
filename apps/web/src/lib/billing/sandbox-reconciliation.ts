@@ -161,6 +161,12 @@ export async function sandboxReadDiagnostic() {
       connected: true,
       targetSubscriptions: subscriptions.length,
       sourceSubscriptionRecognized: recognized.success,
+      sourcePurchaseProofVerified: recognized.success
+        ? Boolean(await findPurchase(recognized.data))
+        : false,
+      sourceSubscriptionInvalidFields: recognized.success
+        ? []
+        : recognized.error.issues.map((issue) => issue.path.join(".")),
       sourceSubscriptionFields:
         sourceSubscription && typeof sourceSubscription === "object"
           ? Object.keys(sourceSubscription)
