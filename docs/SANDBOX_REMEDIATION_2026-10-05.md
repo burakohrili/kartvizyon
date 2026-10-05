@@ -56,12 +56,26 @@
   `1.0.1 (61)` üretildi. Apple upload 90062/90186 ile reddedildi: yayındaki
   `1.0.1` pre-release train kapalı. Yalnız Sandbox workflow'a
   `--build-name=1.0.2` override eklendi; production workflow/pubspec değişmedi.
+- Düzeltme sonrası ikinci build: `6ac3b64d7394575b200b4eda`, kaynak commit
+  `d5ab690`; doğru staging-only workflow ve commit arayüzde doğrulandı.
+  IPA `1.0.2 (61)` üretildi; Apple upload `UPLOAD SUCCEEDED with no errors`.
+  Codemagic finished; Apple processing tamamlandı. Apple build UUID
+  `c4e88c41-855a-449f-a1b8-17a1300e2f49`. Mevcut `KartVizyon İç Test`
+  internal grubunda 1.0.2 (61) **Testing**; iki mevcut testçiye açık.
+  Sandbox/staging uyarılı What to Test metni kaydedildi. Genel build listesinde
+  beta review Waiting for Review; iç grubun Testing durumu ayrıca doğrulandı.
+  Bu işlem App Store sürüm başvurusu değildir; production sürümü değiştirilmedi.
 
 ## Test hesabı ve receipt sınırı
 
 Staging ayrı auth kullanıcılarına sahiptir; production hesabı veya parolası
 otomatik kopyalanmaz. Email confirmation açık, Apple/Google OAuth kapalıdır.
 Test hesabının parolası kullanıcı tarafından oluşturulmalı; sohbete yazılmamalı.
+
+Kullanıcı tarafından oluşturulan staging test hesabı: `brkohrili@hotmail.com`,
+UUID `d9b9a47f-b4bf-4bc6-8a91-5596df284b0c`; kişisel workspace
+`3d0567bc-a4ee-40cb-87f2-64dbf0037939`. İlk giriş öncesi subscription NULL;
+elle premium verilmedi. Parola ajan tarafından okunmadı veya oluşturulmadı.
 
 Mevcut production App User ID'sinin Sandbox receipt'ini yeni staging UUID'sine
 restore etmek RevenueCat TRANSFER olayı üretebilir. Transfer handler, iki
@@ -74,22 +88,20 @@ Mevcut receipt kullanılacaksa önce transfer davranışı ayrıca çözülmelid
 
 ## Kalan cihaz doğrulaması — henüz tamamlanmadı
 
-1. Staging Active durumunu ve migration 0035 / ürün-plan eşlemesini doğrula.
-2. Ayrı test sunucusuna yalnız staging Supabase anahtarlarını tanımla.
-   `REVENUECAT_ALLOWED_ENVIRONMENT=SANDBOX`; ayrı webhook auth/HMAC kullan.
-   Preview korumasını veya production güvenlik sınırını kaldırma.
-3. RevenueCat'te Sandbox-only webhook'u test sunucusuna bağla. TEST 200,
-   yanlış imza 401, production olayı 202 ve DB değişikliği yok kanıtlarını al.
-4. `mobile_sandbox`: KARTVIZYON_SANDBOX_API_URL, SUPABASE_URL,
-   SUPABASE_ANON_KEY, REVENUECAT_APPLE_PUBLIC_API_KEY, isteğe bağlı SENTRY_DSN.
-   Service-role/webhook sırları mobil gruba konmaz.
-5. Kullanıcı açıkça build istediğinde doğrulanmış commit'ten ayrı workflow ile
-   TestFlight'a yükle. App Review'a staging sürümü gönderme.
-6. Testçi staging'de ayrı hesabıyla giriş yapar. Production kullanıcı UUID'si
-   staging'de var kabul edilmez; elle premium verilmez. Aynı Apple receipt'in
-   farklı kullanıcıya transfer davranışı değerlendirilmeden restore yaptırma.
-7. Satın alma/restore sonrası staging DB hakkı ve cihazdaki kota birlikte
-   doğrulanır. Sonra renewal, cancellation ve expiry ayrı ayrı doğrulanır.
+1. Testçi TestFlight'tan **1.0.2 (61)** yükler ve sürüm ekranını gönderir.
+2. Uygulamada `brkohrili@hotmail.com` staging hesabı ve kullanıcının kendisinin
+   belirlediği parola ile giriş yapar. Sandbox ibaresi ve Premium ekranı alınır.
+3. Satın alma geçmişi olmayan Apple Sandbox hesabı ve receipt kimliği kontrol
+   edilir. Production receipt'i yeni staging UUID'sine körlemesine restore edilmez.
+4. İlk satın alma sonrası gerçek RevenueCat olayı, webhook teslimatı, staging
+   DB hakkı ve cihazdaki ücretli kota birlikte doğrulanır. Tek başına Apple
+   başarı mesajı veya TEST webhook 200 sonucu yeterli değildir.
+5. Aynı staging hesabında yeniden açma ve restore; ardından renewal,
+   cancellation ve expiry ayrı ayrı doğrulanır. Manuel premium verilmez.
+
+Test sunucusunda AI sağlayıcı anahtarları tanımlanmadı; bu teslimatın kapsamı
+abonelik erişim eşitlemesidir, tüm AI işlemlerinin E2E doğrulandığı anlamına gelmez.
 
 Mevcut build 60 üzerinde tekrar satın alma sorunu çözmez. Bu belge tam E2E
-başarısı veya yeni TestFlight build'in teslim edildiği iddiası değildir.
+başarısı değildir. Yeni Sandbox build teslim edilmiştir; cihazdaki satın alma
+yaşam döngüsünün sonuçları halen beklenmektedir.
