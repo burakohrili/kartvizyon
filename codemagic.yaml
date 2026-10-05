@@ -16,6 +16,8 @@ workflows:
         bundle_identifier: app.kartvizyon.mobile
       vars:
         APP_STORE_APP_ID: 6797552440
+        # 1.0.1 is already released; Apple closed its pre-release train.
+        SANDBOX_MARKETING_VERSION: 1.0.2
       node: 24.18.0
       flutter: 3.47.1
       xcode: latest
@@ -44,6 +46,7 @@ workflows:
       - name: Build staging-only IPA
         script: |
           flutter build ipa --release \
+            --build-name=$SANDBOX_MARKETING_VERSION \
             --build-number=$NEXT_BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist \
             --dart-define=KARTVIZYON_API_URL=$KARTVIZYON_SANDBOX_API_URL \

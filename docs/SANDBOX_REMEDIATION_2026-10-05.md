@@ -52,6 +52,10 @@
 - Sandbox build başlatıldı: `6ac3b19e7394575b200b4d55`, kaynak commit `76484e8`,
   `codex/sandbox-billing-reconciliation-20261005`; ilk gözlem `queued`.
   Build başlangıcı, IPA/TestFlight teslimatı kanıtı değildir.
+- İlk build'in 124 mobil testi, signing ve izolasyon guard'ı geçti; IPA
+  `1.0.1 (61)` üretildi. Apple upload 90062/90186 ile reddedildi: yayındaki
+  `1.0.1` pre-release train kapalı. Yalnız Sandbox workflow'a
+  `--build-name=1.0.2` override eklendi; production workflow/pubspec değişmedi.
 
 ## Test hesabı ve receipt sınırı
 
