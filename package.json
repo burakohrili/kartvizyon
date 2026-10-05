@@ -20,6 +20,8 @@
     "build:android": "node scripts/codemagic-build.mjs android",
     "build:ios": "node scripts/codemagic-build.mjs ios",
     "build:ios:testflight": "node scripts/codemagic-build.mjs ios --testflight",
+    "build:ios:sandbox": "node scripts/codemagic-build.mjs ios-sandbox",
+    "test:sandbox-config": "node --test scripts/validate-mobile-sandbox.test.mjs",
     "security:audit": "npm audit --omit=dev --audit-level=moderate"
   },
   "devDependencies": {

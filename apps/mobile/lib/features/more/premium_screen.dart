@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/mobile_services.dart';
+import '../../core/billing_reconciliation.dart';
 import '../../core/store_billing_service.dart';
 
 class PremiumScreen extends StatefulWidget {
@@ -70,13 +71,17 @@ class _PremiumScreenState extends State<PremiumScreen> {
     });
     try {
       final info = await billing.purchase(package);
-      await refreshServerStatus();
-      final active = info.entitlements.active.containsKey('premium');
+      final serverConfirmed = await refreshServerStatus();
+      final premium = info.entitlements.active['premium'];
       if (!mounted) return;
       setState(() {
-        message = active
-            ? 'Premium mağazada etkinleşti. Sunucu doğrulaması kısa süre içinde tamamlanır.'
-            : 'Satın alma alındı; mağaza doğrulaması bekleniyor.';
+        message = billingReconciliationMessage(
+          restoring: false,
+          storeActive: premium != null,
+          serverConfirmed: serverConfirmed,
+          sandboxPurchase: premium?.isSandbox ?? false,
+          apiBaseUrl: widget.services.config.apiBaseUrl,
+        );
       });
     } on StoreBillingException catch (error) {
       if (mounted) setState(() => message = error.message);
@@ -94,15 +99,23 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
   Future<void> restore() async {
     if (busy) return;
-    setState(() => busy = true);
+    setState(() {
+      busy = true;
+      message = null;
+    });
     try {
       final info = await billing.restore();
-      await refreshServerStatus();
+      final serverConfirmed = await refreshServerStatus();
+      final premium = info.entitlements.active['premium'];
       if (!mounted) return;
       setState(() {
-        message = info.entitlements.active.containsKey('premium')
-            ? 'Premium satın almanız geri yüklendi.'
-            : 'Bu mağaza hesabında geri yüklenecek aktif satın alma bulunamadı.';
+        message = billingReconciliationMessage(
+          restoring: true,
+          storeActive: premium != null,
+          serverConfirmed: serverConfirmed,
+          sandboxPurchase: premium?.isSandbox ?? false,
+          apiBaseUrl: widget.services.config.apiBaseUrl,
+        );
       });
     } on StoreBillingException catch (error) {
       if (mounted) setState(() => message = error.message);
@@ -118,21 +131,23 @@ class _PremiumScreenState extends State<PremiumScreen> {
     }
   }
 
-  Future<void> refreshServerStatus() async {
+  Future<bool> refreshServerStatus() async {
     for (var attempt = 0; attempt < 5; attempt++) {
       final data = Map<String, dynamic>.from(
         await widget.services.api.get('/api/settings/billing') as Map,
       );
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() => status = data);
       final entitlement = data['entitlement'] as Map?;
       widget.services.updateEntitlement(entitlement);
-      if (entitlement?['readOnly'] == false &&
-          entitlement?['trialActive'] == false) {
-        return;
+      if (serverPremiumConfirmed(entitlement)) {
+        return true;
       }
-      await Future<void>.delayed(const Duration(seconds: 2));
+      if (attempt < 4) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
     }
+    return false;
   }
 
   Future<void> openLegal(String path) async {
@@ -179,6 +194,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
+                if (widget.services.config.isSandbox) ...[
+                  const Text(
+                    'Sandbox test ortamı — canlı hesabınızdan ayrıdır.',
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Text(
                   entitlement?['planName']?.toString() ?? 'Mevcut plan',
                   style: Theme.of(context).textTheme.headlineSmall,

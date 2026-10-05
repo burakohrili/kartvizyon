@@ -45,6 +45,8 @@ class MobileConfig {
   final String revenueCatAppleApiKey;
   final String revenueCatGoogleApiKey;
   bool get hasSupabase => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+  bool get isSandbox =>
+      Uri.tryParse(supabaseUrl)?.host == 'rfzmdpxnfsvatukkedrg.supabase.co';
 }
 
 class MobileApiClient {
@@ -350,8 +352,10 @@ class MobileServices {
   );
 
   factory MobileServices.create(MobileConfig config) {
-    final database = AppDatabase();
-    const sessions = SecureSessionStore();
+    final database = AppDatabase(sandbox: config.isSandbox);
+    final sessions = config.isSandbox
+        ? const SecureSessionStore.sandbox()
+        : const SecureSessionStore();
     // Aktif çalışma alanı `refreshContext()` ile değiştiği için istemciye
     // değer değil, okuyucu verilir; kurulum sırasında örnek henüz yok.
     late final MobileServices services;

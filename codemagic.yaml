@@ -1,4 +1,64 @@
 workflows:
+  # Manual-only. Never publish this staging-connected IPA to App Review.
+  kartvizyon-ios-sandbox:
+    name: KartVizyon iOS Sandbox E2E / staging only
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    working_directory: apps/mobile
+    integrations:
+      app_store_connect: kartvizyon_app_store
+    environment:
+      # Dedicated group: do not inherit production Supabase credentials.
+      groups:
+        - mobile_sandbox
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.kartvizyon.mobile
+      vars:
+        APP_STORE_APP_ID: 6797552440
+      node: 24.18.0
+      flutter: 3.47.1
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Verify isolated Sandbox runtime
+        script: node ../../scripts/validate-mobile-sandbox.mjs
+      - name: Resolve dependencies
+        script: flutter pub get
+      - name: Static analysis
+        script: flutter analyze
+      - name: Unit and widget tests
+        script: flutter test
+      - name: Install CocoaPods dependencies
+        script: find ios -name Podfile -execdir pod install \;
+      - name: Apply KartVizyon-only iOS signing profiles
+        script: xcode-project use-profiles --project ios/Runner.xcodeproj
+      - name: Resolve the next TestFlight build number
+        script: |
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID")
+          if [ -z "$LATEST" ]; then
+            echo "TestFlight build number unavailable."
+            exit 1
+          fi
+          echo "NEXT_BUILD_NUMBER=$((LATEST + 1))" >> "$CM_ENV"
+      - name: Build staging-only IPA
+        script: |
+          flutter build ipa --release \
+            --build-number=$NEXT_BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist \
+            --dart-define=KARTVIZYON_API_URL=$KARTVIZYON_SANDBOX_API_URL \
+            --dart-define=SUPABASE_URL=$SUPABASE_URL \
+            --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \
+            --dart-define=REVENUECAT_APPLE_PUBLIC_API_KEY=$REVENUECAT_APPLE_PUBLIC_API_KEY \
+            --dart-define=SENTRY_DSN=$SENTRY_DSN
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+
   kartvizyon-android-release:
     name: KartVizyon Android signed AAB
     max_build_duration: 60

@@ -1,11 +1,18 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureSessionStore {
-  const SecureSessionStore([this._storage = const FlutterSecureStorage()]);
+  const SecureSessionStore([
+    this._storage = const FlutterSecureStorage(),
+    this._namespace = '',
+  ]);
+  const SecureSessionStore.sandbox()
+    : _storage = const FlutterSecureStorage(),
+      _namespace = 'sandbox_';
   final FlutterSecureStorage _storage;
+  final String _namespace;
 
-  static const _accessToken = 'supabase_access_token';
-  static const _refreshToken = 'supabase_refresh_token';
+  String get _accessToken => '${_namespace}supabase_access_token';
+  String get _refreshToken => '${_namespace}supabase_refresh_token';
 
   Future<void> save({
     required String accessToken,
@@ -24,5 +31,10 @@ class SecureSessionStore {
     return (accessToken: values[0]!, refreshToken: values[1]!);
   }
 
-  Future<void> clear() => _storage.deleteAll();
+  Future<void> clear() async {
+    await Future.wait([
+      _storage.delete(key: _accessToken),
+      _storage.delete(key: _refreshToken),
+    ]);
+  }
 }
