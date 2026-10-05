@@ -86,6 +86,54 @@ satın alma geçmişi olmayan Apple Sandbox test hesabı ile ilk satın alma;
 aynı staging UUID'sinde yeniden açma ve restore testi tercih edilmelidir.
 Mevcut receipt kullanılacaksa önce transfer davranışı ayrıca çözülmelidir.
 
+### Mevcut receipt için sunucu doğrulaması — 5 Ekim 18:27 TR
+
+Kullanıcı salt-okunur RevenueCat v2 sunucu anahtarını açıkça onayladı.
+`KartVizyon Sandbox Readonly Reconciliation`: Customers ve Subscriptions
+Read only; diğer tüm izinler No access. Anahtar yalnız ayrı Vercel
+`kartvizyon-sandbox` projesinde `REVENUECAT_SANDBOX_READ_API_KEY` Secret
+olarak saklandı; mobil/Codemagic/Git/sohbete aktarılmadı.
+
+`sandbox-reconciliation.ts` yalnız tam staging URL + SANDBOX ortamı + yukarıdaki
+tek test UUID'sinde çalışır. Authenticated billing GET, kişisel workspace'in
+sahibini bağımsız doğrular. Güncel RevenueCat sahibi, Apple mağazası, Sandbox
+ortamı, katalog ürünü ve Premium entitlement birlikte doğrulanır. En son Apple
+transaction ID'si original transaction ID yerine kullanılmaz: gerçek v2
+customer-event kaydındaki `original_transaction_id` gerekir. V2 `app_id`,
+gerçek API yanıtında body dışında envelope'dadır; ayrı doğrulanır. Tarihsel
+kanıt okunduktan sonra güncel sahiplik tekrar okunur. Eksik kanıt veya API
+hatasında hak verilmez. Sonuç mevcut service-role-only atomic RPC ve
+`SANDBOX_SERVER_SNAPSHOT` audit türüyle yazılır; Apple olayı taklit edilmez.
+
+Yalnız bu test kullanıcısına gelen Sandbox TRANSFER için store/environment
+opsiyonel olabilir; güncel sunucu doğrulaması zorunludur. Eski production
+UUID'sinin staging'de auth hesabı bulunması artık bu dar recovery için
+gerekmiyor. Diğer transferler ve production koruması değiştirilmedi. Receipt'i
+RevenueCat'te başka hesaba geçirmek için yine cihazdaki gerçek restore gerekir;
+sunucu anahtarı transfer/satın alma/iptal yetkisine sahip değildir.
+
+Sandbox deployment `dpl_DayJYSgZQerBnmUQ1dzPjvDHKKqV` READY, kaynak
+`57f9dc9`; stable alias `https://kartvizyon-sandbox.vercel.app`. İmzalı gerçek
+TEST `EF694625-B72D-499C-B43B-D79EE4ED7146` HTTP 200:
+`connected=true`, `sourceSubscriptionRecognized=true`,
+`sourcePurchaseProofVerified=true`, `targetSubscriptions=0`. Bu yalnız gerçek
+okuma bağlantısı ve eski receipt kanıtını doğrular; test Premium vermez.
+Kanıt: `artifacts/app-store-review/sandbox-readonly-verification-2026-10-05.png`.
+Health 200, oturumsuz billing 401, imzasız webhook 401. Yeni mobil build
+gerekmez; mevcut Sandbox 1.0.2 (61) aynı authenticated billing GET'i kullanır.
+
+144 web testi (24 recovery + 20 webhook dahil), lint, typecheck, web build ve
+istemci sır taraması geçti. Production dependency audit 0; tüm dependency
+audit'inde 9 geliştirme bağımlılığı uyarısı var (2 moderate, 7 high); bu task'ta
+bağımlılık sürümleri değiştirilmedi. Bunlar yok sayılıp “tüm audit temiz” denmez.
+
+Testçinin staging uygulama hesabı `brkohrili@hotmail.com`, Apple satın alma
+hesabı `v.yeter@icloud.com` ve ülke Türkiye; iki hesabın e-postasının aynı
+olması gerekmez. Yeni satın alma yerine **Satın almaları geri yükle** bir kez
+istenmiştir. Restore sonrası RC sahiplik, staging DB ücretli kota ve cihaz
+ekranı henüz birlikte doğrulanmadı. Yenileme/iptal/expiry döngüsü de tamamlandı
+diye raporlanamaz. Manuel lifetime Premium halen geri açılmadı.
+
 ## Kalan cihaz doğrulaması — henüz tamamlanmadı
 
 1. Testçi TestFlight'tan **1.0.2 (61)** yükler ve sürüm ekranını gönderir.

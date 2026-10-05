@@ -2,7 +2,19 @@ import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 
-const mocks = vi.hoisted(() => ({ admin: vi.fn(), rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  admin: vi.fn(),
+  rpc: vi.fn(),
+  sandboxEnabled: vi.fn(),
+  reconcile: vi.fn(),
+  diagnostic: vi.fn(),
+}));
+vi.mock("@/lib/billing/sandbox-reconciliation", () => ({
+  sandboxTestUser: "d9b9a47f-b4bf-4bc6-8a91-5596df284b0c",
+  sandboxReconciliationEnabled: mocks.sandboxEnabled,
+  reconcileSandboxCustomer: mocks.reconcile,
+  sandboxReadDiagnostic: mocks.diagnostic,
+}));
 vi.mock("@/lib/supabase/admin", () => ({
   createSupabaseAdminClient: mocks.admin,
 }));
@@ -68,10 +80,63 @@ beforeEach(() => {
   vi.stubEnv("REVENUECAT_WEBHOOK_SIGNING_SECRET", "test-signing-key");
   vi.stubEnv("REVENUECAT_ALLOWED_ENVIRONMENT", "PRODUCTION");
   mocks.rpc.mockResolvedValue({ data: "processed", error: null });
+  mocks.sandboxEnabled.mockReturnValue(false);
+  mocks.diagnostic.mockResolvedValue(undefined);
 });
 afterEach(() => vi.unstubAllEnvs());
 
 describe("RevenueCat HTTP boundary", () => {
+  it("recovers only the approved Sandbox transfer even without optional fields", async () => {
+    vi.stubEnv("REVENUECAT_ALLOWED_ENVIRONMENT", "SANDBOX");
+    mocks.sandboxEnabled.mockReturnValue(true);
+    mocks.reconcile.mockResolvedValue("processed");
+    const response = await POST(
+      request(
+        payload({
+          type: "TRANSFER",
+          store: undefined,
+          environment: undefined,
+          transferred_from: [previousUser],
+          transferred_to: ["d9b9a47f-b4bf-4bc6-8a91-5596df284b0c"],
+        }),
+      ),
+    );
+    expect(response.status).toBe(200);
+    expect(mocks.reconcile).toHaveBeenCalledWith(
+      "d9b9a47f-b4bf-4bc6-8a91-5596df284b0c",
+    );
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("requests retry rather than claiming an unverified transfer", async () => {
+    vi.stubEnv("REVENUECAT_ALLOWED_ENVIRONMENT", "SANDBOX");
+    mocks.sandboxEnabled.mockReturnValue(true);
+    mocks.reconcile.mockResolvedValue("missing_original_transaction");
+    const response = await POST(
+      request(
+        payload({
+          type: "TRANSFER",
+          environment: "SANDBOX",
+          transferred_to: ["d9b9a47f-b4bf-4bc6-8a91-5596df284b0c"],
+        }),
+      ),
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ received: false });
+  });
+  it("never reconciles a Production event on the isolated Sandbox server", async () => {
+    vi.stubEnv("REVENUECAT_ALLOWED_ENVIRONMENT", "SANDBOX");
+    mocks.sandboxEnabled.mockReturnValue(true);
+    const response = await POST(
+      request(
+        payload({
+          type: "TRANSFER",
+          transferred_to: ["d9b9a47f-b4bf-4bc6-8a91-5596df284b0c"],
+        }),
+      ),
+    );
+    expect(response.status).toBe(202);
+    expect(mocks.reconcile).not.toHaveBeenCalled();
+  });
   it("fails closed when signing configuration is missing", async () => {
     vi.stubEnv("REVENUECAT_WEBHOOK_SIGNING_SECRET", "");
     expect((await POST(request(payload()))).status).toBe(503);
