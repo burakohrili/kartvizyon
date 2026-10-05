@@ -14,6 +14,7 @@
   döndürür; 200 HTTP durumu bu API'nin çalıştığı anlamına gelmez.
 - `rfzmdpxnfsvatukkedrg` staging projesi resumed; migration ledger tablosu,
   `reconcile_store_subscription` ve aktif Apple ürün eşlemesi SQL ile doğrulandı.
+  Ledger: 35 kayıt, son sürüm `0035`.
 
 ## Hazırlanan değişiklikler
 
@@ -42,6 +43,30 @@
 - Production olayı reddi ve reconciliation davranışı 17 yerel webhook testi
   içinde doğrulandı; bu, gerçek cihaz yaşam döngüsü kanıtı değildir.
 - 124 mobil test ve 3 Sandbox guard testi geçti; Flutter analyze temiz.
+- Production bağımlılık güvenlik denetimi: 0 vulnerability.
+- Tam `npm run check` exit 0: format, 35 migration/rollback çifti, lint,
+  typecheck, 117 web + 37 contracts + 263 database + 124 mobil test,
+  web build ve istemci sır taraması geçti. Guard'ın 3 testi ayrıca geçti.
+- Codemagic `mobile_sandbox` grubundaki dört gerekli değer kaydedildi;
+  service-role/webhook sırları bu gruba aktarılmadı.
+- Sandbox build başlatıldı: `6ac3b19e7394575b200b4d55`, kaynak commit `76484e8`,
+  `codex/sandbox-billing-reconciliation-20261005`; ilk gözlem `queued`.
+  Build başlangıcı, IPA/TestFlight teslimatı kanıtı değildir.
+
+## Test hesabı ve receipt sınırı
+
+Staging ayrı auth kullanıcılarına sahiptir; production hesabı veya parolası
+otomatik kopyalanmaz. Email confirmation açık, Apple/Google OAuth kapalıdır.
+Test hesabının parolası kullanıcı tarafından oluşturulmalı; sohbete yazılmamalı.
+
+Mevcut production App User ID'sinin Sandbox receipt'ini yeni staging UUID'sine
+restore etmek RevenueCat TRANSFER olayı üretebilir. Transfer handler, iki
+kişisel çalışma alanının da aynı DB'de bulunmasını zorunlu kılar. Production
+UUID'si staging'de bulunmadığında bu aktarım 422 ile reddedilir; elle premium
+vermek veya sahte subscription eklemek doğru doğrulama değildir. Temiz,
+satın alma geçmişi olmayan Apple Sandbox test hesabı ile ilk satın alma;
+aynı staging UUID'sinde yeniden açma ve restore testi tercih edilmelidir.
+Mevcut receipt kullanılacaksa önce transfer davranışı ayrıca çözülmelidir.
 
 ## Kalan cihaz doğrulaması — henüz tamamlanmadı
 
