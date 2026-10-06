@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/mobile_services.dart';
 import '../../core/billing_reconciliation.dart';
 import '../../core/store_billing_service.dart';
+import '../../core/apple_subscription_management.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key, required this.services});
@@ -158,10 +159,32 @@ class _PremiumScreenState extends State<PremiumScreen> {
   }
 
   Future<void> manageSubscription() async {
-    final uri = Platform.isIOS
-        ? Uri.parse('https://apps.apple.com/account/subscriptions')
-        : Uri.parse('https://play.google.com/store/account/subscriptions');
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (busy) return;
+    setState(() {
+      busy = true;
+      message = null;
+    });
+    try {
+      if (Platform.isIOS) {
+        await AppleSubscriptionManagement.show();
+        if (mounted) await load();
+      } else {
+        final opened = await launchUrl(
+          Uri.parse('https://play.google.com/store/account/subscriptions'),
+          mode: LaunchMode.externalApplication,
+        );
+        if (!opened) throw StateError('Subscription management unavailable');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => message =
+              'Abonelik yönetimi açılamadı. Lütfen biraz sonra yeniden deneyin.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   String periodLabel(Package package) => switch (package.packageType) {
@@ -267,7 +290,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                     child: const Text('Satın almaları geri yükle'),
                   ),
                   TextButton(
-                    onPressed: manageSubscription,
+                    onPressed: busy ? null : manageSubscription,
                     child: Text('$storeName’da aboneliği yönet'),
                   ),
                   const SizedBox(height: 12),
