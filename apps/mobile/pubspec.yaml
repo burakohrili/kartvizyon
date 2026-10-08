@@ -22,7 +22,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # mağazaya giden ikilinin numarası burada yazandan farklıdır (bkz.
 # codemagic.yaml). Android ve iOS artık ayrı ayrı sayar.
 # Kullanıcı çalışan sürümü "Daha fazla → Uygulama sürümü" altında görebilir.
-version: 1.0.1+1
+version: 1.0.2+1
 
 environment:
   sdk: ^3.8.1
