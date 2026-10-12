@@ -24,7 +24,8 @@ export async function GET(request: Request) {
     .eq("workspace_id", workspaceId)
     // Tarihi olmayan görevler sona. Varsayılan sırada bunlar öngörülemeyen
     // yerlere düşüyordu; web sayfası zaten böyle sıralıyor.
-    .order("due_at", { ascending: true, nullsFirst: false });
+    .order("due_at", { ascending: true, nullsFirst: false })
+    .order("id", { ascending: true });
   if (companyId) query = query.eq("company_id", companyId);
   const { data, error } = await query;
   if (error) return apiError(error);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -26,6 +28,11 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   void initState() {
     super.initState();
     _detail = _load();
+    if (widget.services.fieldMode.isActive.value) {
+      // Saha modu açıkken müşteri kaydına girmek de kontrol sinyalidir.
+      // Yakın zamanda kontrol edildiyse servis yeni ağ isteği üretmez.
+      unawaited(widget.services.fieldMode.checkCurrentLocation());
+    }
   }
 
   Future<Map<String, dynamic>> _load() async {

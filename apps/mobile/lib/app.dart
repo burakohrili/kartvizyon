@@ -86,6 +86,7 @@ class _KartVizyonAppState extends State<KartVizyonApp>
                 // Oturum geçerlidir; geçici ağ/API hatasında çevrimdışı açılışa
                 // izin ver ve sonraki eşitlemede bağlamı yeniden yükle.
               }
+              services.invalidateScreens();
               router.go(
                 services.workspaceCompanyName == null ? '/company-setup' : '/',
               );
@@ -93,42 +94,62 @@ class _KartVizyonAppState extends State<KartVizyonApp>
             },
           ),
         ),
-        ShellRoute(
-          builder: (context, state, child) => _MobileShell(
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) => _MobileShell(
             location: state.uri.path,
             services: services,
-            child: child,
+            navigationShell: navigationShell,
           ),
-          routes: [
-            GoRoute(
-              path: '/',
-              builder: (_, __) => HomeScreen(services: services),
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (_, __) => HomeScreen(services: services),
+                ),
+                GoRoute(
+                  path: '/map',
+                  builder: (_, __) => MapScreen(services: services),
+                ),
+              ],
             ),
-            GoRoute(
-              path: '/customers',
-              builder: (_, __) => CustomersScreen(services: services),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/customers',
+                  builder: (_, __) => CustomersScreen(services: services),
+                ),
+              ],
             ),
-            GoRoute(
-              path: '/map',
-              builder: (_, __) => MapScreen(services: services),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/visits',
+                  builder: (_, __) => VisitsScreen(services: services),
+                ),
+              ],
             ),
-            GoRoute(
-              path: '/tasks',
-              builder: (_, __) => TasksScreen(services: services),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/tasks',
+                  builder: (_, __) => TasksScreen(services: services),
+                ),
+              ],
             ),
-            GoRoute(
-              path: '/visits',
-              builder: (_, __) => VisitsScreen(services: services),
-            ),
-            GoRoute(
-              path: '/more',
-              builder: (_, __) => MoreScreen(
-                services: services,
-                onSignedOut: () {
-                  authenticated = false;
-                  router.go('/login');
-                },
-              ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/more',
+                  builder: (_, __) => MoreScreen(
+                    services: services,
+                    onSignedOut: () {
+                      authenticated = false;
+                      router.go('/login');
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -251,6 +272,7 @@ class _KartVizyonAppState extends State<KartVizyonApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && authenticated) {
       unawaited(_syncReminders());
+      unawaited(services.fieldMode.onAppResumed());
     }
   }
 
@@ -298,20 +320,43 @@ class _KartVizyonAppState extends State<KartVizyonApp>
   );
 }
 
-class _MobileShell extends StatelessWidget {
+class _MobileShell extends StatefulWidget {
   const _MobileShell({
     required this.location,
     required this.services,
-    required this.child,
+    required this.navigationShell,
   });
   final MobileServices services;
   final String location;
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
+
+  @override
+  State<_MobileShell> createState() => _MobileShellState();
+}
+
+class _MobileShellState extends State<_MobileShell> {
+  late int _lastBranch;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastBranch = widget.navigationShell.currentIndex;
+  }
+
+  @override
+  void didUpdateWidget(covariant _MobileShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final currentBranch = widget.navigationShell.currentIndex;
+    if (_lastBranch == currentBranch) return;
+    _lastBranch = currentBranch;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.services.activeTab.value = currentBranch;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    const paths = ['/', '/customers', '/visits', '/tasks', '/more'];
-    final index = switch (location) {
+    final index = switch (widget.location) {
       '/' => 0,
       String value when value.startsWith('/customers') => 1,
       String value when value.startsWith('/visits') => 2,
@@ -328,11 +373,11 @@ class _MobileShell extends StatelessWidget {
         child: Column(
           children: [
             ValueListenableBuilder<Map<String, dynamic>?>(
-              valueListenable: services.entitlement,
+              valueListenable: widget.services.entitlement,
               builder: (context, data, _) {
                 if (data == null) return const SizedBox.shrink();
                 final trial = data['trialActive'] == true;
-                final readOnly = !services.canWrite;
+                final readOnly = !widget.services.canWrite;
                 if (!trial && !readOnly) return const SizedBox.shrink();
                 final end = DateTime.tryParse(
                   data['trialEndsAt']?.toString() ?? '',
@@ -357,14 +402,13 @@ class _MobileShell extends StatelessWidget {
                 );
               },
             ),
-            Expanded(child: child),
+            Expanded(child: widget.navigationShell),
           ],
         ),
       ),
       bottomNavigationBar: _FieldNavigation(
         selectedIndex: index,
-        onSelected: (value) =>
-            value == 2 ? context.push('/visits') : context.go(paths[value]),
+        onSelected: (value) => widget.navigationShell.goBranch(value),
       ),
     );
   }

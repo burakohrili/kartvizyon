@@ -23,12 +23,28 @@ class _FieldGeolocator extends GeolocatorPlatform
   _FieldGeolocator({this.permission = LocationPermission.whileInUse});
   final LocationPermission permission;
   final positions = StreamController<Position>.broadcast();
+  Position get position => Position(
+    latitude: 38.46,
+    longitude: 27.21,
+    timestamp: DateTime.now(),
+    accuracy: 10,
+    altitude: 0,
+    altitudeAccuracy: 0,
+    heading: 0,
+    headingAccuracy: 0,
+    speed: 0,
+    speedAccuracy: 0,
+  );
   @override
   Future<bool> isLocationServiceEnabled() async => true;
   @override
   Future<LocationPermission> checkPermission() async => permission;
   @override
   Future<LocationPermission> requestPermission() async => permission;
+  @override
+  Future<Position> getCurrentPosition({
+    LocationSettings? locationSettings,
+  }) async => position;
   @override
   Stream<Position> getPositionStream({LocationSettings? locationSettings}) =>
       positions.stream;
@@ -125,6 +141,36 @@ void main() {
       );
       expect(services.fieldMode.isActive.value, isTrue);
       expect(services.sessionExpired.value, isFalse);
+    },
+  );
+
+  test(
+    'saha modu açılır açılmaz mevcut konumu yakındaki müşteriler için sorar',
+    () async {
+      final geo = _FieldGeolocator();
+      GeolocatorPlatform.instance = geo;
+      var candidateChecks = 0;
+      final services = _services(
+        MockClient((request) async {
+          if (request.url.path == '/api/session') return _session();
+          if (request.url.path == '/api/geofence/candidates') {
+            candidateChecks++;
+            return http.Response(jsonEncode({'data': <Object>[]}), 200);
+          }
+          return http.Response(jsonEncode({'data': <Object>[]}), 200);
+        }),
+      );
+      addTearDown(() async {
+        await services.dispose();
+        await geo.positions.close();
+      });
+
+      expect(await services.fieldMode.start(), isTrue);
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(candidateChecks, 1);
+
+      await services.fieldMode.onAppResumed();
+      expect(candidateChecks, 2);
     },
   );
 

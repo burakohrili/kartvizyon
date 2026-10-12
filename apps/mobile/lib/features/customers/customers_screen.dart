@@ -42,6 +42,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
   @override
   void dispose() {
     searchDebounce?.cancel();
+    widget.services.screenRevision.removeListener(_onScreenRevision);
+    widget.services.activeTab.removeListener(_onActiveTabChanged);
     searchController.dispose();
     super.dispose();
   }
@@ -50,6 +52,26 @@ class _CustomersScreenState extends State<CustomersScreen> {
   void initState() {
     super.initState();
     customers = load();
+    widget.services.screenRevision.addListener(_onScreenRevision);
+    widget.services.activeTab.addListener(_onActiveTabChanged);
+  }
+
+  void _onScreenRevision() {
+    if (mounted) {
+      setState(() {
+        visibleCustomers.clear();
+        hasMore = false;
+        customers = load();
+      });
+    }
+  }
+
+  void _onActiveTabChanged() {
+    if (widget.services.activeTab.value == 1 && mounted) {
+      setState(() {
+        customers = load();
+      });
+    }
   }
 
   Future<List<Map<String, dynamic>>> load({bool append = false}) async {

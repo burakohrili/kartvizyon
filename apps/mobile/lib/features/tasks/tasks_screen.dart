@@ -23,6 +23,31 @@ class _TasksScreenState extends State<TasksScreen> {
   void initState() {
     super.initState();
     tasks = load();
+    widget.services.screenRevision.addListener(_onScreenRevision);
+    widget.services.activeTab.addListener(_onActiveTabChanged);
+  }
+
+  void _onScreenRevision() {
+    if (mounted) {
+      setState(() {
+        tasks = load();
+      });
+    }
+  }
+
+  void _onActiveTabChanged() {
+    if (widget.services.activeTab.value == 3 && mounted) {
+      setState(() {
+        tasks = load();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.services.screenRevision.removeListener(_onScreenRevision);
+    widget.services.activeTab.removeListener(_onActiveTabChanged);
+    super.dispose();
   }
 
   Future<List<Map<String, dynamic>>> load() async {
@@ -71,6 +96,7 @@ class _TasksScreenState extends State<TasksScreen> {
         'workspaceId': widget.services.workspaceId,
         'status': item['status'],
       });
+      widget.services.invalidateScreens();
     } catch (error) {
       if (!mounted) return;
       setState(() => item['status'] = previous);
@@ -196,7 +222,7 @@ class _TasksScreenState extends State<TasksScreen> {
         'assignedTo': null,
       });
       if (!mounted) return;
-      setState(() => tasks = load());
+      widget.services.invalidateScreens();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Görev kaydedildi.')));
@@ -227,10 +253,11 @@ class _TasksScreenState extends State<TasksScreen> {
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: tasks,
       builder: (_, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (snapshot.connectionState != ConnectionState.done &&
+            !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (snapshot.hasError) {
+        if (snapshot.hasError && !snapshot.hasData) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(24),

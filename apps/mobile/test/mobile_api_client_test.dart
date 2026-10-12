@@ -43,6 +43,36 @@ void main() {
     ]);
   });
 
+  test(
+    'eşzamanlı 401 yanıtları tek bir refresh-token yenilemesini paylaşır',
+    () async {
+      var refreshCount = 0;
+      final client = MobileApiClient(
+        baseUrl: Uri.parse('https://app.kartvizyon.app'),
+        sessions: const _EmptySessionStore(),
+        accessTokenProvider: () async => 'expired-token',
+        refreshAccessToken: () async {
+          refreshCount++;
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          return 'fresh-token';
+        },
+        client: MockClient((request) async {
+          if (request.headers['authorization'] == 'Bearer expired-token') {
+            return http.Response(jsonEncode({'error': 'Oturum gerekli.'}), 401);
+          }
+          return http.Response(jsonEncode({'data': <Object>[]}), 200);
+        }),
+      );
+
+      await Future.wait([
+        client.get('/api/session'),
+        client.get('/api/geofence/candidates'),
+      ]);
+
+      expect(refreshCount, 1);
+    },
+  );
+
   test('yenileme başarısızsa 401 anlamlı hata olarak döner', () async {
     final client = MobileApiClient(
       baseUrl: Uri.parse('https://app.kartvizyon.app'),

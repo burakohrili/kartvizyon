@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { formatTry, PUBLIC_PLANS, TRIAL_MESSAGE } from "@/lib/pricing";
+import {
+  formatTry,
+  IAP_INDIVIDUAL_MONTHLY_TRY,
+  PUBLIC_PLANS,
+  TRIAL_MESSAGE,
+} from "@/lib/pricing";
 import { LegalPage } from "../legal-page";
 
 export const metadata: Metadata = {
@@ -37,10 +42,10 @@ export default function DistanceSalesPage() {
 
       <h2>Plan, dönem ve bedel</h2>
       <p>
-        Bireysel standart aylık fiyat 449 TL olup KDV dahildir. Kurumsal
-        planların bedelleri KDV hariçtir. Vergiler dâhil tahsil edilecek toplam
-        tutar, seçtiğiniz koltuk sayısı ve dönemle birlikte siparişi onaylamadan
-        önce ödeme ekranında ayrıca gösterilir.
+        Bireysel standart aylık fiyat {formatTry(IAP_INDIVIDUAL_MONTHLY_TRY)}{" "}
+        olup KDV dahildir. Kurumsal planların bedelleri KDV hariçtir. Vergiler
+        dâhil tahsil edilecek toplam tutar, seçtiğiniz koltuk sayısı ve dönemle
+        birlikte siparişi onaylamadan önce ödeme ekranında ayrıca gösterilir.
       </p>
       <p>
         Mobil mağaza fiyatı ülke, para birimi ve vergiye göre değişebilir; bu

@@ -11,7 +11,7 @@ export type PublicPlan = {
   id: "free" | "individual" | "team" | "enterprise";
   name: string;
   audience: string;
-  /** Aylık, KDV hariç ₺. null = teklif usulü. */
+  /** Aylık ₺. Bireysel KDV dahil, diğer planlar KDV hariç. */
   monthlyTry: number | null;
   /** Yıllık toplam, KDV hariç ₺ (iki ay bedava). null = teklif usulü. */
   annualTry: number | null;
@@ -47,7 +47,7 @@ export const PUBLIC_PLANS: PublicPlan[] = [
     id: "individual",
     name: "Bireysel",
     audience: "Tek başına saha çalışan profesyoneller için",
-    monthlyTry: 449,
+    monthlyTry: IAP_INDIVIDUAL_MONTHLY_TRY,
     annualTry: null,
     perSeat: false,
     minSeats: 1,

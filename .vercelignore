@@ -1,5 +1,10 @@
 .git
 .vercel
+.claude
+.npm-cache
+.tmp
+tmp
+.tools
 .env
 .env.*
 node_modules
@@ -7,5 +12,6 @@ node_modules
 **/coverage
 **/build
 apps/mobile
+artifacts
 *.apk
 *.log

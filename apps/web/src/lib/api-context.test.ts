@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cookieValue = { current: "cookie-workspace" };
 const visibleWorkspaces = new Set<string>();
+const rateLimitFailure = { current: false };
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -43,7 +44,10 @@ function workspaceQuery() {
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: async () => ({
     auth: { getUser: async () => ({ data: { user: { id: "user-1" } } }) },
-    rpc: async () => ({ data: true, error: null }),
+    rpc: async () =>
+      rateLimitFailure.current
+        ? { data: null, error: { message: "database unavailable" } }
+        : { data: true, error: null },
     from: () => workspaceQuery(),
   }),
 }));
@@ -59,6 +63,7 @@ beforeEach(() => {
   visibleWorkspaces.clear();
   visibleWorkspaces.add("cookie-workspace");
   visibleWorkspaces.add("header-workspace");
+  rateLimitFailure.current = false;
 });
 
 describe("çalışma alanı çözümlemesi", () => {
@@ -103,5 +108,20 @@ describe("çalışma alanı çözümlemesi", () => {
 
     expect(context.ok).toBe(false);
     if (!context.ok) expect(context.response.status).toBe(403);
+  });
+
+  it("hız sınırı denetimi DB hatasında güvenlik kontrolünü atlamaz", async () => {
+    rateLimitFailure.current = true;
+    const context = await getApiContext(
+      request("https://app.kartvizyon.app/api/tasks"),
+    );
+
+    expect(context.ok).toBe(false);
+    if (!context.ok) {
+      expect(context.response.status).toBe(503);
+      await expect(context.response.json()).resolves.toEqual({
+        error: "İstek güvenlik kontrolü geçici olarak tamamlanamadı.",
+      });
+    }
   });
 });

@@ -11,6 +11,12 @@ import {
   verifyRevenueCatSignature,
 } from "@/lib/billing/revenuecat";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  reconcileSandboxCustomer,
+  sandboxReadDiagnostic,
+  sandboxReconciliationEnabled,
+  sandboxTestUser,
+} from "@/lib/billing/sandbox-reconciliation";
 
 export const runtime = "nodejs";
 
@@ -61,8 +67,14 @@ export async function POST(request: Request) {
     );
 
   const event = parsed.data.event;
-  if (event.type === "TEST")
-    return Response.json({ received: true, test: true });
+  if (event.type === "TEST") {
+    const sandbox = await sandboxReadDiagnostic();
+    return Response.json({
+      received: true,
+      test: true,
+      ...(sandbox ? { sandbox } : {}),
+    });
+  }
   if (event.environment && event.environment !== allowedEnvironment) {
     return Response.json(
       { received: true, ignored: true, reason: "environment_mismatch" },
@@ -73,6 +85,21 @@ export async function POST(request: Request) {
     const provider = normalizeStore(event.store);
     const fromIds = revenueCatUuidIds(event.transferred_from);
     const toIds = revenueCatUuidIds(event.transferred_to);
+    if (sandboxReconciliationEnabled() && toIds.includes(sandboxTestUser)) {
+      // TRANSFER may omit store/environment and has no receipt dates. Recover
+      // only through the current owner's authenticated RevenueCat snapshot.
+      const outcome = await reconcileSandboxCustomer(sandboxTestUser);
+      const verified = [
+        "processed",
+        "unchanged",
+        "duplicate",
+        "stale",
+      ].includes(outcome);
+      return Response.json(
+        { received: verified, outcome },
+        { status: verified ? 200 : 503 },
+      );
+    }
     if (!provider || !event.environment || !fromIds.length || !toIds.length)
       return Response.json({ error: "Eksik transfer alanı." }, { status: 400 });
     const admin = createSupabaseAdminClient();

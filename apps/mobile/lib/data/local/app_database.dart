@@ -23,7 +23,7 @@ class SyncQueueItems extends Table {
 
 @DriftDatabase(tables: [SyncQueueItems])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase({bool sandbox = false}) : super(_openConnection(sandbox));
   AppDatabase.forTesting(super.executor);
 
   @override
@@ -72,9 +72,14 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-LazyDatabase _openConnection() => LazyDatabase(() async {
+LazyDatabase _openConnection(bool sandbox) => LazyDatabase(() async {
   final directory = await getApplicationDocumentsDirectory();
   return NativeDatabase.createInBackground(
-    File(p.join(directory.path, 'kartvizyon.sqlite')),
+    File(
+      p.join(
+        directory.path,
+        sandbox ? 'kartvizyon-sandbox.sqlite' : 'kartvizyon.sqlite',
+      ),
+    ),
   );
 });

@@ -24,6 +24,31 @@ class _VisitsScreenState extends State<VisitsScreen> {
   void initState() {
     super.initState();
     visits = load();
+    widget.services.screenRevision.addListener(_onScreenRevision);
+    widget.services.activeTab.addListener(_onActiveTabChanged);
+  }
+
+  void _onScreenRevision() {
+    if (mounted) {
+      setState(() {
+        visits = load();
+      });
+    }
+  }
+
+  void _onActiveTabChanged() {
+    if (widget.services.activeTab.value == 2 && mounted) {
+      setState(() {
+        visits = load();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.services.screenRevision.removeListener(_onScreenRevision);
+    widget.services.activeTab.removeListener(_onActiveTabChanged);
+    super.dispose();
   }
 
   Future<List<Map<String, dynamic>>> load() async {
@@ -117,7 +142,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
               as Map<String, dynamic>;
       final data = response['data'] as Map<String, dynamic>;
       if (!mounted) return;
-      setState(() => visits = load());
+      widget.services.invalidateScreens();
       context.push('/visits/${data['id']}/debrief');
     } on MobileApiException catch (error) {
       if (!mounted) return;
@@ -170,10 +195,11 @@ class _VisitsScreenState extends State<VisitsScreen> {
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: visits,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (snapshot.connectionState != ConnectionState.done &&
+            !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (snapshot.hasError) {
+        if (snapshot.hasError && !snapshot.hasData) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(24),

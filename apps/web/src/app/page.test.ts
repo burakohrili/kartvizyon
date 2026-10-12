@@ -42,4 +42,20 @@ describe("pazarlama sayfası iddiaları", () => {
   it("belgenin temiz tarama olmadan açılmadığını söyler", () => {
     expect(page).toContain("temiz");
   });
+
+  it("resmî iOS ve Android indirme sayfalarına bağlantı verir", () => {
+    expect(page).toContain(
+      "https://apps.apple.com/tr/app/kartvizyon-ai/id6797552440",
+    );
+    expect(page).toContain(
+      "https://play.google.com/store/apps/details?id=app.kartvizyon.mobile",
+    );
+  });
+
+  it("temsili ses notunu transkript ve AI taslağı olarak ayırır", () => {
+    expect(page).toContain("müşteri ile görüştüm");
+    expect(page).toContain("ses tanıma metni");
+    expect(page).toContain("ai görüşme özeti");
+    expect(page).toContain("gerçek kayıt değil");
+  });
 });

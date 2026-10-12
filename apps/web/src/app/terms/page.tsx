@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { formatTry, IAP_INDIVIDUAL_MONTHLY_TRY } from "@/lib/pricing";
 import { LegalPage } from "../legal-page";
 export const metadata: Metadata = {
   title: "Kullanım Koşulları",
@@ -37,7 +38,8 @@ export default function TermsPage() {
       </p>
       <h2>Abonelikler</h2>
       <p>
-        Bireysel standart fiyat KDV dahil 449 TL/aydır. Aylık haklar 125
+        Bireysel standart fiyat KDV dahil{" "}
+        {formatTry(IAP_INDIVIDUAL_MONTHLY_TRY)}/aydır. Aylık haklar 125
         kartvizit taraması, 240 dakika ses işleme ve 125 AI özetidir.
         Kullanılmayan haklar devretmez. Denemeden ücretli aboneliğe geçişte yeni
         kullanım dönemi ve tam kota açılır. Mevcut yıllık aboneliklerin hakları

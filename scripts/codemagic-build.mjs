@@ -20,6 +20,7 @@ const APP_ID = process.env.CODEMAGIC_APP_ID ?? "6a7095935947019139a67709";
 const WORKFLOWS = {
   android: "kartvizyon-android-release",
   ios: "kartvizyon-ios-testflight",
+  "ios-sandbox": "kartvizyon-ios-sandbox",
 };
 
 const [target = "android", ...flags] = process.argv.slice(2);

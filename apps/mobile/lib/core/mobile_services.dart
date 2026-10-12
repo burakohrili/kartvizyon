@@ -45,6 +45,8 @@ class MobileConfig {
   final String revenueCatAppleApiKey;
   final String revenueCatGoogleApiKey;
   bool get hasSupabase => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+  bool get isSandbox =>
+      Uri.tryParse(supabaseUrl)?.host == 'rfzmdpxnfsvatukkedrg.supabase.co';
 }
 
 class MobileApiClient {
@@ -92,6 +94,19 @@ class MobileApiClient {
   /// transkripsiyonu modelde gerçekten saniyeler sürer.
   final Duration fileTimeout;
   final http.Client client;
+  Future<String?>? _refreshInFlight;
+
+  Future<String?> _refreshTokenOnce() {
+    final pending = _refreshInFlight;
+    if (pending != null) return pending;
+    final refresh = refreshAccessToken;
+    if (refresh == null) return Future.value(null);
+    final operation = refresh();
+    _refreshInFlight = operation;
+    return operation.whenComplete(() {
+      if (identical(_refreshInFlight, operation)) _refreshInFlight = null;
+    });
+  }
 
   Future<String?> _accessToken() async {
     final provided = await accessTokenProvider?.call();
@@ -154,7 +169,10 @@ class MobileApiClient {
     if (!_isAuthenticationFailure(response) || refreshAccessToken == null) {
       return response;
     }
-    final refreshedToken = await refreshAccessToken!.call();
+    // Birden çok ekran/arka plan işi aynı anda 401 alabilir. Tek bir Supabase
+    // refresh-token rotasyonunu paylaş; paralel refresh çağrıları geçerli
+    // refresh token'ı tüketip kullanıcıyı yanlışlıkla oturumdan düşürmesin.
+    final refreshedToken = await _refreshTokenOnce();
     if (refreshedToken == null || refreshedToken.isEmpty) {
       onSessionExpired?.call();
       return response;
@@ -350,8 +368,10 @@ class MobileServices {
   );
 
   factory MobileServices.create(MobileConfig config) {
-    final database = AppDatabase();
-    const sessions = SecureSessionStore();
+    final database = AppDatabase(sandbox: config.isSandbox);
+    final sessions = config.isSandbox
+        ? const SecureSessionStore.sandbox()
+        : const SecureSessionStore();
     // Aktif çalışma alanı `refreshContext()` ile değiştiği için istemciye
     // değer değil, okuyucu verilir; kurulum sırasında örnek henüz yok.
     late final MobileServices services;
@@ -435,6 +455,12 @@ class MobileServices {
   /// Kayıtlı oturum ölünce true olur; yönlendirici bunu dinleyip kullanıcıyı
   /// giriş ekranına alır. Girişten sonra tekrar false'a çekilir.
   final ValueNotifier<Map<String, dynamic>?> entitlement = ValueNotifier(null);
+
+  /// Workspace/identity değişince saklanan sekme ekranlarını güvenli biçimde yenile.
+  final ValueNotifier<int> screenRevision = ValueNotifier<int>(0);
+
+  /// Korunan sekmelerden hangisinin etkin olduğunu ekranlara bildirir.
+  final ValueNotifier<int> activeTab = ValueNotifier<int>(0);
   Timer? _accessTimer;
   bool get canWrite {
     if (!config.hasSupabase) return true;
@@ -494,6 +520,8 @@ class MobileServices {
     _contextReadAt = null;
   }
 
+  void invalidateScreens() => screenRevision.value++;
+
   /// Bağlamın son başarıyla okunduğu an; `contextFreshness` içinde tekrar
   /// sorulmaz.
   DateTime? _contextReadAt;
@@ -532,9 +560,13 @@ class MobileServices {
 
   Future<void> switchWorkspace(String targetId) async {
     final previousId = workspaceId;
+    await fieldMode.stop(
+      reason: 'Çalışma alanı değiştiği için saha modu kapatıldı.',
+    );
     workspaceId = targetId;
     try {
       await refreshContext(force: true);
+      invalidateScreens();
     } catch (_) {
       workspaceId = previousId;
       rethrow;
@@ -544,6 +576,8 @@ class MobileServices {
   Future<void> dispose() async {
     _accessTimer?.cancel();
     entitlement.dispose();
+    screenRevision.dispose();
+    activeTab.dispose();
     await fieldMode.stop();
     fieldMode.dispose();
     reminders.dispose();

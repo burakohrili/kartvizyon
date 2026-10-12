@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import {
   formatTry,
+  IAP_INDIVIDUAL_MONTHLY_TRY,
   PUBLIC_PLANS,
   TRIAL_MESSAGE,
   TRIAL_DAYS,
@@ -198,6 +199,7 @@ export default function MarketingHome() {
             <a href="#ozellikler">Özellikler</a>
             <a href="#guven">Güven</a>
             <a href="#fiyatlandirma">Planlar</a>
+            <a href="#indir">Uygulamayı indir</a>
             <Link href="/support">Destek</Link>
             <a href="https://app.kartvizyon.app/login">Giriş yap</a>
           </nav>
@@ -224,6 +226,45 @@ export default function MarketingHome() {
             </a>
             <a className="marketing-secondary" href="#cozum">
               Nasıl çalışır? ↓
+            </a>
+          </div>
+          <div
+            className="store-downloads"
+            id="indir"
+            aria-label="Uygulamayı indir"
+          >
+            <a
+              className="store-download-link"
+              href="https://apps.apple.com/tr/app/kartvizyon-ai/id6797552440"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="KartVizyon AI’ı App Store’da aç"
+            >
+              <span aria-hidden="true" className="store-download-icon">
+                
+              </span>
+              <span>
+                <small>iPhone ve iPad</small>
+                <strong>App Store’dan indir</strong>
+              </span>
+            </a>
+            <a
+              className="store-download-link"
+              href="https://play.google.com/store/apps/details?id=app.kartvizyon.mobile"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="KartVizyon AI’ı Google Play’de aç"
+            >
+              <span
+                aria-hidden="true"
+                className="store-download-icon play-icon"
+              >
+                ▶
+              </span>
+              <span>
+                <small>Android telefonlar</small>
+                <strong>Google Play’den indir</strong>
+              </span>
             </a>
           </div>
           <small>20 dakikalık tanışma · Kredi kartı gerekmez</small>
@@ -364,6 +405,83 @@ export default function MarketingHome() {
         </ol>
       </section>
 
+      <section
+        className="marketing-section voice-demo-section"
+        aria-labelledby="voice-demo-title"
+      >
+        <div className="section-heading">
+          <span>SESTEN ONAYLI TAKİBE</span>
+          <h2 id="voice-demo-title">
+            “Müşteri ile görüştüm.” Sonrası kaybolmasın.
+          </h2>
+          <p>
+            Kısa bir saha debrief’i yazıya ve takip taslağına dönüşür. Aşağıdaki
+            içerik, akışı anlatmak için hazırlanmış temsili bir örnektir.
+          </p>
+        </div>
+        <div className="voice-demo-flow">
+          <article className="voice-note-card">
+            <div className="voice-card-label">
+              <span className="voice-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" fill="none">
+                  <rect x="18" y="5" width="12" height="24" rx="6" />
+                  <path d="M11 22a13 13 0 0 0 26 0M24 35v8m-8 0h16" />
+                  <path d="M5 13v8m38-8v8" />
+                </svg>
+              </span>
+              <span>
+                <strong>Örnek ses notu</strong>
+                <small>Temsili içerik · gerçek kayıt değil</small>
+              </span>
+            </div>
+            <blockquote>
+              “Müşteri ile görüştüm. Atlas Medikal için revize teklifi cuma günü
+              göndermemizi ve teslim tarihini netleştirmemizi istedi.”
+            </blockquote>
+            <div className="voice-wave" aria-hidden="true">
+              {Array.from({ length: 25 }, (_, index) => (
+                <i
+                  key={index}
+                  style={{ height: `${12 + ((index * 17) % 27)}px` }}
+                />
+              ))}
+            </div>
+            <small className="voice-note-caption">Sesli saha notu örneği</small>
+          </article>
+          <div className="voice-flow-arrow" aria-hidden="true">
+            →
+          </div>
+          <article className="voice-result-card">
+            <div className="voice-result-heading">
+              <span>SESTEN YAZIYA · AI TASLAĞI</span>
+              <b>İncelemede</b>
+            </div>
+            <div className="voice-transcript">
+              <small>Ses tanıma metni</small>
+              <p>
+                Müşteri ile görüştüm. Atlas Medikal için revize teklifi cuma
+                günü göndermemizi ve teslim tarihini netleştirmemizi istedi.
+              </p>
+            </div>
+            <h3>AI görüşme özeti</h3>
+            <p>
+              Atlas Medikal revize teklif bekliyor. Teklifin cuma günü
+              gönderilmesi ve teslim tarihinin netleştirilmesi istendi.
+            </p>
+            <div className="voice-followup">
+              <span aria-hidden="true">↗</span>
+              <span>
+                <strong>Takip önerisi</strong>
+                <small>Cuma · Revize teklifi gönder</small>
+              </span>
+            </div>
+            <small className="voice-approval-note">
+              AI taslağı, kullanıcı onaylamadan müşteri kaydına eklenmez.
+            </small>
+          </article>
+        </div>
+      </section>
+
       <section className="marketing-section" id="ozellikler">
         <div className="section-heading">
           <span>NASIL ÇALIŞIR, NE İŞE YARAR</span>
@@ -500,10 +618,11 @@ export default function MarketingHome() {
         </div>
         <p className="pricing-footnote">
           Bireysel abonelik mobil uygulamada App Store veya Google Play
-          üzerinden başlatılır. Türkiye standart fiyatı KDV dahil 449 TL/aydır.
-          Satın alma onayından önce mağazanın gösterdiği toplam bedeli kontrol
-          edin. Kullanılmayan aylık haklar sonraki döneme devretmez. Kota
-          dolunca ilgili AI işlemi sonraki kullanım dönemine kadar durur.
+          üzerinden başlatılır. Türkiye standart fiyatı KDV dahil{" "}
+          {formatTry(IAP_INDIVIDUAL_MONTHLY_TRY)}/aydır. Satın alma onayından
+          önce mağazanın gösterdiği toplam bedeli kontrol edin. Kullanılmayan
+          aylık haklar sonraki döneme devretmez. Kota dolunca ilgili AI işlemi
+          sonraki kullanım dönemine kadar durur.
         </p>
       </section>
 
@@ -592,8 +711,25 @@ export default function MarketingHome() {
             <a href="tel:+905327449434">+90 532 744 94 34</a>
           </p>
         </div>
-        {/* Dokuz bağlantı tek sırada okunmuyordu; konuya göre gruplandı. */}
+        {/* Alt bilgi bağlantıları konuya göre gruplandı. */}
         <nav aria-label="Alt bilgi bağlantıları">
+          <div className="footer-col">
+            <h4>Uygulamayı indir</h4>
+            <a
+              href="https://apps.apple.com/tr/app/kartvizyon-ai/id6797552440"
+              target="_blank"
+              rel="noreferrer"
+            >
+              App Store
+            </a>
+            <a
+              href="https://play.google.com/store/apps/details?id=app.kartvizyon.mobile"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Google Play
+            </a>
+          </div>
           <div className="footer-col">
             <h4>Kurumsal</h4>
             <Link href="/about">Hakkımızda</Link>

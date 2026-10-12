@@ -1,11 +1,13 @@
 import { apiError } from "@/lib/api";
 import { getApiContext } from "@/lib/api-context";
 import { resolveEntitlement, readUsage } from "@/lib/entitlements";
+import { reconcileSandboxCustomer } from "@/lib/billing/sandbox-reconciliation";
 
 export async function GET(request: Request) {
   try {
     const context = await getApiContext(request);
     if (!context.ok) return context.response;
+    await reconcileSandboxCustomer(context.user.id, context.workspaceId);
     const entitlement = await resolveEntitlement(
       context.supabase,
       context.workspaceId,
