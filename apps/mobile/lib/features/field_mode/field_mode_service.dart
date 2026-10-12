@@ -44,6 +44,11 @@ class FieldModeService {
   /// Sunucuya bu mesafeden az hareketlerde gidilmez.
   static const int movementThresholdMeters = 250;
 
+  /// Sabit dururken konum akışı yeni nokta üretmeyebilir; açık vardiyada
+  /// konumu seyrek olarak tekrar kontrol et.
+  static const Duration stationaryCheckInterval = Duration(minutes: 5);
+  static const Duration minimumCandidateCheckInterval = Duration(minutes: 2);
+
   /// Bildirim yalnız bu yarıçap içindeki müşteri için üretilir.
   static const double notifyRadiusKm = 1.5;
 
@@ -52,7 +57,11 @@ class FieldModeService {
   StreamSubscription<Position>? _positionSubscription;
   bool _starting = false;
   Timer? _sessionTimer;
+  Timer? _stationaryCheckTimer;
   DateTime? _startedAt;
+  DateTime? _lastCandidateCheckAt;
+  bool _candidateCheckInFlight = false;
+  bool _currentPositionInFlight = false;
 
   /// Oturum içinde aynı müşteri tekrar bildirilmez.
   ///
@@ -220,12 +229,19 @@ class FieldModeService {
       _positionSubscription = subscription;
       _startedAt = startedAt;
       _notifiedCompanyIds.clear();
+      _lastCandidateCheckAt = null;
       isActive.value = true;
       lastMessage.value = null;
       unawaited(services.reminders.cancelTodayMorningReminder());
       _sessionTimer = Timer(endAt.difference(startedAt), () {
         unawaited(stop(reason: 'Saha modu süre dolduğu için kapandı.'));
       });
+      _stationaryCheckTimer = Timer.periodic(stationaryCheckInterval, (_) {
+        unawaited(checkCurrentLocation());
+      });
+      // Konum akışının ilk değişikliğini bekleme: kullanıcı sahada zaten
+      // müşterinin yanındayken modu açmış olabilir.
+      unawaited(checkCurrentLocation(force: true));
       _markSentryState(true);
       return true;
     } on MobileApiException catch (error) {
@@ -289,13 +305,64 @@ class FieldModeService {
     _positionSubscription = null;
     _sessionTimer?.cancel();
     _sessionTimer = null;
+    _stationaryCheckTimer?.cancel();
+    _stationaryCheckTimer = null;
     _startedAt = null;
+    _lastCandidateCheckAt = null;
     isActive.value = false;
     _markSentryState(false);
     if (reason != null) lastMessage.value = reason;
   }
 
-  Future<void> _onPosition(Position position) async {
+  Future<void> _onPosition(Position position) => _checkCandidates(position);
+
+  /// Uygulama arka plandan dönünce çağrılır; force yalnız zaman aralığı
+  /// sınırını aşar, aynı anda çalışan sorguları yine birleştirir.
+  Future<void> checkCurrentLocation({bool force = false}) async {
+    if (!isActive.value ||
+        _candidateCheckInFlight ||
+        _currentPositionInFlight) {
+      return;
+    }
+    final lastCheck = _lastCandidateCheckAt;
+    if (!force &&
+        lastCheck != null &&
+        _now().difference(lastCheck) < minimumCandidateCheckInterval) {
+      return;
+    }
+    _currentPositionInFlight = true;
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+      await _checkCandidates(position, force: force);
+    } catch (_) {
+      // Arka plan/ilk konum edinimi geçici olarak başarısız olabilir. Saha
+      // modu kapanmaz; konum akışı veya sonraki zamanlanmış kontrol dener.
+      if (isActive.value) {
+        lastMessage.value =
+            'Konum alınamadı. Konum iznini ve GPS ayarını kontrol edin.';
+      }
+    } finally {
+      _currentPositionInFlight = false;
+    }
+  }
+
+  Future<void> onAppResumed() => checkCurrentLocation(force: true);
+
+  Future<void> _checkCandidates(Position position, {bool force = false}) async {
+    if (!isActive.value || _candidateCheckInFlight) return;
+    final lastCheck = _lastCandidateCheckAt;
+    if (!force &&
+        lastCheck != null &&
+        _now().difference(lastCheck) < minimumCandidateCheckInterval) {
+      return;
+    }
+    _candidateCheckInFlight = true;
+    _lastCandidateCheckAt = _now();
     try {
       final response =
           await services.api.get(
@@ -309,19 +376,24 @@ class FieldModeService {
       final candidates = List<Map<String, dynamic>>.from(
         response['data'] as List? ?? const [],
       );
+      lastMessage.value = null;
       if (candidates.isEmpty) return;
 
       final candidate = candidates.first;
       final companyId = candidate['id']?.toString();
       if (companyId == null || _notifiedCompanyIds.contains(companyId)) return;
-      _notifiedCompanyIds.add(companyId);
 
       await _notifyNearby(candidate);
+      // Yalnız bildirim gerçekten gösterildiyse oturum içi tekrarları engelle.
+      // Platform bildirimi hata verirse sonraki konum kontrolü yeniden dener.
+      _notifiedCompanyIds.add(companyId);
       await recordOutcome(candidate, 'shown');
     } catch (_) {
       // Saha modu ağ hatasında sessizce devam eder; vardiyayı bölmez.
       lastMessage.value =
           'Yakındaki müşteriler güncellenemedi. Bağlantınızı kontrol edin.';
+    } finally {
+      _candidateCheckInFlight = false;
     }
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { formatTry, IAP_INDIVIDUAL_MONTHLY_TRY } from "@/lib/pricing";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -112,9 +113,10 @@ export function BillingPanel({ enabled }: { enabled: boolean }) {
       </section>
       <p className="muted">
         Bireysel abonelik mobil uygulamada App Store veya Google Play üzerinden
-        başlatılır. Standart fiyat KDV dahil 449 TL/aydır. Deneme: 60 tarama,
-        120 dakika ses, 60 AI özeti. Ücretli: ayda 125 tarama, 240 dakika ses,
-        125 AI özeti. Kart gerekmeden 14 gün deneyebilirsiniz; deneme sonunda
+        başlatılır. Standart fiyat KDV dahil{" "}
+        {formatTry(IAP_INDIVIDUAL_MONTHLY_TRY)}/aydır. Deneme: 60 tarama, 120
+        dakika ses, 60 AI özeti. Ücretli: ayda 125 tarama, 240 dakika ses, 125
+        AI özeti. Kart gerekmeden 14 gün deneyebilirsiniz; deneme sonunda
         otomatik ücret alınmaz.
       </p>
     </div>

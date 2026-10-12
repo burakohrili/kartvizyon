@@ -22,6 +22,31 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     summary = load();
+    widget.services.screenRevision.addListener(_onScreenRevision);
+    widget.services.activeTab.addListener(_onActiveTabChanged);
+  }
+
+  void _onScreenRevision() {
+    if (mounted) {
+      setState(() {
+        summary = load();
+      });
+    }
+  }
+
+  void _onActiveTabChanged() {
+    if (widget.services.activeTab.value == 0 && mounted) {
+      setState(() {
+        summary = load();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.services.screenRevision.removeListener(_onScreenRevision);
+    widget.services.activeTab.removeListener(_onActiveTabChanged);
+    super.dispose();
   }
 
   Future<HomeSummary> load() async {
@@ -67,7 +92,8 @@ class _HomeScreenState extends State<HomeScreen> {
     child: FutureBuilder<HomeSummary>(
       future: summary,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (snapshot.connectionState != ConnectionState.done &&
+            !snapshot.hasData) {
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: const [
@@ -76,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           );
         }
-        if (snapshot.hasError) {
+        if (snapshot.hasError && !snapshot.hasData) {
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24),

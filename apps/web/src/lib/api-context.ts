@@ -27,7 +27,19 @@ export async function getApiContext(request: Request) {
     "consume_api_rate_limit",
     { route_key: routeKey, request_limit: 120, window_seconds: 60 },
   );
-  if (!limitError && allowed === false) {
+  if (limitError) {
+    // The historical behavior silently bypassed rate limiting on a Postgres
+    // error. Fail closed (without exposing database details); 503 is not an
+    // auth failure, so mobile clients keep the user's session intact.
+    return {
+      ok: false as const,
+      response: Response.json(
+        { error: "İstek güvenlik kontrolü geçici olarak tamamlanamadı." },
+        { status: 503 },
+      ),
+    };
+  }
+  if (allowed === false) {
     return {
       ok: false as const,
       response: Response.json(
