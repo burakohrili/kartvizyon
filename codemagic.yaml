@@ -16,8 +16,8 @@ workflows:
         bundle_identifier: app.kartvizyon.mobile
       vars:
         APP_STORE_APP_ID: 6797552440
-        # 1.0.1 is already released; Apple closed its pre-release train.
-        SANDBOX_MARKETING_VERSION: 1.0.2
+        # 1.0.2 is already released; use the open 1.0.3 pre-release train.
+        SANDBOX_MARKETING_VERSION: 1.0.3
       node: 24.18.0
       flutter: 3.47.1
       xcode: latest
@@ -157,9 +157,8 @@ workflows:
       - build/app/outputs/bundle/release/*.aab
       - build/app/outputs/mapping/release/mapping.txt
       - flutter_drive.log
-    # iOS tarafı TestFlight'a kendi gidiyordu ama Android AAB elle indirilip
-    # yükleniyordu. Play service account'u (yalnız KartVizyon'un sürüm iznine
-    # sahip) bağlandığı için artık kapalı test kanalına doğrudan düşer.
+    # Play service account'u yalnız alpha (kapalı test) kanalına yazma izniyle
+    # bağlıdır. Üretime geçiş ve kademeli sunum Play Console'da ayrıca onaylanır.
     publishing:
       google_play:
         credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
