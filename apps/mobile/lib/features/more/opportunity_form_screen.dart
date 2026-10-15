@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 import '../customers/customer_picker.dart';
 
-const opportunityStages = <String, String>{
-  'lead': 'Potansiyel',
-  'qualified': 'Nitelikli',
-  'proposal': 'Teklif',
-  'negotiation': 'Müzakere',
-  'won': 'Kazanıldı',
-  'lost': 'Kaybedildi',
-};
+const opportunityStageKeys = <String>[
+  'lead',
+  'qualified',
+  'proposal',
+  'negotiation',
+  'won',
+  'lost',
+];
 
 const _stageProbability = <String, int>{
   'lead': 10,
@@ -48,6 +50,7 @@ class _OpportunityFormScreenState extends State<OpportunityFormScreen> {
   DateTime? expectedClose;
   String? assignedTo;
   List<(String, String)> owners = const [];
+  bool ownersLoadStarted = false;
   bool loadingOwners = true;
   bool submitting = false;
   bool attempted = false;
@@ -80,7 +83,15 @@ class _OpportunityFormScreenState extends State<OpportunityFormScreen> {
     if (company is Map) {
       customer = CustomerChoice.fromMap(Map<String, dynamic>.from(company));
     }
-    _loadOwners();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!ownersLoadStarted) {
+      ownersLoadStarted = true;
+      _loadOwners();
+    }
   }
 
   Future<void> _loadOwners() async {
@@ -95,7 +106,7 @@ class _OpportunityFormScreenState extends State<OpportunityFormScreen> {
           .map(
             (row) => (
               row['user_id']?.toString() ?? '',
-              (row['profile'] as Map?)?['full_name']?.toString() ?? 'Kullanıcı',
+              (row['profile'] as Map?)?['full_name']?.toString() ?? '',
             ),
           )
           .where((entry) => entry.$1.isNotEmpty)
@@ -103,7 +114,7 @@ class _OpportunityFormScreenState extends State<OpportunityFormScreen> {
       if (!mounted) return;
       setState(() {
         owners = next.isEmpty
-            ? [(widget.services.ownerId, widget.services.displayName ?? 'Ben')]
+            ? [(widget.services.ownerId, widget.services.displayName ?? '')]
             : next;
         assignedTo ??= widget.services.ownerId;
         loadingOwners = false;
@@ -111,9 +122,7 @@ class _OpportunityFormScreenState extends State<OpportunityFormScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        owners = [
-          (widget.services.ownerId, widget.services.displayName ?? 'Ben'),
-        ];
+        owners = [(widget.services.ownerId, widget.services.displayName ?? '')];
         assignedTo ??= widget.services.ownerId;
         loadingOwners = false;
       });
@@ -155,6 +164,7 @@ class _OpportunityFormScreenState extends State<OpportunityFormScreen> {
   );
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
     if (submitting) return;
     FocusScope.of(context).unfocus();
     setState(() => attempted = true);
@@ -190,256 +200,292 @@ class _OpportunityFormScreenState extends State<OpportunityFormScreen> {
       }
       if (!mounted) return;
       Navigator.pop(context, true);
-    } on MobileApiException catch (error) {
+    } on MobileApiException catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(l10n.opportunityNetworkError)));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bağlantı kurulamadı. Form bilgileriniz korunuyor.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.opportunityNetworkError)));
     } finally {
       if (mounted) setState(() => submitting = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(editing ? 'Fırsatı düzenle' : 'Yeni fırsat')),
-    body: SafeArea(
-      child: Form(
-        key: formKey,
-        child: ListView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-          children: [
-            TextFormField(
-              controller: title,
-              maxLength: 180,
-              decoration: const InputDecoration(
-                labelText: 'Fırsat adı *',
-                border: OutlineInputBorder(),
-              ),
-              validator: (text) => (text?.trim().length ?? 0) < 2
-                  ? 'Fırsat adını en az 2 karakter yazın.'
-                  : null,
-            ),
-            const SizedBox(height: 8),
-            Card(
-              margin: EdgeInsets.zero,
-              child: ListTile(
-                minTileHeight: 64,
-                leading: const Icon(Icons.apartment_outlined),
-                title: Text(
-                  customer?.name ?? 'Müşteri seç *',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: (customer?.address ?? '').trim().isEmpty
-                    ? null
-                    : Text(
-                        customer!.address!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                trailing: editing
-                    ? const Icon(Icons.lock_outline)
-                    : const Icon(Icons.search),
-                onTap: editing || submitting ? null : _pickCustomer,
-              ),
-            ),
-            if (attempted && customer == null)
-              const Padding(
-                padding: EdgeInsets.only(left: 12, top: 6),
-                child: Text(
-                  'Müşteri seçin.',
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-            const SizedBox(height: 16),
-            Column(
-              children: [
-                TextFormField(
-                  controller: value,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Tahmini değer',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (_) {
-                    final parsed = _parsedValue();
-                    if (parsed == null) return 'Geçerli bir tutar yazın.';
-                    if (parsed < 0) return 'Tutar negatif olamaz.';
-                    if (parsed > 1000000000) return 'Tutar çok yüksek.';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: currency,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Para birimi',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const ['TRY', 'USD', 'EUR']
-                      .map(
-                        (item) =>
-                            DropdownMenuItem(value: item, child: Text(item)),
-                      )
-                      .toList(),
-                  onChanged: submitting
-                      ? null
-                      : (item) => setState(() => currency = item!),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: stage,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Aşama',
-                border: OutlineInputBorder(),
-              ),
-              items: opportunityStages.entries
-                  .map(
-                    (entry) => DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
-                    ),
-                  )
-                  .toList(),
-              onChanged: submitting
-                  ? null
-                  : (next) => setState(() {
-                      stage = next!;
-                      if (!editing && !probabilityTouched) {
-                        probability = _stageProbability[next]!;
-                      }
-                    }),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
-              key: const ValueKey('opportunity-probability'),
-              initialValue: probability,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Kazanma olasılığı',
-                border: OutlineInputBorder(),
-              ),
-              items: const [0, 10, 25, 50, 75, 90, 100]
-                  .map(
-                    (item) =>
-                        DropdownMenuItem(value: item, child: Text('%$item')),
-                  )
-                  .toList(),
-              onChanged: submitting
-                  ? null
-                  : (next) => setState(() {
-                      probability = next!;
-                      probabilityTouched = true;
-                    }),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              key: const ValueKey('opportunity-close-date'),
-              onPressed: submitting ? null : _pickCloseDate,
-              icon: const Icon(Icons.event_outlined),
-              label: Text(
-                expectedClose == null
-                    ? 'Tahmini kapanış tarihi seç'
-                    : 'Tahmini kapanış: ${_date(expectedClose!)}',
-              ),
-            ),
-            if (expectedClose != null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: submitting
-                      ? null
-                      : () => setState(() => expectedClose = null),
-                  child: const Text('Tarihi kaldır'),
-                ),
-              ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: competitor,
-              maxLength: 160,
-              decoration: const InputDecoration(
-                labelText: 'Rakip',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              key: ValueKey('$loadingOwners-$assignedTo-${owners.length}'),
-              initialValue: loadingOwners ? null : assignedTo,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Sorumlu',
-                border: OutlineInputBorder(),
-              ),
-              items: owners
-                  .map(
-                    (owner) => DropdownMenuItem(
-                      value: owner.$1,
-                      child: Text(owner.$2),
-                    ),
-                  )
-                  .toList(),
-              onChanged: loadingOwners || submitting
-                  ? null
-                  : (next) => setState(() => assignedTo = next),
-            ),
-            if (stage == 'lost') ...[
-              const SizedBox(height: 16),
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final stageLabel = <String, String>{
+      'lead': l10n.opportunityStageLead,
+      'qualified': l10n.opportunityStageQualified,
+      'proposal': l10n.opportunityStageProposal,
+      'negotiation': l10n.opportunityStageNegotiation,
+      'won': l10n.opportunityStageWon,
+      'lost': l10n.opportunityStageLost,
+    };
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          editing ? l10n.opportunityEditTitle : l10n.opportunityNewTitle,
+        ),
+      ),
+      body: SafeArea(
+        child: Form(
+          key: formKey,
+          child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+            children: [
               TextFormField(
-                controller: lossReason,
-                maxLength: 500,
-                minLines: 2,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Kaybetme nedeni *',
+                controller: title,
+                maxLength: 180,
+                decoration: InputDecoration(
+                  labelText: l10n.opportunityName,
                   border: OutlineInputBorder(),
                 ),
-                validator: (text) =>
-                    stage == 'lost' && (text?.trim().length ?? 0) < 2
-                    ? 'Kaybetme nedenini yazın.'
+                validator: (text) => (text?.trim().length ?? 0) < 2
+                    ? l10n.opportunityNameTooShort
                     : null,
               ),
+              const SizedBox(height: 8),
+              Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  minTileHeight: 64,
+                  leading: const Icon(Icons.apartment_outlined),
+                  title: Text(
+                    customer == null
+                        ? l10n.opportunityCustomerSelect
+                        : customer!.name.trim().isEmpty
+                        ? l10n.companyFallback
+                        : customer!.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: (customer?.address ?? '').trim().isEmpty
+                      ? null
+                      : Text(
+                          customer!.address!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                  trailing: editing
+                      ? const Icon(Icons.lock_outline)
+                      : const Icon(Icons.search),
+                  onTap: editing || submitting ? null : _pickCustomer,
+                ),
+              ),
+              if (attempted && customer == null)
+                Padding(
+                  padding: EdgeInsets.only(left: 12, top: 6),
+                  child: Text(
+                    l10n.opportunityCustomerRequired,
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              Column(
+                children: [
+                  TextFormField(
+                    controller: value,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: l10n.opportunityEstimatedValue,
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (_) {
+                      final parsed = _parsedValue();
+                      if (parsed == null) return l10n.opportunityInvalidAmount;
+                      if (parsed < 0) return l10n.opportunityNegativeAmount;
+                      if (parsed > 1000000000) {
+                        return l10n.opportunityAmountTooHigh;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: currency,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: l10n.opportunityCurrency,
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const ['TRY', 'USD', 'EUR']
+                        .map(
+                          (item) =>
+                              DropdownMenuItem(value: item, child: Text(item)),
+                        )
+                        .toList(),
+                    onChanged: submitting
+                        ? null
+                        : (item) => setState(() => currency = item!),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: stage,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l10n.opportunityStage,
+                  border: OutlineInputBorder(),
+                ),
+                items: opportunityStageKeys
+                    .map(
+                      (key) => DropdownMenuItem(
+                        value: key,
+                        child: Text(stageLabel[key]!),
+                      ),
+                    )
+                    .toList(),
+                onChanged: submitting
+                    ? null
+                    : (next) => setState(() {
+                        stage = next!;
+                        if (!editing && !probabilityTouched) {
+                          probability = _stageProbability[next]!;
+                        }
+                      }),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int>(
+                key: const ValueKey('opportunity-probability'),
+                initialValue: probability,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l10n.opportunityWinProbability,
+                  border: OutlineInputBorder(),
+                ),
+                items: const [0, 10, 25, 50, 75, 90, 100]
+                    .map(
+                      (item) => DropdownMenuItem(
+                        value: item,
+                        child: Text(
+                          NumberFormat.percentPattern(
+                            locale,
+                          ).format(item / 100),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: submitting
+                    ? null
+                    : (next) => setState(() {
+                        probability = next!;
+                        probabilityTouched = true;
+                      }),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                key: const ValueKey('opportunity-close-date'),
+                onPressed: submitting ? null : _pickCloseDate,
+                icon: const Icon(Icons.event_outlined),
+                label: Text(
+                  expectedClose == null
+                      ? l10n.opportunityExpectedCloseChoose
+                      : l10n.opportunityExpectedClose(
+                          _date(expectedClose!, locale),
+                        ),
+                ),
+              ),
+              if (expectedClose != null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: submitting
+                        ? null
+                        : () => setState(() => expectedClose = null),
+                    child: Text(l10n.opportunityRemoveDate),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: competitor,
+                maxLength: 160,
+                decoration: InputDecoration(
+                  labelText: l10n.opportunityCompetitor,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                key: ValueKey('$loadingOwners-$assignedTo-${owners.length}'),
+                initialValue: loadingOwners ? null : assignedTo,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l10n.opportunityOwner,
+                  border: OutlineInputBorder(),
+                ),
+                items: owners
+                    .map(
+                      (owner) => DropdownMenuItem(
+                        value: owner.$1,
+                        child: Text(
+                          owner.$2.isNotEmpty
+                              ? owner.$2
+                              : owner.$1 == widget.services.ownerId
+                              ? l10n.opportunityMe
+                              : l10n.opportunityUserFallback,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: loadingOwners || submitting
+                    ? null
+                    : (next) => setState(() => assignedTo = next),
+              ),
+              if (stage == 'lost') ...[
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: lossReason,
+                  maxLength: 500,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    labelText: l10n.opportunityLossReason,
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (text) =>
+                      stage == 'lost' && (text?.trim().length ?? 0) < 2
+                      ? l10n.opportunityLossReasonRequired
+                      : null,
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(l10n.opportunityModelNotice),
             ],
-            const SizedBox(height: 8),
-            const Text(
-              'Not ve sonraki adım alanları mevcut fırsat modelinde bulunmadığı için bu sürümde eklenmedi.',
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-    bottomNavigationBar: SafeArea(
-      minimum: const EdgeInsets.all(16),
-      child: FilledButton(
-        onPressed: submitting || !widget.services.canWrite ? null : _submit,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: submitting
-              ? const SizedBox.square(
-                  dimension: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(widget.services.canWrite ? 'Kaydet' : 'Abonelik gerekli'),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.all(16),
+        child: FilledButton(
+          onPressed: submitting || !widget.services.canWrite ? null : _submit,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: submitting
+                ? const SizedBox.square(
+                    dimension: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    widget.services.canWrite
+                        ? l10n.opportunitySave
+                        : l10n.visitPlanSubscriptionRequired,
+                  ),
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 
-  static String _date(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}.${value.month.toString().padLeft(2, '0')}.${value.year}';
+  static String _date(DateTime value, String locale) =>
+      DateFormat.yMd(locale).format(value);
 }

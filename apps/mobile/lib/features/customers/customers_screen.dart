@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
+import '../../l10n/app_localizations.dart';
 import 'customer_identity.dart';
 
 class CustomersScreen extends StatefulWidget {
@@ -125,32 +126,36 @@ class _CustomersScreenState extends State<CustomersScreen> {
   /// gereksiz izin sayılır.
   Future<ImageSource?> _askImageSource() => showModalBottomSheet<ImageSource>(
     context: context,
-    builder: (sheetContext) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.photo_camera_outlined),
-            title: const Text('Kamera ile çek'),
-            onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
-          ),
-          ListTile(
-            leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Galeriden seç'),
-            subtitle: const Text('Kamera izni vermek istemiyorsanız'),
-            onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
-          ),
-          ListTile(
-            leading: const Icon(Icons.close),
-            title: const Text('Vazgeç'),
-            onTap: () => Navigator.pop(sheetContext),
-          ),
-        ],
-      ),
-    ),
+    builder: (sheetContext) {
+      final l10n = AppLocalizations.of(sheetContext)!;
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: Text(l10n.cameraTakePhoto),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(l10n.chooseFromGallery),
+              subtitle: Text(l10n.cameraPermissionOptional),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: Text(l10n.cancel),
+              onTap: () => Navigator.pop(sheetContext),
+            ),
+          ],
+        ),
+      );
+    },
   );
 
   Future<void> scanCard() async {
+    final l10n = AppLocalizations.of(context)!;
     if (busy) return;
     final source = await _askImageSource();
     if (!mounted || source == null) return;
@@ -165,13 +170,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Görsel seçilemedi. Kamera veya fotoğraf izni verilmemiş olabilir.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.imagePickFailed)));
       return;
     }
     if (!mounted || image == null) return;
@@ -182,8 +183,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
     // başlatabiliyordu.
     setState(() => scanning = true);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Kartvizit okunuyor…'),
+      SnackBar(
+        content: Text(l10n.scanningBusinessCard),
         duration: Duration(seconds: 30),
       ),
     );
@@ -210,19 +211,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
         // hatırlatmalarından tamamen dışarıda bırakıyordu.
         address: data['address']?.toString() ?? '',
       );
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              error is MobileApiException
-                  ? error.message
-                  : 'Kartvizit okunamadı. Tekrar deneyin.',
-            ),
-          ),
-        );
+        ..showSnackBar(SnackBar(content: Text(l10n.cardScanFailed)));
     } finally {
       if (mounted) {
         setState(() => scanning = false);
@@ -239,6 +232,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
     _CustomerDraft? initial,
     bool fromOcr = false,
   }) async {
+    // Arama alanı odaktayken form açılırsa Android klavyesi formun üzerine
+    // taşınabiliyor ve ilk alanı/eylemleri kapatabiliyor. Yeni modal kendi
+    // odağını kullanıcı seçene kadar almalı.
+    FocusManager.instance.primaryFocus?.unfocus();
     final draft = await _showCustomerDialog(
       context,
       initial ?? const _CustomerDraft(),
@@ -249,6 +246,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
   }
 
   Future<void> saveCustomer(_CustomerDraft draft) async {
+    final l10n = AppLocalizations.of(context)!;
     if (saving) return;
     setState(() => saving = true);
     try {
@@ -280,95 +278,96 @@ class _CustomersScreenState extends State<CustomersScreen> {
             'phone': draft.phone.trim(),
             'email': draft.email.trim(),
           });
-        } catch (error) {
-          contactWarning =
-              'Firma kaydedildi; ilgili kişi kaydedilemedi: $error';
+        } catch (_) {
+          contactWarning = l10n.contactSaveFailed;
         }
       }
       if (!mounted) return;
       setState(() => customers = load());
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(contactWarning ?? 'Müşteri başarıyla kaydedildi.'),
-        ),
+        SnackBar(content: Text(contactWarning ?? l10n.customerSaved)),
       );
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ).showSnackBar(SnackBar(content: Text(l10n.customerSaveFailed)));
     } finally {
       if (mounted) setState(() => saving = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Müşteriler'),
-      actions: [
-        IconButton(
-          onPressed: busy ? null : () => openCustomerForm(),
-          tooltip: 'Manuel müşteri ekle',
-          icon: const Icon(Icons.person_add_alt_1_outlined),
-        ),
-        IconButton(
-          onPressed: busy ? null : scanCard,
-          tooltip: 'Kartvizit tara',
-          icon: const Icon(Icons.document_scanner_outlined),
-        ),
-      ],
-      bottom: scanning
-          ? const PreferredSize(
-              preferredSize: Size.fromHeight(4),
-              child: LinearProgressIndicator(minHeight: 4),
-            )
-          : null,
-    ),
-    body: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: TextField(
-            controller: searchController,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: 'Firma, adres veya e-posta ara',
-              border: const OutlineInputBorder(),
-              suffixIcon: query.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear),
-                      tooltip: 'Aramayı temizle',
-                      onPressed: () {
-                        searchDebounce?.cancel();
-                        searchController.clear();
-                        setState(() {
-                          query = '';
-                          customers = load();
-                        });
-                      },
-                    ),
-            ),
-            onSubmitted: (value) {
-              searchDebounce?.cancel();
-              setState(() {
-                query = value.trim();
-                customers = load();
-              });
-            },
-            onChanged: search,
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.customers),
+        actions: [
+          IconButton(
+            onPressed: busy ? null : () => openCustomerForm(),
+            tooltip: l10n.manuallyAddCustomer,
+            icon: const Icon(Icons.person_add_alt_1_outlined),
           ),
-        ),
-        Expanded(child: _buildList()),
-      ],
-    ),
-  );
+          IconButton(
+            onPressed: busy ? null : scanCard,
+            tooltip: l10n.scanBusinessCard,
+            icon: const Icon(Icons.document_scanner_outlined),
+          ),
+        ],
+        bottom: scanning
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(4),
+                child: LinearProgressIndicator(minHeight: 4),
+              )
+            : null,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: TextField(
+              controller: searchController,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: l10n.customerSearchHint,
+                border: const OutlineInputBorder(),
+                suffixIcon: query.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.clear),
+                        tooltip: l10n.clearSearch,
+                        onPressed: () {
+                          searchDebounce?.cancel();
+                          searchController.clear();
+                          setState(() {
+                            query = '';
+                            customers = load();
+                          });
+                        },
+                      ),
+              ),
+              onSubmitted: (value) {
+                searchDebounce?.cancel();
+                setState(() {
+                  query = value.trim();
+                  customers = load();
+                });
+              },
+              onChanged: search,
+            ),
+          ),
+          Expanded(child: _buildList()),
+        ],
+      ),
+    );
+  }
 
   Widget _buildList() => FutureBuilder<List<Map<String, dynamic>>>(
     future: customers,
     builder: (context, snapshot) {
+      final l10n = AppLocalizations.of(context)!;
       if (snapshot.connectionState != ConnectionState.done &&
           !snapshot.hasData &&
           visibleCustomers.isEmpty) {
@@ -376,8 +375,9 @@ class _CustomersScreenState extends State<CustomersScreen> {
       }
       if (snapshot.hasError) {
         return _ErrorView(
-          message: snapshot.error.toString(),
+          message: l10n.customerLoadFailed,
           retry: () => setState(() => customers = load()),
+          retryLabel: l10n.tryAgain,
         );
       }
       final items = snapshot.data ?? [];
@@ -396,29 +396,27 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  query.isEmpty
-                      ? 'Henüz müşteri yok'
-                      : 'Aramaya uygun müşteri yok',
+                  query.isEmpty ? l10n.noCustomers : l10n.noMatchingCustomers,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   query.isEmpty
-                      ? 'Bilgileri elle girebilir veya kartvizit tarayabilirsiniz.'
-                      : '"$query" için sonuç bulunamadı. Aramayı temizleyip listeye dönebilirsiniz.',
+                      ? l10n.noCustomersDescription
+                      : l10n.noSearchResults(query),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 18),
                 FilledButton.icon(
                   onPressed: busy ? null : () => openCustomerForm(),
                   icon: const Icon(Icons.person_add_alt_1),
-                  label: const Text('Manuel müşteri ekle'),
+                  label: Text(l10n.manuallyAddCustomer),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: busy ? null : scanCard,
                   icon: const Icon(Icons.document_scanner_outlined),
-                  label: const Text('Kartvizit tara'),
+                  label: Text(l10n.scanBusinessCard),
                 ),
               ],
             ),
@@ -446,14 +444,20 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       : OutlinedButton.icon(
                           onPressed: loadMoreCustomers,
                           icon: const Icon(Icons.expand_more),
-                          label: const Text('Daha fazla müşteri yükle'),
+                          label: Text(l10n.loadMoreCustomers),
                         ),
                 ),
               );
             }
             final item = items[index];
-            final name = customerDisplayName(item);
-            final legalName = customerLegalName(item);
+            final name = customerDisplayName(
+              item,
+              fallback: l10n.companyFallback,
+            );
+            final legalName = customerLegalName(
+              item,
+              fallback: l10n.companyFallback,
+            );
             final initials = name.isEmpty
                 ? 'M'
                 : name.substring(0, name.length < 2 ? name.length : 2);
@@ -464,7 +468,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 subtitle: Text(
                   [
                     if (legalName != null) legalName,
-                    item['address']?.toString() ?? 'Adres belirtilmedi',
+                    item['address']?.toString() ?? l10n.addressNotProvided,
                   ].join(' · '),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -488,6 +492,7 @@ Future<_CustomerDraft?> _showCustomerDialog(
   _CustomerDraft initial, {
   required bool fromOcr,
 }) {
+  final l10n = AppLocalizations.of(context)!;
   final formKey = GlobalKey<FormState>();
   final companyName = TextEditingController(text: initial.companyName);
   final displayName = TextEditingController(text: initial.displayName);
@@ -506,9 +511,12 @@ Future<_CustomerDraft?> _showCustomerDialog(
       // = MediaQuery.viewInsetsOf(context) + insetPadding). Burada ikinci kez
       // eklenirse içerik görünür alanın tamamen dışına taşar ve boş kutu görünür.
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(dialogContext).height * .88,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
             child: Form(
               key: formKey,
               child: Column(
@@ -517,78 +525,98 @@ Future<_CustomerDraft?> _showCustomerDialog(
                 children: [
                   Text(
                     fromOcr
-                        ? 'Kartvizit alanlarını doğrulayın'
-                        : 'Manuel müşteri ekle',
+                        ? l10n.verifyBusinessCardFields
+                        : l10n.manuallyAddCustomer,
                     style: Theme.of(dialogContext).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: companyName,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(labelText: 'Firma adı *'),
-                    validator: (value) => (value?.trim().length ?? 0) < 2
-                        ? 'Firma adı en az 2 karakter olmalı.'
-                        : null,
-                  ),
-                  TextFormField(
-                    controller: displayName,
-                    textInputAction: TextInputAction.next,
-                    maxLength: 80,
-                    decoration: const InputDecoration(
-                      labelText: 'Kısa ad / saha adı',
-                      helperText:
-                          'Uzun ticari unvan yerine listelerde görünür.',
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: companyName,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: l10n.companyNameRequired,
+                            ),
+                            validator: (value) =>
+                                (value?.trim().length ?? 0) < 2
+                                ? l10n.companyNameTooShort
+                                : null,
+                          ),
+                          TextFormField(
+                            controller: displayName,
+                            textInputAction: TextInputAction.next,
+                            maxLength: 80,
+                            decoration: InputDecoration(
+                              labelText: l10n.shortNameField,
+                              helperText: l10n.shortNameHelp,
+                            ),
+                          ),
+                          TextFormField(
+                            controller: address,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: l10n.address,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            l10n.contactOptional,
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          TextFormField(
+                            controller: firstName,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: l10n.firstName,
+                            ),
+                          ),
+                          TextFormField(
+                            controller: lastName,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: l10n.lastName,
+                            ),
+                          ),
+                          TextFormField(
+                            controller: title,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: l10n.jobTitle,
+                            ),
+                          ),
+                          TextFormField(
+                            controller: phone,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(labelText: l10n.phone),
+                          ),
+                          TextFormField(
+                            controller: email,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(labelText: l10n.email),
+                          ),
+                          TextFormField(
+                            controller: website,
+                            keyboardType: TextInputType.url,
+                            decoration: InputDecoration(
+                              labelText: l10n.website,
+                            ),
+                          ),
+                          if (fromOcr) ...[
+                            const SizedBox(height: 12),
+                            Text(l10n.aiDraftNotSaved),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
-                  TextFormField(
-                    controller: address,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(labelText: 'Adres'),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'İlgili kişi (isteğe bağlı)',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  TextFormField(
-                    controller: firstName,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(labelText: 'Ad'),
-                  ),
-                  TextFormField(
-                    controller: lastName,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(labelText: 'Soyad'),
-                  ),
-                  TextFormField(
-                    controller: title,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(labelText: 'Unvan'),
-                  ),
-                  TextFormField(
-                    controller: phone,
-                    keyboardType: TextInputType.phone,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(labelText: 'Telefon'),
-                  ),
-                  TextFormField(
-                    controller: email,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(labelText: 'E-posta'),
-                  ),
-                  TextFormField(
-                    controller: website,
-                    keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(labelText: 'Web sitesi'),
-                  ),
-                  if (fromOcr) ...[
-                    const SizedBox(height: 12),
-                    const Text(
-                      'AI çıktısı siz kaydetmeden veritabanına eklenmez.',
-                    ),
-                  ],
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 10),
                   // Dar ekranda (360 dp) iki buton tek satıra sığmıyor; Wrap
                   // taşma yerine alt satıra indirir.
                   Wrap(
@@ -598,7 +626,7 @@ Future<_CustomerDraft?> _showCustomerDialog(
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(dialogContext),
-                        child: const Text('Vazgeç'),
+                        child: Text(l10n.cancel),
                       ),
                       FilledButton(
                         onPressed: () {
@@ -618,7 +646,7 @@ Future<_CustomerDraft?> _showCustomerDialog(
                             ),
                           );
                         },
-                        child: const Text('Müşteriyi kaydet'),
+                        child: Text(l10n.saveCustomer),
                       ),
                     ],
                   ),
@@ -667,10 +695,15 @@ class _CustomerDraft {
 }
 
 class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.retry});
+  const _ErrorView({
+    required this.message,
+    required this.retry,
+    required this.retryLabel,
+  });
 
   final String message;
   final VoidCallback retry;
+  final String retryLabel;
 
   @override
   Widget build(BuildContext context) => Center(
@@ -682,7 +715,7 @@ class _ErrorView extends StatelessWidget {
           const Icon(Icons.cloud_off, size: 40),
           const SizedBox(height: 12),
           Text(message, textAlign: TextAlign.center),
-          TextButton(onPressed: retry, child: const Text('Tekrar dene')),
+          TextButton(onPressed: retry, child: Text(retryLabel)),
         ],
       ),
     ),

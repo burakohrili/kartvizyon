@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 
 class CompanyIdentityScreen extends StatefulWidget {
   const CompanyIdentityScreen({
@@ -34,6 +35,7 @@ class _CompanyIdentityScreenState extends State<CompanyIdentityScreen> {
   }
 
   Future<void> save() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!formKey.currentState!.validate() || saving) return;
     setState(() {
       saving = true;
@@ -59,13 +61,9 @@ class _CompanyIdentityScreenState extends State<CompanyIdentityScreen> {
       } else {
         context.pop(true);
       }
-    } catch (failure) {
+    } catch (_) {
       if (mounted) {
-        setState(
-          () => error = failure is MobileApiException
-              ? failure.message
-              : 'Firma bilgileri kaydedilemedi. Tekrar deneyin.',
-        );
+        setState(() => error = l10n.companyIdentitySaveFailed);
       }
     } finally {
       if (mounted) setState(() => saving = false);
@@ -80,81 +78,90 @@ class _CompanyIdentityScreenState extends State<CompanyIdentityScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(widget.onboarding ? 'Başlamadan önce' : 'Firma bilgileri'),
-    ),
-    body: SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: Form(
-              key: formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text('Sizi ve temsil ettiğiniz firmayı tanıyalım.'),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: name,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Ad Soyad',
-                      border: OutlineInputBorder(),
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.onboarding
+              ? l10n.companyIdentityOnboardingTitle
+              : l10n.companyIdentityTitle,
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(l10n.companyIdentityIntro),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: name,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        labelText: l10n.companyIdentityName,
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) =>
+                          (widget.onboarding ||
+                                  (value?.trim().isNotEmpty ?? false)) &&
+                              (value?.trim().length ?? 0) < 2
+                          ? l10n.companyIdentityNameTooShort
+                          : null,
                     ),
-                    validator: (value) =>
-                        (widget.onboarding ||
-                                (value?.trim().isNotEmpty ?? false)) &&
-                            (value?.trim().length ?? 0) < 2
-                        ? 'Ad Soyad en az 2 karakter olmalı.'
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: company,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => save(),
-                    decoration: const InputDecoration(
-                      labelText: 'Firma adı',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: company,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => save(),
+                      decoration: InputDecoration(
+                        labelText: l10n.companyIdentityCompany,
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) => (value?.trim().length ?? 0) < 2
+                          ? l10n.companyIdentityCompanyTooShort
+                          : null,
                     ),
-                    validator: (value) => (value?.trim().length ?? 0) < 2
-                        ? 'Firma adı en az 2 karakter olmalı.'
-                        : null,
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                    if (error != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    if (!widget.services.canWrite)
+                      Text(l10n.companyIdentityReadOnly),
+                    FilledButton(
+                      onPressed: saving || !widget.services.canWrite
+                          ? null
+                          : save,
+                      child: Text(
+                        saving
+                            ? l10n.companyIdentitySaving
+                            : l10n.companyIdentitySave,
                       ),
                     ),
+                    if (widget.onboarding)
+                      TextButton(
+                        onPressed: saving ? null : () => context.go('/'),
+                        child: Text(l10n.companyIdentitySkip),
+                      ),
                   ],
-                  const SizedBox(height: 24),
-                  if (!widget.services.canWrite)
-                    const Text(
-                      'Salt okunur erişimde firma adı değiştirilemez.',
-                    ),
-                  FilledButton(
-                    onPressed: saving || !widget.services.canWrite
-                        ? null
-                        : save,
-                    child: Text(saving ? 'Kaydediliyor…' : 'Kaydet'),
-                  ),
-                  if (widget.onboarding)
-                    TextButton(
-                      onPressed: saving ? null : () => context.go('/'),
-                      child: const Text('Şimdilik geç'),
-                    ),
-                ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

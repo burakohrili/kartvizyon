@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,6 +10,7 @@ import '../../core/mobile_services.dart';
 import '../../core/billing_reconciliation.dart';
 import '../../core/store_billing_service.dart';
 import '../../core/apple_subscription_management.dart';
+import '../../l10n/app_localizations.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key, required this.services});
@@ -28,18 +30,32 @@ class _PremiumScreenState extends State<PremiumScreen> {
   bool busy = false;
   String? message;
 
+  String billingFailureMessage(
+    StoreBillingException error,
+    AppLocalizations l10n,
+  ) => switch (error.failure) {
+    StoreBillingFailure.configurationUnavailable =>
+      l10n.billingConfigurationUnavailable,
+    StoreBillingFailure.offeringUnavailable => l10n.billingOfferingUnavailable,
+    StoreBillingFailure.sessionRequired => l10n.billingSessionRequired,
+    StoreBillingFailure.purchaseCancelled => l10n.billingPurchaseCancelled,
+    StoreBillingFailure.purchaseFailed => l10n.billingPurchaseFailed,
+    StoreBillingFailure.restoreFailed => l10n.billingRestoreFailed,
+  };
+
   @override
   void initState() {
     super.initState();
-    load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) load();
+    });
   }
 
   Future<void> load() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       if (!widget.services.config.hasSupabase) {
-        throw const StoreBillingException(
-          'Premium işlemleri için hesabınızla giriş yapın.',
-        );
+        throw const StoreBillingException(StoreBillingFailure.sessionRequired);
       }
       final result = await widget.services.api.get('/api/settings/billing');
       final data = Map<String, dynamic>.from(result as Map);
@@ -49,7 +65,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
       if (data['workspaceKind'] == 'personal') {
         final userId = Supabase.instance.client.auth.currentUser?.id;
         if (userId == null) {
-          throw const StoreBillingException('Oturum gerekli.');
+          throw const StoreBillingException(
+            StoreBillingFailure.sessionRequired,
+          );
         }
         await billing.identify(userId);
         packages = (await billing.packages())
@@ -58,13 +76,14 @@ class _PremiumScreenState extends State<PremiumScreen> {
       }
     } catch (error) {
       message = error is StoreBillingException
-          ? error.message
-          : 'Premium bilgileri yüklenemedi.';
+          ? billingFailureMessage(error, l10n)
+          : l10n.billingLoadFailure;
     }
     if (mounted) setState(() => loading = false);
   }
 
   Future<void> buy(Package package) async {
+    final l10n = AppLocalizations.of(context)!;
     if (busy) return;
     setState(() {
       busy = true;
@@ -82,16 +101,16 @@ class _PremiumScreenState extends State<PremiumScreen> {
           serverConfirmed: serverConfirmed,
           sandboxPurchase: premium?.isSandbox ?? false,
           apiBaseUrl: widget.services.config.apiBaseUrl,
+          l10n: l10n,
         );
       });
     } on StoreBillingException catch (error) {
-      if (mounted) setState(() => message = error.message);
+      if (mounted) {
+        setState(() => message = billingFailureMessage(error, l10n));
+      }
     } on MobileApiException catch (_) {
       if (mounted) {
-        setState(
-          () => message =
-              'Satın alma mağazada tamamlandı; sunucu doğrulaması bekleniyor. Biraz sonra yeniden açarak kontrol edin.',
-        );
+        setState(() => message = l10n.billingPurchaseServerPending);
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -99,6 +118,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
   }
 
   Future<void> restore() async {
+    final l10n = AppLocalizations.of(context)!;
     if (busy) return;
     setState(() {
       busy = true;
@@ -116,16 +136,16 @@ class _PremiumScreenState extends State<PremiumScreen> {
           serverConfirmed: serverConfirmed,
           sandboxPurchase: premium?.isSandbox ?? false,
           apiBaseUrl: widget.services.config.apiBaseUrl,
+          l10n: l10n,
         );
       });
     } on StoreBillingException catch (error) {
-      if (mounted) setState(() => message = error.message);
+      if (mounted) {
+        setState(() => message = billingFailureMessage(error, l10n));
+      }
     } on MobileApiException catch (_) {
       if (mounted) {
-        setState(
-          () => message =
-              'Geri yükleme mağazada tamamlandı; sunucu doğrulaması bekleniyor. Biraz sonra yeniden deneyin.',
-        );
+        setState(() => message = l10n.billingRestoreServerPending);
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -159,6 +179,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
   }
 
   Future<void> manageSubscription() async {
+    final l10n = AppLocalizations.of(context)!;
     if (busy) return;
     setState(() {
       busy = true;
@@ -177,26 +198,25 @@ class _PremiumScreenState extends State<PremiumScreen> {
       }
     } catch (_) {
       if (mounted) {
-        setState(
-          () => message =
-              'Abonelik yönetimi açılamadı. Lütfen biraz sonra yeniden deneyin.',
-        );
+        setState(() => message = l10n.billingSubscriptionManagementUnavailable);
       }
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
-  String periodLabel(Package package) => switch (package.packageType) {
-    PackageType.monthly => 'Aylık',
-    PackageType.annual => 'Yıllık',
-    _ => 'Abonelik',
-  };
+  String periodLabel(Package package, AppLocalizations l10n) =>
+      switch (package.packageType) {
+        PackageType.monthly => l10n.premiumMonthly,
+        PackageType.annual => l10n.premiumAnnual,
+        _ => l10n.subscription,
+      };
 
   String get storeName => Platform.isIOS ? 'App Store' : 'Google Play';
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final entitlement = status?['entitlement'] as Map?;
     final organization = status?['workspaceKind'] == 'organization';
     final usage = status?['usage'] as Map?;
@@ -206,67 +226,86 @@ class _PremiumScreenState extends State<PremiumScreen> {
     );
     final daysLeft = endsAt == null
         ? 0
-        : (endsAt.difference(DateTime.now()).inSeconds / 86400).ceil().clamp(
-            0,
-            14,
-          );
+        : (endsAt.difference(DateTime.now()).inSeconds / 86400)
+              .ceil()
+              .clamp(0, 14)
+              .toInt();
+    final numberFormat = NumberFormat.decimalPattern(l10n.localeName);
+    final audioNumberFormat = NumberFormat.decimalPatternDigits(
+      locale: l10n.localeName,
+      decimalDigits: 1,
+    );
+    String quotaValue(dynamic value) =>
+        value == null ? l10n.premiumUnlimited : numberFormat.format(value);
+    final planName = organization
+        ? l10n.organizationPlanName
+        : entitlement?['trialActive'] == true
+        ? l10n.trialPlanName
+        : entitlement?['readOnly'] == true
+        ? l10n.viewOnlyPlanName
+        : l10n.activePlanName;
     return Scaffold(
-      appBar: AppBar(title: const Text('Premium ve abonelik')),
+      appBar: AppBar(title: Text(l10n.premiumTitle)),
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
                 if (widget.services.config.isSandbox) ...[
-                  const Text(
-                    'Sandbox test ortamı — canlı hesabınızdan ayrıdır.',
-                  ),
+                  Text(l10n.sandboxNotice),
+                  const SizedBox(height: 12),
+                ],
+                if (message != null) ...[
+                  Text(message!),
                   const SizedBox(height: 12),
                 ],
                 Text(
-                  entitlement?['planName']?.toString() ?? 'Mevcut plan',
+                  planName,
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   organization
-                      ? 'Bu çalışma alanının planı kurum yöneticiniz tarafından yönetilir.'
-                      : 'Ödeme $storeName hesabınız üzerinden güvenle tamamlanır.',
+                      ? l10n.organizationPlanManaged
+                      : l10n.paymentsThroughStore(storeName),
                 ),
                 const SizedBox(height: 12),
                 if (!organization) ...[
-                  const Text(
-                    '14 gün ücretsiz deneyin. Kart gerekmez. Deneme sonunda otomatik ücret alınmaz. Devam etmek için abonelik başlatabilirsiniz.',
-                  ),
+                  Text(l10n.premiumTrialDisclosure),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Deneme: toplam 60 tarama · 120 dakika ses işleme · 60 AI özeti.',
-                  ),
-                  const Text(
-                    'Bireysel: ayda 125 tarama · 240 dakika ses işleme · 125 AI özeti. Güncel fiyat, mağaza hesabınızın ülke veya bölgesine göre satın alma düğmesinde gösterilir.',
-                  ),
+                  Text(l10n.premiumTrialQuota),
+                  Text(l10n.premiumIndividualQuota),
                   if (entitlement?['trialActive'] == true)
                     Text(
                       daysLeft <= 1
-                          ? 'Denemenizin son günü.'
-                          : 'Denemenizin bitmesine $daysLeft gün kaldı.',
+                          ? l10n.premiumTrialLastDay
+                          : l10n.premiumTrialDaysLeft(daysLeft),
                     ),
                   if (entitlement?['readOnly'] == true)
-                    const Text(
-                      'Yalnız görüntüleme: mevcut kayıtlarınız, dışa aktarma ve hesap silme açık. Yeni kayıt ve AI işlemleri için abonelik başlatın.',
-                    ),
+                    Text(l10n.premiumReadOnlyDisclosure),
                   if (limits != null) ...[
-                    Text("Tarama: ${usage?['ocr'] ?? 0} / ${limits['ocr']}"),
                     Text(
-                      "Ses işleme: ${((usage?['audio_seconds'] as num? ?? 0) / 60).toStringAsFixed(1)} / ${limits['aiMinutes']} dakika",
+                      l10n.premiumUsageScans(
+                        quotaValue(usage?['ocr'] ?? 0),
+                        quotaValue(limits['ocr']),
+                      ),
                     ),
                     Text(
-                      "AI özeti: ${usage?['ai_summary'] ?? 0} / ${limits['aiSummaries']}",
+                      l10n.premiumUsageAudio(
+                        audioNumberFormat.format(
+                          ((usage?['audio_seconds'] as num? ?? 0) / 60),
+                        ),
+                        quotaValue(limits['aiMinutes']),
+                      ),
+                    ),
+                    Text(
+                      l10n.premiumUsageSummaries(
+                        quotaValue(usage?['ai_summary'] ?? 0),
+                        quotaValue(limits['aiSummaries']),
+                      ),
                     ),
                   ],
-                  const Text(
-                    'Ücretli abonelik başlattığınızda tam kota açılır. Kullanılmayan haklar devretmez. Kota aşımı otomatik ücret doğurmaz.',
-                  ),
+                  Text(l10n.premiumQuotaPolicy),
                 ],
                 const SizedBox(height: 20),
                 if (!organization)
@@ -274,7 +313,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                     Card(
                       child: ListTile(
                         title: Text(
-                          '${package.storeProduct.title} · ${periodLabel(package)}',
+                          '${package.storeProduct.title} · ${periodLabel(package, l10n)}',
                         ),
                         subtitle: Text(package.storeProduct.description),
                         trailing: FilledButton(
@@ -287,33 +326,27 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   const SizedBox(height: 8),
                   OutlinedButton(
                     onPressed: busy ? null : restore,
-                    child: const Text('Satın almaları geri yükle'),
+                    child: Text(l10n.premiumRestorePurchases),
                   ),
                   TextButton(
                     onPressed: busy ? null : manageSubscription,
-                    child: Text('$storeName’da aboneliği yönet'),
+                    child: Text(l10n.premiumManageSubscription(storeName)),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Abonelik seçtiğiniz dönemde otomatik yenilenir. Yenilemeyi mağaza hesap ayarlarınızdan dönem bitiminden önce kapatabilirsiniz.',
-                  ),
+                  Text(l10n.premiumAutoRenewalDisclosure),
                   Wrap(
                     alignment: WrapAlignment.center,
                     children: [
                       TextButton(
                         onPressed: () => openLegal('/terms'),
-                        child: const Text('Kullanım Koşulları'),
+                        child: Text(l10n.premiumTermsOfUse),
                       ),
                       TextButton(
                         onPressed: () => openLegal('/privacy'),
-                        child: const Text('Gizlilik Politikası'),
+                        child: Text(l10n.premiumPrivacyPolicy),
                       ),
                     ],
                   ),
-                ],
-                if (message != null) ...[
-                  const SizedBox(height: 16),
-                  Text(message!),
                 ],
               ],
             ),

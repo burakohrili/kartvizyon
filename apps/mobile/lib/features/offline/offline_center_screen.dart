@@ -8,6 +8,7 @@ import '../../core/mobile_services.dart';
 import '../../data/local/app_database.dart';
 import '../../data/sync_engine.dart';
 import '../../data/sync_error_labels.dart';
+import '../../l10n/app_localizations.dart';
 
 class OfflineCenterScreen extends StatefulWidget {
   const OfflineCenterScreen({super.key, required this.services});
@@ -35,6 +36,7 @@ class _OfflineCenterScreenState extends State<OfflineCenterScreen> {
   void reload() => setState(() => items = load());
 
   Future<void> sync() async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() => busy = true);
     try {
       await widget.services.refreshContext();
@@ -48,9 +50,10 @@ class _OfflineCenterScreenState extends State<OfflineCenterScreen> {
     setState(() {
       busy = false;
       items = load();
-      message =
-          '${result.synced} kayıt gönderildi, ${result.remaining} kayıt bekliyor'
-          '${result.authRequired ? '. Oturum yenilenmeli' : ''}.';
+      message = [
+        l10n.syncResult(result.synced, result.remaining),
+        if (result.authRequired) l10n.syncAuthRefreshRequired,
+      ].join(' ');
     });
   }
 
@@ -62,11 +65,12 @@ class _OfflineCenterScreenState extends State<OfflineCenterScreen> {
   }
 
   Future<void> exportDraft(SyncQueueItem item) async {
+    final l10n = AppLocalizations.of(context)!;
     final attachment = item.attachmentPath;
     final box = context.findRenderObject() as RenderBox?;
     await SharePlus.instance.share(
       ShareParams(
-        title: 'KartVizyon taslağı',
+        title: l10n.offlineDraftTitle,
         text: const JsonEncoder.withIndent(
           '  ',
         ).convert(jsonDecode(item.payloadJson)),
@@ -81,22 +85,23 @@ class _OfflineCenterScreenState extends State<OfflineCenterScreen> {
   }
 
   Future<void> viewDraft(SyncQueueItem item) async {
+    final l10n = AppLocalizations.of(context)!;
     final payload = jsonDecode(item.payloadJson) as Map;
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Çevrimdışı taslak'),
+        title: Text(l10n.offlineDraftTitle),
         content: SingleChildScrollView(
           child: SelectableText(
             payload['transcript']?.toString() ??
                 payload['purpose']?.toString() ??
-                'Ses kaydı taslağı. Dışa aktararak dinleyebilirsiniz.',
+                l10n.offlineAudioDraftHint,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Kapat'),
+            child: Text(l10n.close),
           ),
         ],
       ),
@@ -104,22 +109,20 @@ class _OfflineCenterScreenState extends State<OfflineCenterScreen> {
   }
 
   Future<void> discard(SyncQueueItem item) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Kayıt silinsin mi?'),
-        content: const Text(
-          'Bu kayıt gönderilmeden silinecek ve geri alınamaz. '
-          'Varsa sesli not da cihazdan kaldırılır.',
-        ),
+        title: Text(l10n.deleteQueuedRecordTitle),
+        content: Text(l10n.deleteQueuedRecordWarning),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Sil'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -133,110 +136,121 @@ class _OfflineCenterScreenState extends State<OfflineCenterScreen> {
     if (!mounted) return;
     setState(() {
       items = load();
-      message = 'Kayıt silindi.';
+      message = l10n.recordDeleted;
     });
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Eşitleme merkezi')),
-    body: FutureBuilder<List<SyncQueueItem>>(
-      future: items,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final data = snapshot.data ?? const <SyncQueueItem>[];
-        final blocked = data.where((item) => isSyncBlocked(item.lastError));
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.cloud_sync_outlined),
-                title: Text('${data.length} bekleyen kayıt'),
-                subtitle: Text(
-                  blocked.isEmpty
-                      ? 'Kayıtlar kullanıcıya göre şifreli uygulama alanında '
-                            'izole edilir.'
-                      : blockedQueueNotice(blocked.length),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: busy ? null : sync,
-              icon: const Icon(Icons.sync),
-              label: Text(busy ? 'Eşitleniyor…' : 'Şimdi eşitle'),
-            ),
-            if (message != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Text(message!),
-              ),
-            ...data.map(
-              (item) => Card(
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.offlineCenterTitle)),
+      body: FutureBuilder<List<SyncQueueItem>>(
+        future: items,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final data = snapshot.data ?? const <SyncQueueItem>[];
+          final blocked = data.where((item) => isSyncBlocked(item.lastError));
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(
                 child: ListTile(
-                  isThreeLine: true,
-                  leading: Icon(
-                    isSyncBlocked(item.lastError)
-                        ? Icons.error_outline
-                        : Icons.schedule,
-                  ),
-                  title: Text(
-                    '${item.entityType == 'visit_debrief'
-                        ? 'Ziyaret notu'
-                        : item.entityType == 'visit_create'
-                        ? 'Ziyaret kaydı'
-                        : item.entityType} · '
-                    '${isSyncBlocked(item.lastError)
-                        ? 'Müdahale gerekiyor'
-                        : busy
-                        ? 'Gönderiliyor'
-                        : 'Bekliyor'}',
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(syncErrorLabel(item.lastError)),
-                      // Ham kod hata bildirimi için burada kalır; kullanıcının
-                      // okuduğu satır yukarıdaki cümledir.
-                      Text(
-                        '${item.attempts > 12 ? '12+' : item.attempts} deneme'
-                        '${item.lastError == null ? '' : ' · ${item.lastError}'}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'view':
-                          viewDraft(item);
-                        case 'export':
-                          exportDraft(item);
-                        case 'retry':
-                          retry(item);
-                        case 'discard':
-                          discard(item);
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'view',
-                        child: Text('Taslağı görüntüle'),
-                      ),
-                      PopupMenuItem(value: 'export', child: Text('Dışa aktar')),
-                      PopupMenuItem(value: 'retry', child: Text('Tekrar dene')),
-                      PopupMenuItem(value: 'discard', child: Text('Kaydı sil')),
-                    ],
+                  leading: const Icon(Icons.cloud_sync_outlined),
+                  title: Text(l10n.offlineQueuedCount(data.length)),
+                  subtitle: Text(
+                    blocked.isEmpty
+                        ? l10n.offlineStorageNotice
+                        : blockedQueueNotice(blocked.length, l10n),
                   ),
                 ),
               ),
-            ),
-          ],
-        );
-      },
-    ),
-  );
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: busy ? null : sync,
+                icon: const Icon(Icons.sync),
+                label: Text(busy ? l10n.syncing : l10n.syncNow),
+              ),
+              if (message != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(message!),
+                ),
+              ...data.map(
+                (item) => Card(
+                  child: ListTile(
+                    isThreeLine: true,
+                    leading: Icon(
+                      isSyncBlocked(item.lastError)
+                          ? Icons.error_outline
+                          : Icons.schedule,
+                    ),
+                    title: Text(
+                      '${item.entityType == 'visit_debrief'
+                          ? l10n.syncEntityVisitNote
+                          : item.entityType == 'visit_create'
+                          ? l10n.syncEntityVisit
+                          : l10n.syncEntityGeneric} · '
+                      '${isSyncBlocked(item.lastError)
+                          ? l10n.syncBlockedStatus
+                          : busy
+                          ? l10n.syncSendingStatus
+                          : l10n.syncWaitingStatus}',
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(syncErrorLabel(item.lastError, l10n)),
+                        // Ham kod hata bildirimi için burada kalır; kullanıcının
+                        // okuduğu satır yukarıdaki cümledir.
+                        Text(
+                          '${l10n.syncAttemptsCount(item.attempts > 12 ? '12+' : '${item.attempts}')}'
+                          '${item.lastError == null ? '' : ' · ${l10n.syncErrorCode(item.lastError!)}'}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'view':
+                            viewDraft(item);
+                          case 'export':
+                            exportDraft(item);
+                          case 'retry':
+                            retry(item);
+                          case 'discard':
+                            discard(item);
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        PopupMenuItem(
+                          value: 'view',
+                          child: Text(l10n.viewDraft),
+                        ),
+                        PopupMenuItem(
+                          value: 'export',
+                          child: Text(l10n.exportDraft),
+                        ),
+                        PopupMenuItem(
+                          value: 'retry',
+                          child: Text(l10n.retrySync),
+                        ),
+                        PopupMenuItem(
+                          value: 'discard',
+                          child: Text(l10n.delete),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }

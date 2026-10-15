@@ -8,13 +8,24 @@ import {
 } from "@/lib/pricing";
 import Image from "next/image";
 import Link from "next/link";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { LocaleSwitcher } from "./locale-switcher";
+import { MarketingHomeEnglish } from "./marketing-home-en";
 
-export const metadata: Metadata = {
-  title: "Saha satış ekipleri için yapay zekâ destekli müşteri hafızası",
-  description:
-    "KartVizyon; ziyaretleri, sesli notları, görevleri ve müşteri bağlamını ekip onaylı kurumsal hafızaya dönüştürür.",
-  alternates: { canonical: "https://kartvizyon.app" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return {
+    title:
+      locale === "en"
+        ? "AI-assisted customer memory for field sales teams | KartVizyon"
+        : "Saha satış ekipleri için yapay zekâ destekli müşteri hafızası",
+    description:
+      locale === "en"
+        ? "Prepare for visits, capture field notes, and keep human-approved customer follow-ups in one workspace."
+        : "KartVizyon; ziyaretleri, sesli notları, görevleri ve müşteri bağlamını ekip onaylı kurumsal hafızaya dönüştürür.",
+    alternates: { canonical: "https://kartvizyon.app" },
+  };
+}
 
 const outcomes = [
   [
@@ -147,7 +158,10 @@ const faqJsonLd = {
   })),
 };
 
-export default function MarketingHome() {
+export default async function MarketingHome() {
+  const locale = await getRequestLocale();
+  if (locale === "en") return <MarketingHomeEnglish />;
+
   return (
     <main className="marketing-shell">
       <script
@@ -179,6 +193,7 @@ export default function MarketingHome() {
           <Link href="/support">Destek</Link>
         </nav>
         <div className="marketing-actions">
+          <LocaleSwitcher locale="tr" />
           <a
             className="marketing-login"
             href="https://app.kartvizyon.app/login"

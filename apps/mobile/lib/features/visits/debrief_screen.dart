@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 
 class DebriefScreen extends StatefulWidget {
   const DebriefScreen({
@@ -44,6 +45,7 @@ class _DebriefScreenState extends State<DebriefScreen> {
 
   /// Not bir kez kuyruğa alındıktan sonra ekran yeniden gönderim kabul etmez.
   bool submitted = false;
+  String transcriptLanguage = 'tr';
   String? audioPath;
   String? message;
 
@@ -67,20 +69,21 @@ class _DebriefScreenState extends State<DebriefScreen> {
   }
 
   Future<void> toggleRecording() async {
+    final l10n = AppLocalizations.of(context)!;
     if (recording) {
       audioPath = await recorder.stop();
       _tick?.cancel();
       setState(() => recording = false);
       return;
     }
-    try { await widget.services.requireWriteAccess(); } on MobileApiException catch (error) {
-      if (mounted) setState(() => message = error.message);
+    try {
+      await widget.services.requireWriteAccess();
+    } on MobileApiException catch (_) {
+      if (mounted) setState(() => message = l10n.writeAccessRequired);
       return;
     }
     if (!await recorder.hasPermission()) {
-      setState(
-        () => message = 'Mikrofon izni verilmedi. Metinle devam edebilirsiniz.',
-      );
+      setState(() => message = l10n.microphonePermissionDenied);
       return;
     }
     final directory = await getApplicationDocumentsDirectory();
@@ -100,7 +103,15 @@ class _DebriefScreenState extends State<DebriefScreen> {
     _tick = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       if (!widget.services.canWrite) {
-        recorder.stop().then((path) { if (mounted) setState(() { audioPath = path; recording = false; message = 'Erişim süreniz doldu. Ses taslağınız korunur.'; }); });
+        recorder.stop().then((path) {
+          if (mounted) {
+            setState(() {
+              audioPath = path;
+              recording = false;
+              message = l10n.accessExpiredDraftSaved;
+            });
+          }
+        });
         _tick?.cancel();
         return;
       }
@@ -121,6 +132,7 @@ class _DebriefScreenState extends State<DebriefScreen> {
   }
 
   Future<void> save() async {
+    final l10n = AppLocalizations.of(context)!;
     if (busy || submitted) return;
     if (recording) audioPath = await recorder.stop();
     setState(() {
@@ -132,6 +144,7 @@ class _DebriefScreenState extends State<DebriefScreen> {
       workspaceId: widget.services.workspaceId,
       visitId: widget.visitId,
       transcript: transcript.text.trim(),
+      language: transcriptLanguage,
       audioPath: audioPath,
       clientMutationId: clientMutationId,
     );
@@ -158,9 +171,7 @@ class _DebriefScreenState extends State<DebriefScreen> {
     }
     setState(() {
       busy = false;
-      message =
-          'Not cihazda güvenle kuyruklandı. Bağlantı gelince gönderilecek; '
-          'durumunu Eşitleme merkezinden izleyebilirsiniz.';
+      message = l10n.debriefQueuedOffline;
     });
   }
 
@@ -173,112 +184,125 @@ class _DebriefScreenState extends State<DebriefScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Ziyaret sonrası not'),
-      bottom: companyName == null
-          ? null
-          : PreferredSize(
-              preferredSize: const Size.fromHeight(28),
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(companyName!),
-              ),
-            ),
-    ),
-    body: ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        const Text(
-          'Bu kayıt müşteri görüşmesi değildir. Yalnızca ziyaret sonrası kişisel değerlendirmeniz kaydedilir.',
-        ),
-        const SizedBox(height: 18),
-        Card(
-          color: recording
-              ? Theme.of(context).colorScheme.errorContainer
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              children: [
-                Icon(recording ? Icons.graphic_eq : Icons.mic_none, size: 46),
-                const SizedBox(height: 8),
-                Text(
-                  recording
-                      ? 'Kayıt sürüyor · ${_clock(elapsed)}'
-                      : audioPath != null
-                      ? 'Sesli not hazır · ${_clock(elapsed)}'
-                      : '60–90 saniyelik debrief',
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.debriefTitle),
+        bottom: companyName == null
+            ? null
+            : PreferredSize(
+                preferredSize: const Size.fromHeight(28),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(companyName!),
                 ),
-                // Uzun kayıt sunucunun 25 MB sınırına takılır; kullanıcı bunu
-                // gönderdikten sonra değil, kaydederken öğrenmeli.
-                if (recording && elapsed.inMinutes >= 5)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: Text(
-                      'Kayıt uzuyor. Beş dakikayı aşan notlar gönderilemeyebilir.',
+              ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Text(l10n.debriefPrivacyNotice),
+          const SizedBox(height: 18),
+          DropdownButtonFormField<String>(
+            initialValue: transcriptLanguage,
+            decoration: InputDecoration(labelText: l10n.noteAndAudioLanguage),
+            items: [
+              DropdownMenuItem(value: 'tr', child: Text(l10n.turkish)),
+              DropdownMenuItem(value: 'en', child: Text(l10n.english)),
+            ],
+            onChanged: busy || submitted
+                ? null
+                : (value) => setState(
+                    () => transcriptLanguage = value == 'en' ? 'en' : 'tr',
+                  ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            color: recording
+                ? Theme.of(context).colorScheme.errorContainer
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                children: [
+                  Icon(recording ? Icons.graphic_eq : Icons.mic_none, size: 46),
+                  const SizedBox(height: 8),
+                  Text(
+                    recording
+                        ? l10n.recordingDuration(_clock(elapsed))
+                        : audioPath != null
+                        ? l10n.voiceNoteReady(_clock(elapsed))
+                        : l10n.debriefDurationHint,
+                  ),
+                  // Uzun kayıt sunucunun 25 MB sınırına takılır; kullanıcı bunu
+                  // gönderdikten sonra değil, kaydederken öğrenmeli.
+                  if (recording && elapsed.inMinutes >= 5)
+                    Padding(
+                      padding: EdgeInsets.only(top: 6),
+                      child: Text(l10n.longRecordingWarning),
+                    ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: busy ? null : toggleRecording,
+                    icon: Icon(recording ? Icons.stop : Icons.mic),
+                    label: Text(
+                      recording ? l10n.stopRecording : l10n.recordVoiceNote,
                     ),
                   ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: busy ? null : toggleRecording,
-                  icon: Icon(recording ? Icons.stop : Icons.mic),
-                  label: Text(recording ? 'Kaydı bitir' : 'Sesli not kaydet'),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: transcript,
-          onChanged: (_) => setState(() {}),
-          minLines: 5,
-          maxLines: 10,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            labelText: 'Manuel not veya transkript',
-            hintText: 'İhtiyaç, verilen söz ve sonraki adım…',
-          ),
-        ),
-        const SizedBox(height: 14),
-        FilledButton(
-          onPressed:
-              busy ||
-                  submitted ||
-                  (transcript.text.trim().isEmpty && audioPath == null)
-              ? null
-              : save,
-          child: Text(
-            busy ? 'Gönderiliyor…' : 'Güvenli kuyruğa ekle ve gönder',
-          ),
-        ),
-        if (message != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 14),
-            child: Text(message!),
-          ),
-        // Kuyrukta kalan not için çıkış yolu. Önce ekranda tek bir cümle
-        // kalıyor ve kullanıcı sistem geri tuşunu bulmak zorundaydı.
-        if (submitted)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: OutlinedButton(
-              onPressed: () => context.go('/visits'),
-              child: const Text('Ziyaretlere dön'),
+          const SizedBox(height: 16),
+          TextField(
+            controller: transcript,
+            onChanged: (_) => setState(() {}),
+            minLines: 5,
+            maxLines: 10,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: l10n.manualNoteTranscript,
+              hintText: l10n.notePrompt,
             ),
           ),
-        if (audioPath != null)
-          TextButton(
-            onPressed: () async {
-              await File(
-                audioPath!,
-              ).delete().catchError((_) => File(audioPath!));
-              setState(() => audioPath = null);
-            },
-            child: const Text('Sesli notu sil'),
+          const SizedBox(height: 14),
+          FilledButton(
+            onPressed:
+                busy ||
+                    submitted ||
+                    (transcript.text.trim().isEmpty && audioPath == null)
+                ? null
+                : save,
+            child: Text(busy ? l10n.sending : l10n.queueAndSend),
           ),
-      ],
-    ),
-  );
+          if (message != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Text(message!),
+            ),
+          // Kuyrukta kalan not için çıkış yolu. Önce ekranda tek bir cümle
+          // kalıyor ve kullanıcı sistem geri tuşunu bulmak zorundaydı.
+          if (submitted)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: OutlinedButton(
+                onPressed: () => context.go('/visits'),
+                child: Text(l10n.backToVisits),
+              ),
+            ),
+          if (audioPath != null)
+            TextButton(
+              onPressed: () async {
+                await File(
+                  audioPath!,
+                ).delete().catchError((_) => File(audioPath!));
+                setState(() => audioPath = null);
+              },
+              child: Text(l10n.deleteVoiceNote),
+            ),
+        ],
+      ),
+    );
+  }
 }

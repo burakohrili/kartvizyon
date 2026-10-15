@@ -13,6 +13,10 @@ const page = readFileSync(
   new URL("./page.tsx", import.meta.url),
   "utf8",
 ).toLowerCase();
+const englishPage = readFileSync(
+  new URL("./marketing-home-en.tsx", import.meta.url),
+  "utf8",
+).toLowerCase();
 
 describe("pazarlama sayfası iddiaları", () => {
   it("arka planda hiç konum alınmadığını iddia etmez", () => {
@@ -57,5 +61,20 @@ describe("pazarlama sayfası iddiaları", () => {
     expect(page).toContain("ses tanıma metni");
     expect(page).toContain("ai görüşme özeti");
     expect(page).toContain("gerçek kayıt değil");
+  });
+
+  it("English landing page keeps purchase and AI-review claims accurate", () => {
+    expect(page).toContain("getrequestlocale");
+    expect(page).toContain("marketinghomeenglish");
+    expect(englishPage).toContain('lang="en"');
+    expect(englishPage).toContain("not added to the customer record");
+    expect(englishPage).toContain("approves it.");
+    expect(englishPage).toContain("while it is active");
+    expect(englishPage).toContain("₺449/month including vat");
+    expect(englishPage).toContain("store availability and purchase terms");
+    expect(englishPage).toContain("https://apps.apple.com/app/id6797552440");
+    expect(englishPage).toContain(
+      "play.google.com/store/apps/details?id=app.kartvizyon.mobile",
+    );
   });
 });

@@ -4,6 +4,9 @@ import { loadApprovedReport, reportMetrics } from "@/lib/reports";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ReportControls } from "./report-controls";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
+import { formatDate, intlLocale } from "@/lib/i18n/locale";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -16,6 +19,8 @@ export default async function ReportsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).reports;
   const raw = await searchParams;
   const parsed = reportFiltersSchema.safeParse({
     from: first(raw.from) || undefined,
@@ -66,35 +71,34 @@ export default async function ReportsPage({
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">ONAYLI KAYITLAR</span>
-          <h1>Satış aktivite raporu</h1>
-          <p>Filtre, dışa aktar ve süreli bağlantıyla güvenle paylaş.</p>
+          <span className="eyebrow">{m.eyebrow}</span>
+          <h1>{m.title}</h1>
+          <p>{m.description}</p>
         </div>
       </header>
       {report.demo && (
         <div className="demo-notice">
-          <strong>Demo raporu.</strong> PDF ve Excel indirilebilir; güvenli
-          paylaşım için Supabase oturumu gerekir.
+          <strong>{m.demoTitle}</strong> {m.demoBody}
         </div>
       )}
       <form className="report-filters" method="get">
         <label>
-          Başlangıç
+          {m.start}
           <input type="date" name="from" defaultValue={filters.from} />
         </label>
         <label>
-          Bitiş
+          {m.end}
           <input type="date" name="to" defaultValue={filters.to} />
         </label>
         <label>
-          Temsilci
+          {m.representative}
           <select
             name="representativeId"
             defaultValue={filters.representativeId ?? ""}
           >
-            <option value="">Tümü</option>
+            <option value="">{m.all}</option>
             {representatives.map(([id, name]) => (
               <option value={id} key={id}>
                 {name}
@@ -103,9 +107,9 @@ export default async function ReportsPage({
           </select>
         </label>
         <label>
-          Firma
+          {m.company}
           <select name="companyId" defaultValue={filters.companyId ?? ""}>
-            <option value="">Tümü</option>
+            <option value="">{m.all}</option>
             {companyOptions.map(([id, name]) => (
               <option value={id} key={id}>
                 {name}
@@ -114,54 +118,55 @@ export default async function ReportsPage({
           </select>
         </label>
         <button className="primary" type="submit">
-          Uygula
+          {m.apply}
         </button>
-        <Link href="/reports">Temizle</Link>
+        <Link href="/reports">{m.clear}</Link>
       </form>
       {!parsed.success && (
-        <p className="form-message error">
-          Tarih veya filtre değeri geçersizdi; filtreler temizlendi.
-        </p>
+        <p className="form-message error">{m.invalidFilters}</p>
       )}
       <ReportControls
         filters={filters}
         workspaceId={report.workspaceId}
         authenticated={report.authenticated}
         initialShares={shares}
+        locale={locale}
       />
       <section className="report-metrics">
         <article>
-          <small>Onaylı ziyaret</small>
+          <small>{m.approvedVisits}</small>
           <strong>{report.visits.length}</strong>
         </article>
         <article>
-          <small>Olumlu sonuç</small>
+          <small>{m.positiveOutcome}</small>
           <strong>
-            %
-            {report.visits.length
-              ? Math.round((positive / report.visits.length) * 100)
-              : 0}
+            {new Intl.NumberFormat(intlLocale(locale), {
+              style: "percent",
+              maximumFractionDigits: 0,
+            }).format(
+              report.visits.length ? positive / report.visits.length : 0,
+            )}
           </strong>
         </article>
         <article>
-          <small>Oluşturulan takip</small>
+          <small>{m.createdFollowUps}</small>
           <strong>{followUps}</strong>
         </article>
       </section>
       <section className="report-panel">
         <div>
-          <span className="eyebrow">MÜŞTERİ DAĞILIMI</span>
-          <h2>En çok ziyaret edilen firmalar</h2>
+          <span className="eyebrow">{m.customerDistribution}</span>
+          <h2>{m.mostVisitedCompanies}</h2>
         </div>
         {companies.length === 0 && (
-          <p className="empty-state">
-            Bu filtrelerde onaylı ziyaret bulunamadı.
-          </p>
+          <p className="empty-state">{m.noApprovedVisits}</p>
         )}
         {companies.map(([name, count]) => (
           <article key={name}>
             <strong>{name}</strong>
-            <span>{count} onaylı ziyaret</span>
+            <span>
+              {count} {m.approvedVisitCount}
+            </span>
             <i
               style={{
                 width: `${Math.max(8, (count / Math.max(1, report.visits.length)) * 100)}%`,
@@ -172,26 +177,21 @@ export default async function ReportsPage({
       </section>
       <section className="report-visit-list">
         <div>
-          <span className="eyebrow">KAYNAK KAYITLAR</span>
-          <h2>Onaylı ziyaretler</h2>
+          <span className="eyebrow">{m.sourceRecords}</span>
+          <h2>{m.approvedVisitsHeading}</h2>
         </div>
         {report.visits.map((visit) => (
           <article key={visit.id}>
             <div>
               <strong>{visit.companyName}</strong>
-              <time>
-                {new Date(visit.approvedAt).toLocaleDateString("tr-TR")}
-              </time>
+              <time>{formatDate(visit.approvedAt, locale)}</time>
             </div>
-            <p>{visit.summary?.summary ?? "Onaylı özet bulunmuyor."}</p>
+            <p>{visit.summary?.summary ?? m.noApprovedSummary}</p>
             <small>{visit.representativeName}</small>
           </article>
         ))}
       </section>
-      <p className="report-privacy">
-        Taslaklar, onay bekleyen AI çıktıları, ham ses ve transkriptler rapora
-        dahil edilmez.
-      </p>
+      <p className="report-privacy">{m.privacy}</p>
     </main>
   );
 }

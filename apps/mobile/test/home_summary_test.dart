@@ -114,6 +114,10 @@ void main() {
 
     test('tarih etiketi tarihsiz görevde boş kalır', () {
       expect(taskDueLabel({'due_at': '2026-08-20T09:00:00Z'}), '20.08.2026');
+      expect(
+        taskDueLabel({'due_at': '2026-08-20T09:00:00Z'}, locale: 'en'),
+        '8/20/2026',
+      );
       expect(taskDueLabel(const {}), '');
     });
   });

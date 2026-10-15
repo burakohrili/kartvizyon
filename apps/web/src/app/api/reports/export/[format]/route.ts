@@ -4,8 +4,11 @@ import fontkit from "@pdf-lib/fontkit";
 import { reportFiltersSchema } from "@kartvizyon/contracts";
 import ExcelJS from "exceljs";
 import { PDFDocument, rgb } from "pdf-lib";
+import { cookies } from "next/headers";
 import { apiError } from "@/lib/api";
+import { formatDate, formatDateTime, resolveLocale } from "@/lib/i18n/locale";
 import { loadApprovedReport, reportMetrics } from "@/lib/reports";
+import { reportExportCopy } from "@/lib/reports/export-copy";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -68,27 +71,29 @@ function filtersFrom(request: Request) {
 
 async function buildWorkbook(
   visits: Awaited<ReturnType<typeof loadApprovedReport>>["visits"],
+  locale: "en" | "tr",
 ) {
+  const copy = reportExportCopy(locale);
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "KartVizyon AI";
   workbook.created = new Date();
-  const sheet = workbook.addWorksheet("Onaylı ziyaretler", {
+  const sheet = workbook.addWorksheet(copy.sheetName, {
     views: [{ state: "frozen", ySplit: 1 }],
   });
   sheet.columns = [
-    { header: "Tarih", key: "date", width: 18 },
-    { header: "Firma", key: "company", width: 28 },
-    { header: "Temsilci", key: "representative", width: 24 },
-    { header: "Sonuç", key: "outcome", width: 16 },
-    { header: "Onaylı özet", key: "summary", width: 72 },
-    { header: "Takip sayısı", key: "followUps", width: 16 },
+    { header: copy.date, key: "date", width: 18 },
+    { header: copy.company, key: "company", width: 28 },
+    { header: copy.representative, key: "representative", width: 24 },
+    { header: copy.outcome, key: "outcome", width: 16 },
+    { header: copy.summary, key: "summary", width: 72 },
+    { header: copy.followUps, key: "followUps", width: 16 },
   ];
   visits.forEach((visit) =>
     sheet.addRow({
-      date: new Date(visit.approvedAt).toLocaleString("tr-TR"),
+      date: formatDateTime(visit.approvedAt, locale),
       company: visit.companyName,
       representative: visit.representativeName,
-      outcome: visit.summary?.outcome ?? "belirtilmedi",
+      outcome: visit.summary?.outcome ?? copy.notSpecified,
       summary: visit.summary?.summary ?? "",
       followUps: visit.summary?.followUps?.length ?? 0,
     }),
@@ -106,7 +111,9 @@ async function buildWorkbook(
 
 async function buildPdf(
   visits: Awaited<ReturnType<typeof loadApprovedReport>>["visits"],
+  locale: "en" | "tr",
 ) {
+  const copy = reportExportCopy(locale);
   const [regularBytes, boldBytes] = await Promise.all([
     readReportFont(reportFontPaths.regular),
     readReportFont(reportFontPaths.bold),
@@ -128,7 +135,7 @@ async function buildPdf(
       color: rgb(0.07, 0.22, 0.16),
     });
     y -= 28;
-    page.drawText("Onaylı saha ziyaretleri raporu", {
+    page.drawText(copy.title, {
       x: 44,
       y,
       size: 13,
@@ -136,7 +143,7 @@ async function buildPdf(
     });
     y -= 24;
     page.drawText(
-      `${visits.length} ziyaret  •  ${positive} olumlu sonuç  •  ${followUps} takip`,
+      `${visits.length} ${copy.visits}  •  ${positive} ${copy.positive}  •  ${followUps} ${copy.followUpsCount}`,
       { x: 44, y, size: 9, font: regular, color: rgb(0.3, 0.35, 0.33) },
     );
     y -= 28;
@@ -155,7 +162,7 @@ async function buildPdf(
       size: 10,
       font: bold,
     });
-    page.drawText(new Date(visit.approvedAt).toLocaleDateString("tr-TR"), {
+    page.drawText(formatDate(visit.approvedAt, locale), {
       x: 470,
       y,
       size: 9,
@@ -170,7 +177,7 @@ async function buildPdf(
       color: rgb(0.35, 0.4, 0.38),
     });
     y -= 14;
-    const summary = (visit.summary?.summary ?? "Özet bulunmuyor").replace(
+    const summary = (visit.summary?.summary ?? copy.summaryMissing).replace(
       /\s+/g,
       " ",
     );
@@ -196,6 +203,9 @@ export async function GET(
   { params }: { params: Promise<{ format: string }> },
 ) {
   try {
+    const locale = resolveLocale(
+      (await cookies()).get("kartvizyon_locale")?.value,
+    );
     const { format } = await params;
     if (format !== "pdf" && format !== "xlsx") {
       return Response.json(
@@ -210,8 +220,8 @@ export async function GET(
     }
     const data =
       format === "xlsx"
-        ? await buildWorkbook(report.visits)
-        : await buildPdf(report.visits);
+        ? await buildWorkbook(report.visits, locale)
+        : await buildPdf(report.visits, locale);
 
     if (report.authenticated && report.workspaceId) {
       const supabase = await createSupabaseServerClient(request);

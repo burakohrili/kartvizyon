@@ -1,12 +1,135 @@
-import type { Metadata } from "next";
-import { LegalPage } from "../legal-page";
-export const metadata: Metadata = {
-  title: "Gizlilik Politikası",
-  alternates: { canonical: "https://kartvizyon.app/privacy" },
-};
-export default function PrivacyPage() {
+import { LegalPage, localizedLegalMetadata } from "../legal-page";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+export const generateMetadata = () =>
+  localizedLegalMetadata({
+    turkishTitle: "Gizlilik Politikası",
+    englishTitle: "Privacy Policy",
+    canonical: "https://kartvizyon.app/privacy",
+  });
+export default async function PrivacyPage() {
+  const locale = await getRequestLocale();
+  if (locale === "en") {
+    return (
+      <LegalPage
+        title="Privacy Policy"
+        locale={locale}
+        updated="September 12, 2026"
+      >
+        <p>
+          This English notice is a market-preparation draft. It does not claim
+          that KartVizyon is compliant with every UK, US federal, or US state
+          privacy law. Your mandatory local rights apply where relevant. Before
+          UK/US availability is enabled, we will publish the verified
+          controller, provider, transfer, retention, and rights-request details
+          for those markets. Contact us with questions or requests at any time.
+        </p>
+        <h2>Trials and subscription records</h2>
+        <p>
+          Trial start/end times, usage counters, and store transaction
+          identifiers may be processed to provide the service, verify purchases,
+          and prevent repeated trial use. KartVizyon does not collect payment
+          card details; paid store purchases are managed by Apple or Google.
+          Access to data-rights controls does not end when a trial expires.
+          Account deletion is separate from subscription management, and legal
+          retention duties may apply.
+        </p>
+        <h2>Data controller</h2>
+        <p>
+          KartVizyon is operated by Noesis Social - Burak OHRİLİ. For privacy
+          requests, contact{" "}
+          <a href="mailto:kartvizyonapp@gmail.com">kartvizyonapp@gmail.com</a>.
+        </p>
+        <h2>Information we process</h2>
+        <p>
+          This may include account and profile details, workspace memberships,
+          customer and visit records, audio, documents, business cards, and
+          approximate location submitted through an explicit user action, as
+          well as security and audit records.
+        </p>
+        <h2>Purposes and legal bases</h2>
+        <p>
+          Data may be processed to establish and provide the service, maintain
+          security, provide support, meet legal obligations, and for analytics
+          or AI purposes where consent has been given. Depending on the
+          processing, the stated basis is contract performance, legitimate
+          interests, legal obligation, or consent.
+        </p>
+        <h2>AI and human review</h2>
+        <p>
+          Summaries generated from audio and notes are drafts. They are not
+          added as confirmed organizational memory without user approval. AI
+          inputs are not used for advertising profiling.
+        </p>
+        <h2>Retention and security</h2>
+        <p>
+          Raw audio is retained for a limited period and then scheduled for
+          deletion under the policy. Documents are not made available until
+          malware scanning reports a clean result. Access is restricted by
+          tenant, role, and workspace rules. Do not infer a particular
+          encryption or provider-retention guarantee from this description.
+        </p>
+        <h2>Service providers and transfers</h2>
+        <p>
+          Supabase may provide hosting and identity services, OpenAI AI
+          processing, Sentry error monitoring, RevenueCat mobile subscription
+          verification, and Apple or Google store/payment functions. Only data
+          needed for the service should be shared with each provider.
+          International transfers are subject to the applicable legal safeguards
+          and transfer documentation; those arrangements must be verified before
+          a new market launch.
+        </p>
+        <h2>Payment data</h2>
+        <p>
+          KartVizyon does not see or store full payment-card or store-payment
+          details. Limited records such as store, product, transaction ID,
+          subscription status, and period end may be retained to provide
+          entitlements, prevent fraud, and support users.
+        </p>
+        <h2>Your rights</h2>
+        <p>
+          The in-app privacy and data-rights center lets you request a data
+          export, withdraw consent, and initiate account deletion. You may also
+          contact us to request access, correction, deletion, restriction, or
+          objection where those rights apply. UK users may have rights to
+          access, rectify, erase, restrict or object to processing, and data
+          portability, and may complain to the Information Commissioner&apos;s
+          Office. US rights vary by state and applicability; they may include
+          access/know, correction, deletion, portability, and opting out of
+          certain sale, sharing, or targeted-advertising processing. We will
+          verify and operationalize applicable state-specific request and appeal
+          processes before enabling US availability. A request interface does
+          not mean processing is immediate or already complete. Contact{" "}
+          <a href="mailto:kartvizyonapp@gmail.com">kartvizyonapp@gmail.com</a>{" "}
+          to exercise a right or ask a question.
+        </p>
+        <h2>UK and international processing</h2>
+        <p>
+          For UK users, the controller must identify and document an appropriate
+          lawful basis for each processing purpose and provide it in the final
+          privacy information. If personal information is transferred outside
+          the UK, the applicable UK transfer mechanism and any required transfer
+          risk assessment must be confirmed for the actual recipient and route.
+          Provider locations, onward transfers, and contract safeguards are
+          being verified; this draft is not evidence that those checks are
+          complete.
+        </p>
+        <h2>US state privacy disclosures</h2>
+        <p>
+          US privacy laws differ by state and can depend on the business,
+          processing, and statutory applicability thresholds. Before launch, we
+          must verify the categories and sources of information, purposes,
+          disclosures to service providers, any sale/share or targeted
+          advertising activity, retention periods, applicable rights, and the
+          request/appeal channels. This draft does not assert that KartVizyon
+          sells or shares personal information, or that a particular state law
+          applies; those facts must be checked against actual operations and
+          contracts.
+        </p>
+      </LegalPage>
+    );
+  }
   return (
-    <LegalPage title="Gizlilik Politikası">
+    <LegalPage title="Gizlilik Politikası" locale={locale}>
       <h2>Deneme ve abonelik kayıtları</h2>
       <p>
         Denemenin başlangıç/bitiş zamanı, kullanım sayaçları ve mağaza işlem

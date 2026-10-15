@@ -2,23 +2,28 @@ import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { OpportunityWorkbench } from "../operations-workbench";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
+import { getDemoRecords } from "@/lib/i18n/demo-records";
 
 const demoWorkspace = "00000000-0000-4000-8000-000000000001";
-const demoCompanies = [
-  { id: "00000000-0000-4000-8000-000000000101", name: "Atlas Medikal" },
-];
-const demoItems = [
-  {
-    id: "00000000-0000-4000-8000-000000000301",
-    title: "Yeni cihaz parkı",
-    stage: "proposal",
-    estimated_value: 850000,
-    currency: "TRY",
-    company: { name: "Atlas Medikal" },
-  },
-];
-
 export default async function OpportunitiesPage() {
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).operations;
+  const demo = getDemoRecords(locale);
+  const demoCompanies = [
+    { id: "00000000-0000-4000-8000-000000000101", name: demo.companies[0] },
+  ];
+  const demoItems = [
+    {
+      id: "00000000-0000-4000-8000-000000000301",
+      title: demo.opportunity,
+      stage: "proposal",
+      estimated_value: 850000,
+      currency: "TRY",
+      company: { name: demo.companies[0] },
+    },
+  ];
   const context = await getWebWorkspaceContext();
   const [opportunities, companies] = context
     ? await Promise.all([
@@ -41,20 +46,20 @@ export default async function OpportunitiesPage() {
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">SATIŞ PIPELINE</span>
-          <h1>Fırsatlar</h1>
-          <p>Değeri, olasılığı ve aşaması açıklanabilir fırsat akışı.</p>
+          <span className="eyebrow">{m.opportunitiesEyebrow}</span>
+          <h1>{m.opportunitiesTitle}</h1>
+          <p>{m.opportunitiesDescription}</p>
         </div>
       </header>
       {!context && (
         <div className="demo-notice">
-          <strong>Demo görünümü.</strong> Kayıt işlemleri için Supabase
-          bağlantısı gerekir.
+          <strong>{m.demoTitle}</strong> {m.demoBody}
         </div>
       )}
       <OpportunityWorkbench
+        locale={locale}
         workspaceId={context?.workspaceId ?? demoWorkspace}
         initialItems={
           (opportunities.data ?? []) as Array<Record<string, unknown>>

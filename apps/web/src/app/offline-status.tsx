@@ -5,10 +5,14 @@ import {
   queuedDebriefCount,
   syncQueuedDebriefs,
 } from "@/lib/offline/debrief-queue";
+import { getMessages } from "@/lib/i18n/messages";
+import { useDocumentLocale } from "@/lib/i18n/use-document-locale";
 
 export function OfflineStatus() {
   const [online, setOnline] = useState(true);
   const [queued, setQueued] = useState(0);
+  const locale = useDocumentLocale();
+  const messages = getMessages(locale).offlineStatus;
 
   const refresh = useCallback(async () => {
     setOnline(navigator.onLine);
@@ -51,9 +55,7 @@ export function OfflineStatus() {
       className={`offline-status ${online ? "syncing" : "offline"}`}
       role="status"
     >
-      {online
-        ? `${queued} ziyaret notu senkronizasyon bekliyor`
-        : `Çevrimdışısınız${queued ? ` · ${queued} not cihazda güvende` : ""}`}
+      {online ? messages.queued(queued) : messages.offline(queued)}
     </aside>
   );
 }

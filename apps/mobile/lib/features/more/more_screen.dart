@@ -4,16 +4,64 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/mobile_services.dart';
 import '../../core/store_billing_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../../l10n/app_localizations.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({
     super.key,
     required this.services,
+    required this.locale,
+    required this.onLocaleChanged,
     required this.onSignedOut,
   });
   final MobileServices services;
+  final Locale locale;
+  final Future<void> Function(Locale) onLocaleChanged;
   final VoidCallback onSignedOut;
+
+  Future<void> chooseLanguage(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final target = await showModalBottomSheet<Locale>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(title: Text(l10n.interfaceLanguage)),
+            ListTile(
+              title: Text(l10n.turkish),
+              trailing: locale.languageCode == 'tr'
+                  ? const Icon(Icons.check)
+                  : null,
+              onTap: () =>
+                  Navigator.pop(sheetContext, const Locale('tr', 'TR')),
+            ),
+            ListTile(
+              title: Text(l10n.english),
+              trailing: locale.languageCode == 'en'
+                  ? const Icon(Icons.check)
+                  : null,
+              onTap: () =>
+                  Navigator.pop(sheetContext, const Locale('en', 'US')),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (target == null || target.languageCode == locale.languageCode) return;
+    try {
+      await onLocaleChanged(target);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.languageUpdateFailed)));
+      }
+    }
+  }
+
   Future<void> chooseWorkspace(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final response =
           await services.api.get('/api/workspaces') as Map<String, dynamic>;
@@ -27,10 +75,10 @@ class MoreScreen extends StatelessWidget {
           child: ListView(
             shrinkWrap: true,
             children: [
-              const ListTile(title: Text('Çalışma alanı seçin')),
+              ListTile(title: Text(l10n.chooseWorkspace)),
               for (final item in workspaces)
                 ListTile(
-                  title: Text(item['name']?.toString() ?? 'Çalışma alanı'),
+                  title: Text(item['name']?.toString() ?? l10n.workspace),
                   trailing: item['id'] == services.workspaceId
                       ? const Icon(Icons.check)
                       : null,
@@ -46,11 +94,9 @@ class MoreScreen extends StatelessWidget {
       if (context.mounted) context.go('/');
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Çalışma alanı değiştirilemedi. Tekrar deneyin.'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.workspaceChangeFailed)));
       }
     }
   }
@@ -70,156 +116,152 @@ class MoreScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Daha fazla')),
-    body: ListView(
-      children: [
-        ListTile(
-          leading: const Icon(Icons.map_outlined),
-          title: const Text('Saha haritası'),
-          subtitle: const Text('Yakındaki müşteriler ve ziyaret rotası'),
-          onTap: () => context.push('/map'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.mic_none),
-          title: const Text('Ziyaretler ve sesli not'),
-          subtitle: const Text(
-            'Kullanıcı onayından önce kurumsal hafızaya eklenmez',
-          ),
-          onTap: () => context.push('/visits'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.sync),
-          title: const Text('Eşitleme merkezi'),
-          subtitle: const Text('Bekleyen kayıtlar ve hatalar'),
-          onTap: () => context.push('/offline'),
-        ),
-        const Divider(),
-        if (services.config.hasSupabase)
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.moreTitle)),
+      body: ListView(
+        children: [
           ListTile(
-            leading: const Icon(Icons.swap_horiz_outlined),
-            title: const Text('Çalışma alanı değiştir'),
-            onTap: () => chooseWorkspace(context),
+            leading: const Icon(Icons.map_outlined),
+            title: Text(l10n.fieldMap),
+            subtitle: Text(l10n.nearbyCustomersRoute),
+            onTap: () => context.push('/map'),
           ),
-        ListTile(
-          leading: const Icon(Icons.calendar_month_outlined),
-          title: const Text('Takvim'),
-          subtitle: const Text('Planlanan ziyaretler ve tarihli görevler'),
-          onTap: () => context.push('/calendar'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.history_toggle_off_outlined),
-          title: const Text('Aktivite'),
-          subtitle: const Text('Ziyaret, görev, fırsat ve sipariş geçmişi'),
-          onTap: () => context.push('/activity'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.analytics_outlined),
-          title: const Text('Rapor özeti'),
-          subtitle: const Text('Müşteri, ziyaret ve görev göstergeleri'),
-          onTap: () => context.push('/reports'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.notifications_none),
-          title: const Text('Bildirimler'),
-          subtitle: const Text('Yorumlar, görevler ve onay olayları'),
-          onTap: () => context.push('/notifications'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.trending_up),
-          title: const Text('Fırsatlar'),
-          subtitle: const Text('Satış pipeline ve aşama görünümü'),
-          onTap: () => context.push('/opportunities'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.inventory_2_outlined),
-          title: const Text('Ürün ve fiyatlar'),
-          subtitle: const Text('Aktif ürün kataloğu ve liste fiyatları'),
-          onTap: () => context.push('/products'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.receipt_long_outlined),
-          title: const Text('Sipariş taslakları'),
-          subtitle: const Text('Taslak ve onay durumlarını görüntüleyin'),
-          onTap: () => context.push('/orders'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.description_outlined),
-          title: const Text('Belgeler'),
-          subtitle: const Text('Dosya ve güvenlik tarama durumları'),
-          onTap: () => context.push('/documents'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.dynamic_form_outlined),
-          title: const Text('Saha formları'),
-          subtitle: const Text('Aktif şablonlar ve gönderimler'),
-          onTap: () => context.push('/forms'),
-        ),
-        const Divider(),
-        ListTile(
-          leading: const Icon(Icons.business_outlined),
-          title: const Text('Firma bilgileri'),
-          subtitle: const Text('Çalışma alanınızın firma adını düzenleyin'),
-          onTap: () => context.push('/company-info'),
-        ),
-        ListTile(
-          leading: const Icon(Icons.workspace_premium_outlined),
-          title: const Text('Premium ve abonelik'),
-          subtitle: const Text(
-            'Planınızı görüntüleyin veya mağaza satın alımını yönetin',
+          ListTile(
+            leading: const Icon(Icons.mic_none),
+            title: Text(l10n.visitsVoiceNote),
+            subtitle: Text(l10n.preApprovalPromise),
+            onTap: () => context.push('/visits'),
           ),
-          onTap: () => context.push('/premium'),
-        ),
-        // Bu iki madde ayar değil, ürünün verdiği söz. Daha önce `ListTile`
-        // olarak duruyorlardı ve tıklanmadıkları için bozuk düğme gibi
-        // görünüyorlardı. "Dil" satırı kaldırıldı: alt metni İngilizce
-        // altyapısının hazır olduğunu söylüyordu ama arayüz dili
-        // `app.dart` içinde Türkçe'ye sabit.
-        const _PromiseCard(
-          icon: Icons.location_off_outlined,
-          title: 'Konum gizliliği',
-          body:
-              'Sürekli GPS takibi yapılmaz. Konum yalnızca siz istediğinizde '
-              'ya da saha modunu başlattığınızda alınır; saha modu çalışırken '
-              'bunu gizlemez ve akşam kendiliğinden kapanır.',
-        ),
-        const _PromiseCard(
-          icon: Icons.graphic_eq,
-          title: 'Ses saklama',
-          body:
-              'Sesli not yalnızca metne çevrilmek için gönderilir. Ham kayıt '
-              'yöneticilere açılmaz ve 30 gün sonra sunucudan silinir.',
-        ),
-        ListTile(
-          leading: const Icon(Icons.privacy_tip_outlined),
-          title: const Text('KVKK ve veri hakları'),
-          subtitle: const Text('Aydınlatma, dışa aktarma ve silme merkezi'),
-          onTap: () => context.push('/privacy'),
-        ),
-        ListTile(
-          leading: Icon(
-            Icons.delete_forever_outlined,
-            color: Theme.of(context).colorScheme.error,
+          ListTile(
+            leading: const Icon(Icons.sync),
+            title: Text(l10n.syncCenter),
+            subtitle: Text(l10n.pendingRecordsErrors),
+            onTap: () => context.push('/offline'),
           ),
-          title: Text(
-            'Hesabımı sil',
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          const Divider(),
+          if (services.config.hasSupabase)
+            ListTile(
+              leading: const Icon(Icons.swap_horiz_outlined),
+              title: Text(l10n.switchWorkspace),
+              onTap: () => chooseWorkspace(context),
+            ),
+          ListTile(
+            leading: const Icon(Icons.calendar_month_outlined),
+            title: Text(l10n.calendar),
+            subtitle: Text(l10n.plannedVisitsDatedTasks),
+            onTap: () => context.push('/calendar'),
           ),
-          subtitle: const Text(
-            'Hesabınızı ve kişisel verilerinizi kalıcı olarak silin',
+          ListTile(
+            leading: const Icon(Icons.history_toggle_off_outlined),
+            title: Text(l10n.activity),
+            subtitle: Text(l10n.activityHistory),
+            onTap: () => context.push('/activity'),
           ),
-          onTap: () => context.push('/privacy?delete=true'),
-        ),
-        const Divider(),
-        ListTile(
-          leading: const Icon(Icons.logout),
-          title: const Text('Tüm cihazlardan çıkış'),
-          onTap: signOut,
-        ),
-        const _AppVersionTile(),
-      ],
-    ),
-  );
+          ListTile(
+            leading: const Icon(Icons.analytics_outlined),
+            title: Text(l10n.reportsSummary),
+            subtitle: Text(l10n.customerVisitTaskMetrics),
+            onTap: () => context.push('/reports'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.notifications_none),
+            title: Text(l10n.notifications),
+            subtitle: Text(l10n.commentsTasksApprovalEvents),
+            onTap: () => context.push('/notifications'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.trending_up),
+            title: Text(l10n.opportunities),
+            subtitle: Text(l10n.salesPipelineStages),
+            onTap: () => context.push('/opportunities'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.inventory_2_outlined),
+            title: Text(l10n.productsPrices),
+            subtitle: Text(l10n.activeProductCatalogPrices),
+            onTap: () => context.push('/products'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.receipt_long_outlined),
+            title: Text(l10n.orderDrafts),
+            subtitle: Text(l10n.draftApprovalStatus),
+            onTap: () => context.push('/orders'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: Text(l10n.documents),
+            subtitle: Text(l10n.fileSecurityScanning),
+            onTap: () => context.push('/documents'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.dynamic_form_outlined),
+            title: Text(l10n.fieldForms),
+            subtitle: Text(l10n.activeTemplatesSubmissions),
+            onTap: () => context.push('/forms'),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.business_outlined),
+            title: Text(l10n.companyInfo),
+            subtitle: Text(l10n.editWorkspaceCompanyName),
+            onTap: () => context.push('/company-info'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.workspace_premium_outlined),
+            title: Text(l10n.premiumSubscription),
+            subtitle: Text(l10n.viewPlanManagePurchase),
+            onTap: () => context.push('/premium'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.language),
+            title: Text(l10n.interfaceLanguage),
+            subtitle: Text(
+              locale.languageCode == 'en' ? l10n.english : l10n.turkish,
+            ),
+            onTap: () => chooseLanguage(context),
+          ),
+          // Bu iki madde ayar değil, ürünün verdiği sözdür.
+          _PromiseCard(
+            icon: Icons.location_off_outlined,
+            title: l10n.locationPrivacy,
+            body: l10n.locationPrivacyBody,
+          ),
+          _PromiseCard(
+            icon: Icons.graphic_eq,
+            title: l10n.audioRetention,
+            body: l10n.audioRetentionBody,
+          ),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: Text(l10n.privacyRights),
+            subtitle: Text(l10n.privacyDataCenter),
+            onTap: () => context.push('/privacy'),
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.delete_forever_outlined,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            title: Text(
+              l10n.deleteAccount,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            subtitle: Text(l10n.permanentlyDeletePersonalData),
+            onTap: () => context.push('/privacy?delete=true'),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: Text(l10n.signOutAllDevices),
+            onTap: signOut,
+          ),
+          const _AppVersionTile(),
+        ],
+      ),
+    );
+  }
 }
 
 /// Ayar değil, bilgi. Dokunulabilir görünmemesi için `ListTile` kullanılmaz.
@@ -271,12 +313,13 @@ class _AppVersionTile extends StatelessWidget {
     future: PackageInfo.fromPlatform(),
     builder: (context, snapshot) {
       final info = snapshot.data;
+      final l10n = AppLocalizations.of(context)!;
       final label = info == null
-          ? 'Sürüm bilgisi yükleniyor…'
-          : 'Sürüm ${info.version} · Derleme ${info.buildNumber}';
+          ? l10n.versionLoading
+          : l10n.versionBuild(info.version, info.buildNumber);
       return ListTile(
         leading: const Icon(Icons.info_outline),
-        title: const Text('Uygulama sürümü'),
+        title: Text(l10n.appVersion),
         subtitle: Text(label),
         // Hata bildirirken kopyalanabilsin.
         onTap: info == null

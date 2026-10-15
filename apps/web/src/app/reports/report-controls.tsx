@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import type { ReportFilters } from "@kartvizyon/contracts";
+import type { AppLocale } from "@/lib/i18n/locale";
+import { formatDateTime } from "@/lib/i18n/locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 type Share = {
   id: string;
@@ -23,12 +26,15 @@ export function ReportControls({
   workspaceId,
   authenticated,
   initialShares,
+  locale,
 }: {
   filters: ReportFilters;
   workspaceId: string | null;
   authenticated: boolean;
   initialShares: Share[];
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).reports;
   const [shares, setShares] = useState(initialShares);
   const [shareUrl, setShareUrl] = useState("");
   const [message, setMessage] = useState("");
@@ -37,7 +43,7 @@ export function ReportControls({
 
   async function createShare() {
     if (!workspaceId || !authenticated) {
-      setMessage("Güvenli bağlantı için Supabase oturumu gereklidir.");
+      setMessage(m.signInRequired);
       return;
     }
     setBusy(true);
@@ -48,7 +54,7 @@ export function ReportControls({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId,
-          title: "Satış aktivite raporu",
+          title: m.shareTitle,
           filters,
           validForHours: 168,
         }),
@@ -56,27 +62,30 @@ export function ReportControls({
       const result = (await response.json()) as {
         id?: string;
         url?: string;
-        error?: string;
       };
       if (!response.ok || !result.id || !result.url) {
-        throw new Error(result.error ?? "Bağlantı oluşturulamadı.");
+        setMessage(m.linkCreateFailed);
+        return;
       }
       setShareUrl(result.url);
       setShares((current) => [
         {
           id: result.id!,
-          title: "Satış aktivite raporu",
+          title: m.shareTitle,
           expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
           revoked_at: null,
         },
         ...current,
       ]);
-      await navigator.clipboard.writeText(result.url);
-      setMessage("Güvenli bağlantı oluşturuldu ve panoya kopyalandı.");
-    } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "İşlem tamamlanamadı.",
-      );
+      setMessage(m.linkCreated);
+      try {
+        await navigator.clipboard.writeText(result.url);
+        setMessage(m.linkCreatedCopied);
+      } catch {
+        setMessage(m.copyFailed);
+      }
+    } catch {
+      setMessage(m.operationFailed);
     } finally {
       setBusy(false);
     }
@@ -84,40 +93,54 @@ export function ReportControls({
 
   async function revokeShare(id: string) {
     setBusy(true);
-    const response = await fetch("/api/reports/shares", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ shareId: id }),
-    });
-    if (response.ok) {
-      setShares((current) =>
-        current.map((share) =>
-          share.id === id
-            ? { ...share, revoked_at: new Date().toISOString() }
-            : share,
-        ),
-      );
-      setMessage("Paylaşım bağlantısı iptal edildi.");
-    } else {
-      setMessage("Bağlantı iptal edilemedi.");
+    try {
+      const response = await fetch("/api/reports/shares", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shareId: id }),
+      });
+      if (response.ok) {
+        setShares((current) =>
+          current.map((share) =>
+            share.id === id
+              ? { ...share, revoked_at: new Date().toISOString() }
+              : share,
+          ),
+        );
+        setMessage(m.shareRevoked);
+      } else {
+        setMessage(m.revokeFailed);
+      }
+    } catch {
+      setMessage(m.revokeFailed);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setMessage(m.linkCopied);
+    } catch {
+      setMessage(m.copyFailed);
+    }
   }
 
   return (
-    <section className="report-actions" aria-label="Rapor işlemleri">
+    <section className="report-actions" aria-label={m.actions}>
       <div className="report-action-buttons">
         <a
           className="secondary-action"
           href={`/api/reports/export/pdf?${query}`}
         >
-          PDF indir
+          {m.downloadPdf}
         </a>
         <a
           className="secondary-action"
           href={`/api/reports/export/xlsx?${query}`}
         >
-          Excel indir
+          {m.downloadExcel}
         </a>
         <button
           className="primary"
@@ -125,7 +148,7 @@ export function ReportControls({
           onClick={createShare}
           disabled={busy}
         >
-          {busy ? "Hazırlanıyor…" : "7 günlük güvenli bağlantı"}
+          {busy ? m.preparing : m.secureLink}
         </button>
       </div>
       {message && (
@@ -135,30 +158,23 @@ export function ReportControls({
       )}
       {shareUrl && (
         <div className="share-url">
-          <input
-            aria-label="Güvenli rapor bağlantısı"
-            readOnly
-            value={shareUrl}
-          />
-          <button
-            type="button"
-            onClick={() => void navigator.clipboard.writeText(shareUrl)}
-          >
-            Kopyala
+          <input aria-label={m.linkLabel} readOnly value={shareUrl} />
+          <button type="button" onClick={() => void copyLink()}>
+            {m.copy}
           </button>
         </div>
       )}
       {shares.length > 0 && (
         <div className="report-share-history">
-          <h3>Paylaşım geçmişi</h3>
+          <h3>{m.shareHistory}</h3>
           {shares.map((share) => (
             <article key={share.id}>
               <div>
                 <strong>{share.title}</strong>
                 <small>
                   {share.revoked_at
-                    ? "İptal edildi"
-                    : `${new Date(share.expires_at).toLocaleString("tr-TR")} tarihine kadar`}
+                    ? m.revoked
+                    : `${m.expiresAt}: ${formatDateTime(share.expires_at, locale)}`}
                 </small>
               </div>
               {!share.revoked_at && (
@@ -167,7 +183,7 @@ export function ReportControls({
                   disabled={busy}
                   onClick={() => void revokeShare(share.id)}
                 >
-                  İptal et
+                  {m.revoke}
                 </button>
               )}
             </article>

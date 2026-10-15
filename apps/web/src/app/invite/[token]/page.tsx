@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { InviteAccept } from "./invite-accept";
+import { getMessages } from "@/lib/i18n/messages";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
 
 export default async function InvitePage({
   params,
@@ -7,6 +9,7 @@ export default async function InvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  const messages = getMessages(await getRequestLocale()).auth;
   return (
     <main className="auth-page">
       <section className="auth-card">
@@ -14,23 +17,20 @@ export default async function InvitePage({
           <span>KV</span>
           <div>
             <strong>KartVizyon AI</strong>
-            <small>Şirket çalışma alanı daveti</small>
+            <small>{messages.inviteSubtitle}</small>
           </div>
         </div>
-        <h1>Ekibe katılın</h1>
-        <p>
-          Davet e-posta adresinizle giriş yaptıktan sonra şirket verilerine
-          rolünüz kapsamında erişebilirsiniz.
-        </p>
+        <h1>{messages.inviteTitle}</h1>
+        <p>{messages.inviteBody}</p>
         {/^[a-f0-9]{64}$/i.test(token) ? (
-          <InviteAccept token={token} />
+          <InviteAccept token={token} locale={await getRequestLocale()} />
         ) : (
           <div className="form-message error-message">
-            Davet bağlantısı geçersiz.
+            {messages.inviteInvalid}
           </div>
         )}
         <Link href="/login" className="invite-login-link">
-          Önce giriş yapmam gerekiyor
+          {messages.inviteLogin}
         </Link>
       </section>
     </main>

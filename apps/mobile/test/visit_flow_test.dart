@@ -12,6 +12,7 @@ import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/visits/briefing_screen.dart';
 import 'package:kartvizyon_mobile/features/visits/review_screen.dart';
 import 'package:kartvizyon_mobile/features/visits/visit_planning_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 
 class _EmptySessionStore extends SecureSessionStore {
   const _EmptySessionStore();
@@ -53,6 +54,13 @@ MobileServices servicesWith(
     baseUrl: Uri.parse(_config.apiBaseUrl),
     client: MockClient((_) async => http.Response('{}', 200)),
   ),
+);
+
+Widget _testApp(Widget home) => MaterialApp(
+  locale: const Locale('tr'),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: home,
 );
 
 void main() {
@@ -120,9 +128,7 @@ void main() {
           .toIso8601String(),
     });
 
-    await tester.pumpWidget(
-      MaterialApp(home: VisitPlanningScreen(services: services)),
-    );
+    await tester.pumpWidget(_testApp(VisitPlanningScreen(services: services)));
     await tester.tap(find.text('Müşteri seç *'));
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Çok Uzun ABC Makina'));
@@ -174,7 +180,7 @@ void main() {
       await tester.pumpWidget(
         MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.linear(2)),
-          child: MaterialApp(home: VisitPlanningScreen(services: services)),
+          child: _testApp(VisitPlanningScreen(services: services)),
         ),
       );
       await tester.enterText(
@@ -223,9 +229,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: BriefingScreen(services: services, companyId: 'firma-1'),
-      ),
+      _testApp(BriefingScreen(services: services, companyId: 'firma-1')),
     );
     addTearDown(services.dispose);
     await tester.pumpAndSettle();
@@ -273,11 +277,11 @@ void main() {
     });
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: VisitReviewScreen(services: services, visitId: 'visit-1'),
-      ),
+      _testApp(VisitReviewScreen(services: services, visitId: 'visit-1')),
     );
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ListView), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('Fiyat listesini gönder'),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/mobile_services.dart';
 import '../field_mode/field_mode_card.dart';
 import '../../core/refresh.dart';
+import '../../l10n/app_localizations.dart';
 import 'home_summary.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -92,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
     child: FutureBuilder<HomeSummary>(
       future: summary,
       builder: (context, snapshot) {
+        final l10n = AppLocalizations.of(context)!;
         if (snapshot.connectionState != ConnectionState.done &&
             !snapshot.hasData) {
           return ListView(
@@ -110,8 +112,8 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 180),
               const Icon(Icons.cloud_off_outlined, size: 42),
               const SizedBox(height: 12),
-              Text(snapshot.error.toString(), textAlign: TextAlign.center),
-              TextButton(onPressed: refresh, child: const Text('Tekrar dene')),
+              Text(l10n.homeLoadFailed, textAlign: TextAlign.center),
+              TextButton(onPressed: refresh, child: Text(l10n.tryAgain)),
             ],
           );
         }
@@ -124,8 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               widget.services.displayName?.trim().isNotEmpty == true
-                  ? 'Merhaba ${widget.services.displayName!.trim()}'
-                  : 'Merhaba',
+                  ? l10n.greeting(widget.services.displayName!.trim())
+                  : l10n.greetingAnonymous,
               style: Theme.of(context).textTheme.labelLarge,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -133,8 +135,10 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 6),
             Text(
               widget.services.workspaceCompanyName?.trim().isNotEmpty == true
-                  ? '${widget.services.workspaceCompanyName!.trim()} için bugünün saha özeti'
-                  : 'Bugünün saha özeti',
+                  ? l10n.todaySummaryForCompany(
+                      widget.services.workspaceCompanyName!.trim(),
+                    )
+                  : l10n.fieldSummary,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(
@@ -146,10 +150,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 widget.services.config.hasSupabase) ...[
               Card(
                 child: ListTile(
-                  title: const Text('Firma bilgilerinizi tamamlayın'),
-                  subtitle: const Text(
-                    'Saha özetleri şirketinizin bağlamını doğru kullansın.',
-                  ),
+                  title: Text(l10n.completeCompanyDetails),
+                  subtitle: Text(l10n.companyContextForSummary),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/company-setup'),
                 ),
@@ -161,9 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _Metric(
               // Planlanan ziyaret yoksa açık ziyaret gösterilir; web takvimini
               // kullanmayan temsilci sürekli sıfır görmesin.
-              label: data.plannedToday > 0
-                  ? 'Planlanan ziyaret'
-                  : 'Açık ziyaret',
+              label: data.plannedToday > 0 ? l10n.plannedVisit : l10n.openVisit,
               value:
                   '${data.plannedToday > 0 ? data.plannedToday : data.openVisits}',
               icon: Icons.route,
@@ -171,14 +171,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 12),
             _Metric(
-              label: 'İnceleme bekleyen',
+              label: l10n.pendingReview,
               value: '${data.awaitingReview}',
               icon: Icons.rate_review_outlined,
               onTap: () => context.go('/visits'),
             ),
             const SizedBox(height: 12),
             _Metric(
-              label: 'Açık takip',
+              label: l10n.openFollowUp,
               value: '${data.openTasks}',
               icon: Icons.task_alt,
               onTap: () => context.go('/tasks'),
@@ -191,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hızlı işlemler',
+                      l10n.quickActions,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -203,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         ActionChip(
                           avatar: const Icon(Icons.mic, size: 18),
-                          label: const Text('Ziyaret notu'),
+                          label: Text(l10n.visitNote),
                           onPressed: () => context.go('/visits'),
                         ),
                         ActionChip(
@@ -211,12 +211,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             Icons.camera_alt_outlined,
                             size: 18,
                           ),
-                          label: const Text('Kartvizit tara'),
+                          label: Text(l10n.scanBusinessCard),
                           onPressed: () => context.go('/customers'),
                         ),
                         ActionChip(
                           avatar: const Icon(Icons.sync, size: 18),
-                          label: const Text('Eşitleme'),
+                          label: Text(l10n.sync),
                           onPressed: () => context.push('/offline'),
                         ),
                       ],
@@ -230,9 +230,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.memory),
-                  title: const Text('Sıradaki ziyaret'),
+                  title: Text(l10n.nextVisit),
                   subtitle: Text(
-                    '${nextCompany?['name'] ?? 'Müşteri'} · Brifingi görüntüle',
+                    '${nextCompany?['name'] ?? l10n.workspace} · ${l10n.viewBriefing}',
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/briefings/$nextCompanyId'),
@@ -242,10 +242,8 @@ class _HomeScreenState extends State<HomeScreen> {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.person_add_alt_1_outlined),
-                  title: const Text('İlk müşterinizi ekleyin'),
-                  subtitle: const Text(
-                    'Müşteri kaydından sonra ziyaret ve takip oluşturabilirsiniz.',
-                  ),
+                  title: Text(l10n.firstCustomer),
+                  subtitle: Text(l10n.addCustomerNextSteps),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.go('/customers'),
                 ),

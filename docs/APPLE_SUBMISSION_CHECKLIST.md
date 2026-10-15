@@ -1,5 +1,18 @@
 # App Store Connect gönderim çalışma listesi
 
+> **2 Ekim 2026 güncellemesi:** Aşağıdaki ilk gönderim talimatları tarihsel kayıttır;
+> build 12, tamamen ücretsiz kullanım ve IAP bulunmadığı yönündeki ifadeler güncel
+> gönderime uygulanmaz. Güncel sürüm **1.0.1 (60)**, aylık yerel App Store
+> aboneliği `app.kartvizyon.mobile.premium.monthly` ile gönderilir.
+>
+> Abonelikli gönderimde App Description içinde işlevsel EULA bağlantısı zorunlu
+> olarak kontrol edilir: `https://www.apple.com/legal/internet-services/itunes/dev/stdeula/`.
+> Gizlilik bağlantısı: `https://kartvizyon.app/privacy`. Uygulama içindeki
+> kullanım koşulları bağlantısı bu mağaza metaverisi kontrolünün yerine geçmez.
+> Açıklama aylık dönemi, hakları ve yenilemeyi kapatma yolunu belirtir; fiyat
+> yerelleştirilmiş App Store ürününden gelir. Sürüm, abonelik ve abonelik grubu
+> birlikte incelemeye eklenir. Güncel metin: `docs/STORE_LISTING_TR.md`.
+
 Bu belge konsola girilecek her alanı kopyala-yapıştır sırasıyla toplar.
 Uygulama kaydı zaten mevcuttur: **Apple ID 6797552440**, SKU `KARTVIZYON-IOS-001`,
 bundle `app.kartvizyon.mobile`. TestFlight'ta build 5, 7, 9, 11 ve 12 yüklüdür.

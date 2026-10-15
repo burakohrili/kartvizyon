@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,7 @@ import 'package:kartvizyon_mobile/data/local/app_database.dart';
 import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/visits/debrief_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 
 class _SessionStore extends SecureSessionStore {
   const _SessionStore(this.token);
@@ -77,7 +80,14 @@ void main() {
         ),
       ],
     );
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpWidget(
+      MaterialApp.router(
+        locale: const Locale('tr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+      ),
+    );
     await tester.pumpAndSettle();
     return router;
   }
@@ -116,6 +126,11 @@ void main() {
     await tester.tap(find.text('Güvenli kuyruğa ekle ve gönder'));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.textContaining('Eşitleme merkezinden'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.textContaining('Eşitleme merkezinden'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Ziyaretlere dön'),
@@ -131,5 +146,30 @@ void main() {
     );
     expect(button.onPressed, isNull);
     expect(await database.pendingForOwner(services.ownerId), hasLength(1));
+  });
+
+  testWidgets('English seçimi çevrimdışı taslakta korunur', (tester) async {
+    final services = servicesWith(null);
+    await pumpDebrief(tester, services);
+
+    await tester.tap(find.text('Türkçe'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('İngilizce').last);
+    await tester.pumpAndSettle();
+    await writeNote(tester);
+    await tester.scrollUntilVisible(
+      find.text('Güvenli kuyruğa ekle ve gönder'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Güvenli kuyruğa ekle ve gönder'));
+    await tester.pumpAndSettle();
+
+    final queued = await database.pendingForOwner(services.ownerId);
+    expect(queued, hasLength(1));
+    expect(
+      jsonDecode(queued.single.payloadJson),
+      containsPair('language', 'en'),
+    );
   });
 }

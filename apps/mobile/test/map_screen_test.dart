@@ -11,6 +11,7 @@ import 'package:kartvizyon_mobile/data/local/app_database.dart';
 import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/map/map_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 class _EmptySessionStore extends SecureSessionStore {
@@ -57,6 +58,13 @@ class _DeniedGeolocator extends _ReadyGeolocator {
       LocationPermission.deniedForever;
 }
 
+Widget _testApp(Widget home) => MaterialApp(
+  locale: const Locale('tr'),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: home,
+);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -67,6 +75,12 @@ void main() {
     expect(nearbyVisitLabel({}), 'Henüz ziyaret edilmedi');
     expect(nearbyTaskLabel({}), 'Geciken görev yok');
     expect(nearbyTaskLabel({'overdueTaskCount': 2}), '2 geciken görev');
+    expect(formatNearbyDistance(1.4, locale: 'en'), '1.4 km');
+    expect(nearbyVisitLabel({}, locale: 'en'), 'Not visited yet');
+    expect(
+      nearbyTaskLabel({'overdueTaskCount': 2}, locale: 'en'),
+      '2 overdue tasks',
+    );
   });
 
   testWidgets('konum izni reddi müşteri arama alternatifini gösterir', (
@@ -81,7 +95,7 @@ void main() {
     );
     final services = MobileServices.create(config);
     addTearDown(services.dispose);
-    await tester.pumpWidget(MaterialApp(home: MapScreen(services: services)));
+    await tester.pumpWidget(_testApp(MapScreen(services: services)));
     await tester.tap(find.text('Yakınımdakileri bul'));
     await tester.pumpAndSettle();
     expect(
@@ -132,7 +146,7 @@ void main() {
         client: client,
       ),
     );
-    await tester.pumpWidget(MaterialApp(home: MapScreen(services: services)));
+    await tester.pumpWidget(_testApp(MapScreen(services: services)));
     await tester.tap(find.text('Yakınımdakileri bul'));
     await tester.pumpAndSettle();
     expect(find.text('Bu bölgede kayıtlı müşteri bulunamadı.'), findsOneWidget);
@@ -203,8 +217,8 @@ void main() {
       ),
     );
     await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
+      _testApp(
+        MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.linear(2)),
           child: MapScreen(services: services),
         ),
@@ -258,7 +272,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(MaterialApp(home: MapScreen(services: services)));
+    await tester.pumpWidget(_testApp(MapScreen(services: services)));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Yakınımdakileri bul'));
@@ -267,6 +281,9 @@ void main() {
     // Konum alındı; hata sunucudan geldi. Tek `catch (_)` varken kullanıcı
     // "Konum alınamadı" görüp izinlerle uğraşıyordu.
     expect(find.textContaining('Konum alınamadı'), findsNothing);
-    expect(find.text('Oturum gerekli.'), findsOneWidget);
+    expect(
+      find.text('Yakındaki müşteriler getirilemedi. Tekrar deneyin.'),
+      findsOneWidget,
+    );
   });
 }

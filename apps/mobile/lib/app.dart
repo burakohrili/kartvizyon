@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/mobile_services.dart';
+import 'core/ui_locale_preference.dart';
 import 'core/theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/customers/customer_detail_screen.dart';
@@ -28,8 +29,9 @@ import 'features/visits/visit_planning_screen.dart';
 import 'l10n/app_localizations.dart';
 
 class KartVizyonApp extends StatefulWidget {
-  const KartVizyonApp({super.key, this.services});
+  const KartVizyonApp({super.key, this.services, this.localePreferenceStore});
   final MobileServices? services;
+  final UiLocalePreferenceStore? localePreferenceStore;
 
   @override
   State<KartVizyonApp> createState() => _KartVizyonAppState();
@@ -41,11 +43,15 @@ class _KartVizyonAppState extends State<KartVizyonApp>
   late final bool ownsServices;
   late final GoRouter router;
   late bool authenticated;
+  late final UiLocalePreferenceStore localePreferenceStore;
+  Locale appLocale = const Locale('tr', 'TR');
 
   @override
   void initState() {
     super.initState();
     ownsServices = widget.services == null;
+    localePreferenceStore =
+        widget.localePreferenceStore ?? SecureUiLocalePreferenceStore();
     services =
         widget.services ??
         MobileServices.create(
@@ -56,6 +62,7 @@ class _KartVizyonAppState extends State<KartVizyonApp>
             sentryDsn: '',
           ),
         );
+    unawaited(_restoreLocale());
     authenticated =
         !services.config.hasSupabase ||
         Supabase.instance.client.auth.currentSession != null;
@@ -143,6 +150,8 @@ class _KartVizyonAppState extends State<KartVizyonApp>
                   path: '/more',
                   builder: (_, __) => MoreScreen(
                     services: services,
+                    locale: appLocale,
+                    onLocaleChanged: _setLocale,
                     onSignedOut: () {
                       authenticated = false;
                       router.go('/login');
@@ -261,6 +270,35 @@ class _KartVizyonAppState extends State<KartVizyonApp>
     }
   }
 
+  Future<void> _restoreLocale() async {
+    try {
+      final languageCode = await localePreferenceStore.read();
+      if (!mounted || languageCode == null) return;
+      if (languageCode != 'en' && languageCode != 'tr') return;
+      setState(() {
+        appLocale = Locale(languageCode, languageCode == 'en' ? 'US' : 'TR');
+      });
+      services.reminders.setLocale(languageCode);
+      if (authenticated) unawaited(services.reminders.sync());
+    } catch (_) {
+      // Tercih okunamazsa Türkçe varsayılanla aç; oturum veya veri akışı etkilenmez.
+    }
+  }
+
+  Future<void> _setLocale(Locale locale) async {
+    if (locale.languageCode != 'en' && locale.languageCode != 'tr') return;
+    await localePreferenceStore.write(locale.languageCode);
+    if (!mounted) return;
+    services.reminders.setLocale(locale.languageCode);
+    if (authenticated) unawaited(services.reminders.sync());
+    setState(() {
+      appLocale = Locale(
+        locale.languageCode,
+        locale.languageCode == 'en' ? 'US' : 'TR',
+      );
+    });
+  }
+
   void _onReminderTap() {
     final route = services.reminders.pendingRoute.value;
     if (route == null || !authenticated) return;
@@ -312,7 +350,7 @@ class _KartVizyonAppState extends State<KartVizyonApp>
   Widget build(BuildContext context) => MaterialApp.router(
     title: 'KartVizyon AI',
     debugShowCheckedModeBanner: false,
-    locale: const Locale('tr', 'TR'),
+    locale: appLocale,
     supportedLocales: AppLocalizations.supportedLocales,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     theme: KartVizyonTheme.light,
@@ -376,6 +414,7 @@ class _MobileShellState extends State<_MobileShell> {
               valueListenable: widget.services.entitlement,
               builder: (context, data, _) {
                 if (data == null) return const SizedBox.shrink();
+                final l10n = AppLocalizations.of(context)!;
                 final trial = data['trialActive'] == true;
                 final readOnly = !widget.services.canWrite;
                 if (!trial && !readOnly) return const SizedBox.shrink();
@@ -390,13 +429,15 @@ class _MobileShellState extends State<_MobileShell> {
                 return MaterialBanner(
                   content: Text(
                     readOnly
-                        ? 'Yalnız görüntüleme. Yeni işlemler için abonelik başlatın.'
-                        : 'Ücretsiz deneme: ${days <= 1 ? "son gün" : "$days gün kaldı"}. Otomatik ücret alınmaz.',
+                        ? l10n.readOnlyBanner
+                        : days <= 1
+                        ? l10n.trialBannerLastDay
+                        : l10n.trialBannerDays(days),
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => context.push('/premium'),
-                      child: const Text('Abonelik'),
+                      child: Text(l10n.subscription),
                     ),
                   ],
                 );
@@ -423,64 +464,71 @@ class _FieldNavigation extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    top: false,
-    minimum: const EdgeInsets.fromLTRB(12, 4, 12, 10),
-    child: Material(
-      color: KartVizyonTheme.navy,
-      elevation: 12,
-      shadowColor: KartVizyonTheme.navy.withValues(alpha: 0.22),
-      borderRadius: BorderRadius.circular(28),
-      clipBehavior: Clip.antiAlias,
-      // Alt çubuk sabit yükseklikli bir kapsül. Sistem yazı tipi ölçeği 2x
-      // yapıldığında etiketler bu yüksekliği taşırıyordu; Material'ın önerdiği
-      // yaklaşım kompakt navigasyonda ölçeği sınırlamaktır. Uygulamanın geri
-      // kalanı tam erişilebilirlik ölçeğini uygulamaya devam eder.
-      child: MediaQuery.withClampedTextScaling(
-        maxScaleFactor: 1.3,
-        child: SizedBox(
-          height: 72,
-          child: Row(
-            children: [
-              _NavItem(
-                index: 0,
-                selected: selectedIndex == 0,
-                icon: Icons.today_outlined,
-                selectedIcon: Icons.today,
-                label: 'Bugün',
-                onTap: onSelected,
-              ),
-              _NavItem(
-                index: 1,
-                selected: selectedIndex == 1,
-                icon: Icons.apartment_outlined,
-                selectedIcon: Icons.apartment,
-                label: 'Müşteriler',
-                onTap: onSelected,
-              ),
-              _VisitAction(onTap: () => onSelected(2)),
-              _NavItem(
-                index: 3,
-                selected: selectedIndex == 3,
-                icon: Icons.task_alt_outlined,
-                selectedIcon: Icons.task_alt,
-                label: 'Görevler',
-                onTap: onSelected,
-              ),
-              _NavItem(
-                index: 4,
-                selected: selectedIndex == 4,
-                icon: Icons.grid_view_outlined,
-                selectedIcon: Icons.grid_view_rounded,
-                label: 'Menü',
-                onTap: onSelected,
-              ),
-            ],
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+      child: Material(
+        color: KartVizyonTheme.navy,
+        elevation: 12,
+        shadowColor: KartVizyonTheme.navy.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(28),
+        clipBehavior: Clip.antiAlias,
+        // Alt çubuk sabit yükseklikli bir kapsül. Sistem yazı tipi ölçeği 2x
+        // yapıldığında etiketler bu yüksekliği taşırıyordu; Material'ın önerdiği
+        // yaklaşım kompakt navigasyonda ölçeği sınırlamaktır. Uygulamanın geri
+        // kalanı tam erişilebilirlik ölçeğini uygulamaya devam eder.
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: SizedBox(
+            height: 72,
+            child: Row(
+              children: [
+                _NavItem(
+                  index: 0,
+                  selected: selectedIndex == 0,
+                  icon: Icons.today_outlined,
+                  selectedIcon: Icons.today,
+                  label: l10n.todayTab,
+                  onTap: onSelected,
+                ),
+                _NavItem(
+                  index: 1,
+                  selected: selectedIndex == 1,
+                  icon: Icons.apartment_outlined,
+                  selectedIcon: Icons.apartment,
+                  label: l10n.customersTab,
+                  onTap: onSelected,
+                ),
+                _VisitAction(
+                  label: l10n.visitTab,
+                  semanticLabel: l10n.newVisit,
+                  onTap: () => onSelected(2),
+                ),
+                _NavItem(
+                  index: 3,
+                  selected: selectedIndex == 3,
+                  icon: Icons.task_alt_outlined,
+                  selectedIcon: Icons.task_alt,
+                  label: l10n.tasksTab,
+                  onTap: onSelected,
+                ),
+                _NavItem(
+                  index: 4,
+                  selected: selectedIndex == 4,
+                  icon: Icons.grid_view_outlined,
+                  selectedIcon: Icons.grid_view_rounded,
+                  label: l10n.menuTab,
+                  onTap: onSelected,
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _NavItem extends StatelessWidget {
@@ -534,14 +582,20 @@ class _NavItem extends StatelessWidget {
 }
 
 class _VisitAction extends StatelessWidget {
-  const _VisitAction({required this.onTap});
+  const _VisitAction({
+    required this.label,
+    required this.semanticLabel,
+    required this.onTap,
+  });
+  final String label;
+  final String semanticLabel;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Expanded(
     child: Semantics(
       button: true,
-      label: 'Yeni ziyaret',
+      label: semanticLabel,
       child: InkWell(
         onTap: onTap,
         child: Column(
@@ -561,8 +615,8 @@ class _VisitAction extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            const Text(
-              'Ziyaret',
+            Text(
+              label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(

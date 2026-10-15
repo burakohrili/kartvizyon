@@ -41,6 +41,10 @@ function chain(table: string) {
     insertedRows.set(table, [value]);
     return builder;
   };
+  builder.upsert = (value: unknown) => {
+    insertedRows.set(table, [value]);
+    return builder;
+  };
   builder.single = settle;
   builder.maybeSingle = settle;
   builder.then = (resolve: (value: QueryResult) => unknown) =>
@@ -116,9 +120,10 @@ function request(body: FormData) {
 
 const params = Promise.resolve({ id: visitRow.id });
 
-function formWith(audio: File | null, transcript = "") {
+function formWith(audio: File | null, transcript = "", language = "tr") {
   const form = new FormData();
   form.set("clientMutationId", "11111111-1111-4111-8111-111111111111");
+  form.set("language", language);
   if (transcript) form.set("transcript", transcript);
   if (audio) form.set("audio", audio);
   return form;
@@ -199,7 +204,7 @@ describe("ziyaret sonrası not ucu", () => {
       { data: { id: "asset-1" }, error: null },
     ]);
     const audio = new File([new Uint8Array(32)], "note.m4a", {
-      type: "audio/mp4",
+      type: "audio/mp4; codecs=mp4a.40.2",
     });
 
     const response = await POST(request(formWith(audio)), { params });
@@ -217,5 +222,23 @@ describe("ziyaret sonrası not ucu", () => {
         unit: "second",
       }),
     );
+  });
+
+  it("İngilizce seçimini transcript metadata'sında saklar", async () => {
+    results.set("debrief_submissions", [
+      { data: null, error: null },
+      { data: { id: "sub-en" }, error: null },
+    ]);
+
+    const response = await POST(
+      request(formWith(null, "The customer requested a revised offer.", "en")),
+      { params },
+    );
+
+    expect(response.status).toBe(200);
+    expect(insertedRows.get("visit_transcripts")?.[0]).toMatchObject({
+      language: "en",
+      transcript: "The customer requested a revised offer.",
+    });
   });
 });

@@ -1,7 +1,17 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kartvizyon_mobile/core/billing_reconciliation.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 
 void main() {
+  late AppLocalizations tr;
+  late AppLocalizations en;
+
+  setUpAll(() async {
+    tr = await AppLocalizations.delegate.load(const Locale('tr'));
+    en = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
   test(
     'sunucu bilinmiyor, salt okunur veya deneme ise premium doğrulanmaz',
     () {
@@ -28,12 +38,14 @@ void main() {
     bool sandbox = false,
     bool restoring = true,
     String url = 'https://sandbox.example.test',
+    AppLocalizations? locale,
   }) => billingReconciliationMessage(
     restoring: restoring,
     storeActive: store,
     serverConfirmed: server,
     sandboxPurchase: sandbox,
     apiBaseUrl: url,
+    l10n: locale ?? tr,
   );
 
   test(
@@ -67,8 +79,28 @@ void main() {
     () {
       expect(
         result(store: false, server: true),
-        contains('aktif satın alma bulunamadı'),
+        tr.billingRestoreNoActivePurchase,
       );
     },
   );
+
+  test('aynı mağaza/sunucu durumları İngilizceye çevrilir', () {
+    expect(
+      result(store: false, server: true, locale: en),
+      en.billingRestoreNoActivePurchase,
+    );
+    expect(
+      result(
+        sandbox: true,
+        server: true,
+        url: 'https://kartvizyon.app',
+        locale: en,
+      ),
+      contains('Sandbox purchases do not grant live access'),
+    );
+    expect(
+      result(server: true, restoring: false, locale: en),
+      contains('Premium is active'),
+    );
+  });
 }

@@ -2,18 +2,29 @@
 
 import { useRef, useState } from "react";
 import { enqueueDebrief } from "@/lib/offline/debrief-queue";
+import type { AppLocale } from "@/lib/i18n/locale";
+import { intlLocale } from "@/lib/i18n/locale";
+import { getMessages } from "@/lib/i18n/messages";
+import {
+  selectVisitRecordingMimeType,
+  visitAudioFileName,
+} from "@/lib/visit-audio-format";
 
 type State = "idle" | "recording" | "ready" | "processing" | "queued" | "error";
 
 export function DebriefRecorder({
   visitId,
   ownerId,
+  locale,
 }: {
   visitId: string;
   ownerId: string;
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).debrief;
   const [state, setState] = useState<State>("idle");
   const [audio, setAudio] = useState<Blob | null>(null);
+  const [language, setLanguage] = useState<"en" | "tr">(locale);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState("");
   const recorder = useRef<MediaRecorder | null>(null);
@@ -27,6 +38,7 @@ export function DebriefRecorder({
       ownerId,
       visitId,
       transcript,
+      language,
       audio,
       createdAt: new Date().toISOString(),
       attempts: 0,
@@ -34,19 +46,32 @@ export function DebriefRecorder({
     setState("queued");
   }
 
+  async function queueForSync(transcript: string) {
+    try {
+      await saveForSync(transcript);
+    } catch {
+      setError(m.offlineSaveFailed);
+      setState(audio ? "ready" : "error");
+    }
+  }
+
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const chunks: Blob[] = [];
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "audio/webm",
-      });
+      const mimeType = selectVisitRecordingMimeType((type) =>
+        MediaRecorder.isTypeSupported(type),
+      );
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       recorder.current = mediaRecorder;
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size) chunks.push(event.data);
       };
       mediaRecorder.onstop = () => {
-        setAudio(new Blob(chunks, { type: "audio/webm" }));
+        const recordedType = mediaRecorder.mimeType || mimeType || "audio/webm";
+        setAudio(new Blob(chunks, { type: recordedType }));
         stream.getTracks().forEach((track) => track.stop());
         setState("ready");
       };
@@ -60,7 +85,7 @@ export function DebriefRecorder({
         });
       }, 1000);
     } catch {
-      setError("Mikrofona erişilemedi. Metin alanını kullanabilirsin.");
+      setError(m.microphoneError);
       setState("error");
     }
   }
@@ -77,15 +102,16 @@ export function DebriefRecorder({
     const data = new FormData(event.currentTarget);
     const transcript = String(data.get("transcript") ?? "").trim();
     data.set("clientMutationId", mutationId.current);
-    if (audio) data.set("audio", audio, "ziyaret-notu.webm");
+    data.set("language", language);
+    if (audio) data.set("audio", audio, visitAudioFileName(audio.type));
     if (!audio && transcript.length < 10) {
-      setError("En az 10 karakterlik bir not yazın veya ses kaydedin.");
+      setError(m.minimumNote);
       setState("error");
       return;
     }
 
     if (!navigator.onLine) {
-      await saveForSync(transcript);
+      await queueForSync(transcript);
       return;
     }
 
@@ -94,23 +120,29 @@ export function DebriefRecorder({
         method: "POST",
         body: data,
       });
-      const result = (await response.json()) as {
-        error?: string;
-        reviewUrl?: string;
-      };
+      const result = (await response.json()) as { reviewUrl?: string };
       if (!response.ok || !result.reviewUrl) {
-        throw new Error(result.error ?? "AI özeti hazırlanamadı.");
+        const messages = new Map<number, string>([
+          [401, m.signInRequired],
+          [402, m.quotaExceeded],
+          [404, m.visitUnavailable],
+          [409, m.alreadyProcessing],
+          [413, m.audioTooLarge],
+          [415, m.audioUnsupported],
+          [422, m.audioInvalid],
+          [429, m.rateLimited],
+          [503, m.serviceUnavailable],
+        ]);
+        throw messages.get(response.status) ?? m.submitFailed;
       }
       window.location.assign(result.reviewUrl);
     } catch (submissionError) {
       if (!navigator.onLine || submissionError instanceof TypeError) {
-        await saveForSync(transcript);
+        await queueForSync(transcript);
         return;
       }
       setError(
-        submissionError instanceof Error
-          ? submissionError.message
-          : "İşlem tamamlanamadı.",
+        typeof submissionError === "string" ? submissionError : m.submitFailed,
       );
       setState(audio ? "ready" : "error");
     }
@@ -122,15 +154,13 @@ export function DebriefRecorder({
         className={`recorder-panel ${state === "recording" ? "active" : ""}`}
       >
         <div>
-          <strong>
-            {state === "recording" ? "Kayıt sürüyor" : "Sesli not"}
-          </strong>
+          <strong>{state === "recording" ? m.recording : m.voiceNote}</strong>
           <small>
             {state === "recording"
-              ? `${elapsed} sn / 90 sn`
+              ? `${new Intl.NumberFormat(intlLocale(locale)).format(elapsed)} ${m.seconds} / 90 ${m.seconds}`
               : audio
-                ? "Kayıt hazır"
-                : "En fazla 90 saniye"}
+                ? m.ready
+                : m.maxDuration}
           </small>
         </div>
         {state === "recording" ? (
@@ -139,7 +169,7 @@ export function DebriefRecorder({
             onClick={stopRecording}
             className="reject-button"
           >
-            Kaydı bitir
+            {m.stop}
           </button>
         ) : (
           <button
@@ -147,31 +177,42 @@ export function DebriefRecorder({
             onClick={startRecording}
             disabled={state === "processing"}
           >
-            {audio ? "Yeniden kaydet" : "Kayda başla"}
+            {audio ? m.recordAgain : m.start}
           </button>
         )}
       </div>
 
       <div className="debrief-divider">
-        <span>veya yazarak anlat</span>
+        <span>{m.orType}</span>
       </div>
       <label className="review-field">
-        Ziyaret notu
+        {m.languageLabel}
+        <select
+          name="language"
+          value={language}
+          onChange={(event) =>
+            setLanguage(event.target.value === "en" ? "en" : "tr")
+          }
+          disabled={state === "processing" || state === "queued"}
+        >
+          <option value="tr">{m.turkish}</option>
+          <option value="en">{m.english}</option>
+        </select>
+      </label>
+      <p className="privacy-note">{m.languageHint}</p>
+      <label className="review-field">
+        {m.noteLabel}
         <textarea
           name="transcript"
           rows={7}
           maxLength={20000}
-          placeholder="Kimle görüştün, ihtiyaç neydi, ne söz verdin ve sıradaki adım ne?"
+          placeholder={m.notePlaceholder}
         />
       </label>
-      <p className="privacy-note">
-        AI taslağı sen inceleyip onaylamadan yöneticilere veya kurumsal hafızaya
-        aktarılmaz.
-      </p>
+      <p className="privacy-note">{m.privacy}</p>
       {state === "queued" && (
         <p className="offline-saved" role="status">
-          ✓ Not cihazda güvenle saklandı. Bağlantı gelince otomatik
-          gönderilecek.
+          {m.queued}
         </p>
       )}
       {error && (
@@ -186,10 +227,10 @@ export function DebriefRecorder({
         }
       >
         {state === "processing"
-          ? "AI özeti hazırlanıyor…"
+          ? m.processing
           : state === "queued"
-            ? "Senkronizasyon bekleniyor"
-            : "Özeti hazırla"}
+            ? m.waitingSync
+            : m.prepare}
       </button>
     </form>
   );

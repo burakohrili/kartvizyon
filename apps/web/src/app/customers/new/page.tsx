@@ -2,14 +2,8 @@ import Link from "next/link";
 
 import { createCompany } from "./actions";
 import { DemoBanner } from "@/app/demo-banner";
-
-const errors: Record<string, string> = {
-  config: "Veritabanı bağlantısı yapılandırılmadı.",
-  workspace: "Çalışma alanı bulunamadı.",
-  validation: "Alanları kontrol edin.",
-  save: "Firma kaydedilemedi.",
-  contact: "Firma yetkilisi kaydedilemedi. Lütfen tekrar deneyin.",
-};
+import { getMessages } from "@/lib/i18n/messages";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
 
 export default async function NewCustomerPage({
   searchParams,
@@ -17,24 +11,26 @@ export default async function NewCustomerPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  const messages = getMessages(await getRequestLocale()).customerForms;
   return (
     <main className="form-page">
       <DemoBanner />
       <section className="form-card">
         <Link href="/customers" className="back-link">
-          ← Müşteriler
+          {messages.back}
         </Link>
-        <span className="eyebrow">YENİ KAYIT</span>
-        <h1>Firma ekle</h1>
-        <p>Firma ve varsa ilgili kişi bilgilerini girin.</p>
+        <span className="eyebrow">{messages.createEyebrow}</span>
+        <h1>{messages.createTitle}</h1>
+        <p>{messages.createDescription}</p>
         {error && (
           <div className="form-message error-message">
-            {errors[error] ?? "Bir hata oluştu."}
+            {messages.errors[error as keyof typeof messages.errors] ??
+              messages.errors.unknown}
           </div>
         )}
         <form action={createCompany} className="entity-form">
           <label>
-            Firma adı *
+            {messages.companyName}
             <input
               name="name"
               minLength={2}
@@ -44,72 +40,66 @@ export default async function NewCustomerPage({
             />
           </label>
           <label>
-            Kısa ad / saha adı
+            {messages.displayName}
             <input
               name="displayName"
               maxLength={80}
-              placeholder="Örn. Ohrili Makina"
+              placeholder={messages.displayNamePlaceholder}
             />
-            <small>
-              Uzun ticari unvan yerine mobil listelerde ve seçim alanlarında
-              gösterilir.
-            </small>
+            <small>{messages.displayNameHint}</small>
           </label>
           <div className="form-row">
             <label>
-              Firma telefonu
+              {messages.phone}
               <input name="phone" type="tel" maxLength={40} />
             </label>
             <label>
-              Firma e-postası
+              {messages.email}
               <input name="email" type="email" />
             </label>
           </div>
           <label>
-            Web sitesi
+            {messages.website}
             <input name="website" type="url" placeholder="https://" />
           </label>
           <label>
-            Adres
+            {messages.address}
             <textarea name="address" rows={4} maxLength={500} />
           </label>
 
           <div className="form-section">
-            <h2>Firma yetkilisi</h2>
-            <p>
-              İlgili kişi bilgileri isteğe bağlıdır. Bir alan doldurursanız ad
-              alanı zorunludur.
-            </p>
+            <h2>{messages.contactSection}</h2>
+            <p>{messages.contactHint}</p>
             <div className="form-row">
               <label>
-                Ad
+                {messages.firstName}
                 <input name="contactFirstName" maxLength={100} />
               </label>
               <label>
-                Soyad
+                {messages.lastName}
                 <input name="contactLastName" maxLength={100} />
               </label>
             </div>
             <label>
-              Unvan
+              {messages.jobTitle}
               <input name="contactTitle" maxLength={120} />
             </label>
             <div className="form-row">
               <label>
-                Yetkili telefonu
+                {messages.contactPhone}
                 <input name="contactPhone" type="tel" maxLength={40} />
               </label>
               <label>
-                Yetkili e-postası
+                {messages.contactEmail}
                 <input name="contactEmail" type="email" />
               </label>
             </div>
           </div>
 
           <div className="form-actions">
-            <Link href="/customers">Vazgeç</Link>
+            <Link href="/customers">{messages.cancel}</Link>
             <button className="primary" type="submit">
-              Firma ve yetkiliyi kaydet
+              {messages.saveCompany}
             </button>
           </div>
         </form>

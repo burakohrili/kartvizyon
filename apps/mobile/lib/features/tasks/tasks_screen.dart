@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
+import '../../l10n/app_localizations.dart';
 import '../customers/customer_identity.dart';
 import '../customers/customer_picker.dart';
 import 'task_list.dart';
@@ -62,6 +63,7 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   Future<void> toggle(Map<String, dynamic> item, bool completed) async {
+    final l10n = AppLocalizations.of(context)!;
     // Tamamlamak tek dokunuşla olur; geri almak onay ister. Yanlışlıkla
     // kaldırılan bir tik, tamamlandığı bilgisini ve `completed_at` damgasını
     // sunucuda da siliyor.
@@ -69,19 +71,20 @@ class _TasksScreenState extends State<TasksScreen> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Görev yeniden açılsın mı?'),
+          title: Text(l10n.reopenTaskQuestion),
           content: Text(
-            '"${item['title'] ?? 'Görev'}" tamamlandı olarak işaretli. '
-            'Geri alırsanız tamamlanma zamanı silinir.',
+            l10n.taskCompletedWarning(
+              item['title']?.toString() ?? l10n.taskFallback,
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Vazgeç'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Yeniden aç'),
+              child: Text(l10n.reopen),
             ),
           ],
         ),
@@ -97,17 +100,18 @@ class _TasksScreenState extends State<TasksScreen> {
         'status': item['status'],
       });
       widget.services.invalidateScreens();
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       setState(() => item['status'] = previous);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ).showSnackBar(SnackBar(content: Text(l10n.taskUpdateFailed)));
     }
   }
 
   Future<void> createTask() async {
     if (creatingTask) return;
+    final l10n = AppLocalizations.of(context)!;
     setState(() => creatingTask = true);
     final title = TextEditingController();
     CustomerChoice? customer;
@@ -117,7 +121,8 @@ class _TasksScreenState extends State<TasksScreen> {
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text('Yeni görev'),
+            scrollable: true,
+            title: Text(l10n.newTask),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -125,13 +130,14 @@ class _TasksScreenState extends State<TasksScreen> {
                   TextField(
                     controller: title,
                     autofocus: true,
-                    decoration: const InputDecoration(labelText: 'Görev *'),
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(labelText: l10n.taskRequired),
                   ),
                   const SizedBox(height: 12),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.apartment_outlined),
-                    title: Text(customer?.name ?? 'Müşteri seç (isteğe bağlı)'),
+                    title: Text(customer?.name ?? l10n.selectCustomerOptional),
                     subtitle: customer?.legalName == null
                         ? null
                         : Text(
@@ -142,7 +148,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     trailing: customer == null
                         ? const Icon(Icons.search)
                         : IconButton(
-                            tooltip: 'Müşteriyi kaldır',
+                            tooltip: l10n.removeCustomer,
                             onPressed: () =>
                                 setDialogState(() => customer = null),
                             icon: const Icon(Icons.clear),
@@ -162,16 +168,19 @@ class _TasksScreenState extends State<TasksScreen> {
                     leading: const Icon(Icons.event_outlined),
                     title: Text(
                       dueAt == null
-                          ? 'Bitiş tarihi (isteğe bağlı)'
-                          : '${dueAt!.day.toString().padLeft(2, '0')}.'
-                                '${dueAt!.month.toString().padLeft(2, '0')}.'
-                                '${dueAt!.year}',
+                          ? l10n.dueDateOptional
+                          : taskDateLabel(
+                              dueAt,
+                              locale: Localizations.localeOf(
+                                context,
+                              ).languageCode,
+                            ),
                     ),
                     trailing: dueAt == null
                         ? null
                         : IconButton(
                             icon: const Icon(Icons.clear),
-                            tooltip: 'Tarihi kaldır',
+                            tooltip: l10n.removeDate,
                             onPressed: () => setDialogState(() => dueAt = null),
                           ),
                     onTap: () async {
@@ -191,12 +200,12 @@ class _TasksScreenState extends State<TasksScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Vazgeç'),
+                child: Text(l10n.cancel),
               ),
               FilledButton(
                 onPressed: () =>
                     Navigator.pop(dialogContext, title.text.trim().isNotEmpty),
-                child: const Text('Kaydet'),
+                child: Text(l10n.save),
               ),
             ],
           ),
@@ -225,12 +234,12 @@ class _TasksScreenState extends State<TasksScreen> {
       widget.services.invalidateScreens();
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Görev kaydedildi.')));
-    } catch (error) {
+      ).showSnackBar(SnackBar(content: Text(l10n.taskSaved)));
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ).showSnackBar(SnackBar(content: Text(l10n.taskSaveFailed)));
     } finally {
       title.dispose();
       if (mounted) setState(() => creatingTask = false);
@@ -238,103 +247,111 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Görevler')),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: creatingTask ? null : createTask,
-      icon: creatingTask
-          ? const SizedBox.square(
-              dimension: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.add_task),
-      label: Text(creatingTask ? 'Açılıyor…' : 'Yeni görev'),
-    ),
-    body: FutureBuilder<List<Map<String, dynamic>>>(
-      future: tasks,
-      builder: (_, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done &&
-            !snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError && !snapshot.hasData) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(snapshot.error.toString(), textAlign: TextAlign.center),
-                  TextButton(
-                    onPressed: () => setState(() => tasks = load()),
-                    child: const Text('Tekrar dene'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-        final items = snapshot.data ?? [];
-        if (items.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(28),
-              child: Text(
-                'Henüz görev yok. Yeni görev düğmesiyle ilk takibinizi oluşturun.',
-                textAlign: TextAlign.center,
-              ),
-            ),
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: () async {
-            final next = load();
-            setState(() => tasks = next);
-            await settleRefresh(next);
-          },
-          child: Builder(
-            builder: (context) {
-              final split = splitTasks(items);
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (split.open.isNotEmpty) ...[
-                    _SectionTitle('Açık görevler (${split.open.length})'),
-                    ...split.open.map(_tile),
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.tasksTab)),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: creatingTask ? null : createTask,
+        icon: creatingTask
+            ? const SizedBox.square(
+                dimension: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.add_task),
+        label: Text(creatingTask ? l10n.opening : l10n.newTask),
+      ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: tasks,
+        builder: (_, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done &&
+              !snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError && !snapshot.hasData) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l10n.taskLoadFailed, textAlign: TextAlign.center),
+                    TextButton(
+                      onPressed: () => setState(() => tasks = load()),
+                      child: Text(l10n.tryAgain),
+                    ),
                   ],
-                  if (split.completed.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _SectionTitle('Tamamlananlar (${split.completed.length})'),
-                    ...split.completed.map(_tile),
-                  ],
-                ],
-              );
+                ),
+              ),
+            );
+          }
+          final items = snapshot.data ?? [];
+          if (items.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Text(l10n.noTasksPrompt, textAlign: TextAlign.center),
+              ),
+            );
+          }
+          return RefreshIndicator(
+            onRefresh: () async {
+              final next = load();
+              setState(() => tasks = next);
+              await settleRefresh(next);
             },
-          ),
-        );
-      },
-    ),
-  );
+            child: Builder(
+              builder: (context) {
+                final split = splitTasks(items);
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    if (split.open.isNotEmpty) ...[
+                      _SectionTitle(l10n.openTasksCount(split.open.length)),
+                      ...split.open.map(_tile),
+                    ],
+                    if (split.completed.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _SectionTitle(
+                        l10n.completedTasksCount(split.completed.length),
+                      ),
+                      ...split.completed.map(_tile),
+                    ],
+                  ],
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget _tile(Map<String, dynamic> item) {
+    final l10n = AppLocalizations.of(context)!;
     final company = item['company'] as Map?;
     final completed = item['status']?.toString() == 'completed';
-    final due = taskDueLabel(item);
+    final due = taskDueLabel(
+      item,
+      locale: Localizations.localeOf(context).languageCode,
+    );
     return Card(
       child: CheckboxListTile(
         value: completed,
         onChanged: (value) => toggle(item, value ?? false),
         title: Text(
-          item['title']?.toString() ?? 'Görev',
+          item['title']?.toString() ?? l10n.taskFallback,
           style: completed
               ? const TextStyle(decoration: TextDecoration.lineThrough)
               : null,
         ),
         subtitle: Text(
           [
-            company == null ? 'Genel görev' : customerDisplayName(company),
-            if (due.isNotEmpty) 'Son tarih $due',
+            company == null
+                ? l10n.generalTask
+                : customerDisplayName(company, fallback: l10n.companyFallback),
+            if (due.isNotEmpty) l10n.dueDateLabel(due),
           ].join(' · '),
         ),
       ),

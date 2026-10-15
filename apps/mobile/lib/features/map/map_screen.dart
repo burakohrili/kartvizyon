@@ -3,26 +3,35 @@ import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 
-String formatNearbyDistance(num? distanceKm) {
+String formatNearbyDistance(num? distanceKm, {String locale = 'tr'}) {
   if (distanceKm == null || !distanceKm.toDouble().isFinite) {
-    return 'Mesafe bilinmiyor';
+    return locale == 'en' ? 'Distance unavailable' : 'Mesafe bilinmiyor';
   }
   final distance = distanceKm.toDouble();
   if (distance < 1) return '${(distance * 1000).round()} m';
-  return '${distance.toStringAsFixed(1).replaceAll('.', ',')} km';
+  final formatted = distance.toStringAsFixed(1);
+  return '${locale == 'en' ? formatted : formatted.replaceAll('.', ',')} km';
 }
 
-String nearbyVisitLabel(Map<String, dynamic> candidate) {
+String nearbyVisitLabel(
+  Map<String, dynamic> candidate, {
+  String locale = 'tr',
+}) {
   final days = candidate['daysSinceVisit'] as int?;
   return days == null
-      ? 'Henüz ziyaret edilmedi'
+      ? (locale == 'en' ? 'Not visited yet' : 'Henüz ziyaret edilmedi')
+      : locale == 'en'
+      ? 'Last visit: $days days ago'
       : 'Son ziyaret: $days gün önce';
 }
 
-String nearbyTaskLabel(Map<String, dynamic> candidate) {
+String nearbyTaskLabel(Map<String, dynamic> candidate, {String locale = 'tr'}) {
   final count = (candidate['overdueTaskCount'] as num?)?.toInt() ?? 0;
-  return count > 0 ? '$count geciken görev' : 'Geciken görev yok';
+  return count > 0
+      ? (locale == 'en' ? '$count overdue tasks' : '$count geciken görev')
+      : (locale == 'en' ? 'No overdue tasks' : 'Geciken görev yok');
 }
 
 class MapScreen extends StatefulWidget {
@@ -49,10 +58,9 @@ class _MapScreenState extends State<MapScreen> {
   /// içindeydi: sunucudan gelen 401 ya da 400 de "Konum alınamadı" olarak
   /// görünüyordu ve kullanıcı konum izniyle uğraşırken sorun bambaşka yerdeydi.
   Future<Position?> _currentPosition() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!await Geolocator.isLocationServiceEnabled()) {
-      _updateState(
-        () => message = 'Konum servisi kapalı. Cihaz ayarlarından açın.',
-      );
+      _updateState(() => message = l10n.locationServiceOff);
       return null;
     }
     if (!mounted) return null;
@@ -65,11 +73,7 @@ class _MapScreenState extends State<MapScreen> {
     }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      _updateState(
-        () => message =
-            'Yakındaki müşterileri göstermek için konum izni gerekiyor. '
-            'Müşterilerinizi konum kullanmadan da arayabilirsiniz.',
-      );
+      _updateState(() => message = l10n.nearbyLocationPermission);
       return null;
     }
 
@@ -85,16 +89,13 @@ class _MapScreenState extends State<MapScreen> {
     } catch (_) {
       final last = await Geolocator.getLastKnownPosition();
       if (last != null) return last;
-      _updateState(
-        () => message =
-            'Konum alınamadı. Açık alanda tekrar deneyin ya da müşteri '
-            'kartından "konumu buraya sabitle" seçeneğini kullanın.',
-      );
+      _updateState(() => message = l10n.locationUnavailable);
       return null;
     }
   }
 
   Future<void> locate() async {
+    final l10n = AppLocalizations.of(context)!;
     _updateState(() {
       busy = true;
       message = null;
@@ -105,8 +106,7 @@ class _MapScreenState extends State<MapScreen> {
 
       if (!widget.services.config.hasSupabase) {
         _updateState(() {
-          message =
-              'Sunucu bağlantısı yapılandırılmadığı için müşteri aranamadı.';
+          message = l10n.serverNotConfigured;
           candidates = const [];
         });
         return;
@@ -133,21 +133,13 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                 );
           searched = true;
-          message =
-              'Konum yalnızca aday hesaplamak için kullanıldı; sunucuda saklanmadı.';
+          message = l10n.locationNotStored;
         });
-      } catch (error) {
-        _updateState(
-          () => message = error is MobileApiException
-              ? error.message
-              : 'Yakındaki müşteriler getirilemedi. Tekrar deneyin.',
-        );
+      } catch (_) {
+        _updateState(() => message = l10n.nearbyFetchFailed);
       }
     } catch (_) {
-      _updateState(
-        () => message =
-            'Konum alınamadı. Konum ayarlarınızı kontrol edip tekrar deneyin.',
-      );
+      _updateState(() => message = l10n.locationSettingsRetry);
     } finally {
       _updateState(() => busy = false);
     }
@@ -160,89 +152,98 @@ class _MapScreenState extends State<MapScreen> {
     mode: LaunchMode.externalApplication,
   );
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Yakındaki müşteriler')),
-    body: ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Sürekli GPS kullanılmaz. Konum yalnızca siz istediğinizde yakın ve gecikmiş müşterileri hesaplamak için alınır.',
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: busy ? null : locate,
-                  icon: const Icon(Icons.my_location),
-                  label: Text(busy ? 'Hesaplanıyor…' : 'Yakınımdakileri bul'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (message != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(message!),
-          ),
-        if (searched && candidates.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Text('Bu bölgede kayıtlı müşteri bulunamadı.'),
-          ),
-        ...candidates.map((item) {
-          return Card(
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.nearbyCustomersTitle)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    item['name']?.toString() ?? 'Firma',
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(formatNearbyDistance(item['distanceKm'] as num?)),
-                  if ((item['address']?.toString() ?? '').isNotEmpty)
-                    Text(
-                      item['address'].toString(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                  Text(l10n.mapLocationPrivacy),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: busy ? null : locate,
+                    icon: const Icon(Icons.my_location),
+                    label: Text(
+                      busy ? l10n.findingNearby : l10n.findNearbyCustomers,
                     ),
-                  const SizedBox(height: 8),
-                  Text(nearbyVisitLabel(item)),
-                  Text(nearbyTaskLabel(item)),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      TextButton.icon(
-                        onPressed: item['id'] == null
-                            ? null
-                            : () => context.push('/briefings/${item['id']}'),
-                        icon: const Icon(Icons.summarize_outlined),
-                        label: const Text('Brifing'),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => navigate(item),
-                        icon: const Icon(Icons.navigation_outlined),
-                        label: const Text('Navigasyon'),
-                      ),
-                    ],
                   ),
                 ],
               ),
             ),
-          );
-        }),
-      ],
-    ),
-  );
+          ),
+          if (message != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(message!),
+            ),
+          if (searched && candidates.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text(l10n.noCustomersInArea),
+            ),
+          ...candidates.map((item) {
+            return Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item['name']?.toString() ?? l10n.companyFallback,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      formatNearbyDistance(
+                        item['distanceKm'] as num?,
+                        locale: locale,
+                      ),
+                    ),
+                    if ((item['address']?.toString() ?? '').isNotEmpty)
+                      Text(
+                        item['address'].toString(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const SizedBox(height: 8),
+                    Text(nearbyVisitLabel(item, locale: locale)),
+                    Text(nearbyTaskLabel(item, locale: locale)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        TextButton.icon(
+                          onPressed: item['id'] == null
+                              ? null
+                              : () => context.push('/briefings/${item['id']}'),
+                          icon: const Icon(Icons.summarize_outlined),
+                          label: Text(l10n.briefing),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => navigate(item),
+                          icon: const Icon(Icons.navigation_outlined),
+                          label: Text(l10n.navigation),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
 }

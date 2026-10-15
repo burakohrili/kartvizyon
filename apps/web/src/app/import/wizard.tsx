@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { getMessages } from "@/lib/i18n/messages";
+import type { AppLocale } from "@/lib/i18n/locale";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type Preview = {
   headers: string[];
@@ -16,21 +19,20 @@ type Result = {
   skippedRows: number;
   errors: Array<{ row: number; reason: string }>;
 };
-const fields = [
-  { key: "name", label: "Firma adı *" },
-  { key: "phone", label: "Telefon" },
-  { key: "email", label: "E-posta" },
-  { key: "website", label: "Web sitesi" },
-  { key: "address", label: "Adres" },
-];
-
 export function ImportWizard({
   workspaceId,
   organizationId,
+  locale,
 }: {
   workspaceId: string;
   organizationId: string | null;
+  locale: AppLocale;
 }) {
+  const messages = getMessages(locale).import;
+  const fields = Object.entries(messages.fields).map(([key, label]) => ({
+    key,
+    label,
+  }));
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [mapping, setMapping] = useState<Record<string, string | null>>({});
@@ -50,18 +52,23 @@ export function ImportWizard({
       form.set("workspaceId", workspaceId);
       if (organizationId) form.set("organizationId", organizationId);
     }
-    const response = await fetch("/api/imports", {
-      method: "POST",
-      body: form,
-    });
-    const payload = await response.json();
-    if (!response.ok) setError(payload.error ?? "İşlem tamamlanamadı.");
-    else if (action === "preview") {
-      setPreview(payload.data);
-      setMapping(payload.data.suggestedMapping);
-      setResult(null);
-    } else setResult(payload.data);
-    setBusy(false);
+    try {
+      const response = await fetch("/api/imports", {
+        method: "POST",
+        body: form,
+      });
+      const payload = await response.json();
+      if (!response.ok) setError(messages.importFailed);
+      else if (action === "preview") {
+        setPreview(payload.data);
+        setMapping(payload.data.suggestedMapping);
+        setResult(null);
+      } else setResult(payload.data);
+    } catch {
+      setError(messages.importFailed);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function submit(event: FormEvent) {
@@ -82,11 +89,11 @@ export function ImportWizard({
           }}
         />
         <label htmlFor="import-file">
-          <strong>{file?.name ?? "CSV veya XLSX dosyanızı seçin"}</strong>
-          <span>En fazla 10 MB ve 10.000 veri satırı</span>
+          <strong>{file?.name ?? messages.chooseFile}</strong>
+          <span>{messages.fileLimit}</span>
         </label>
         <button className="primary" disabled={!file || busy}>
-          {busy ? "İşleniyor…" : "Ön izleme oluştur"}
+          {busy ? messages.processing : messages.preview}
         </button>
       </form>
       {error && <div className="form-message error-message">{error}</div>}
@@ -94,8 +101,13 @@ export function ImportWizard({
         <>
           <div className="mapping-grid">
             <div>
-              <span className="eyebrow">KOLON EŞLEME</span>
-              <h2>{preview.totalRows} satır bulundu</h2>
+              <span className="eyebrow">{messages.mapping}</span>
+              <h2>
+                {messages.rowsFound.replace(
+                  "{count}",
+                  formatNumber(preview.totalRows, locale),
+                )}
+              </h2>
             </div>
             {fields.map((field) => (
               <label key={field.key}>
@@ -109,7 +121,7 @@ export function ImportWizard({
                     }))
                   }
                 >
-                  <option value="">Eşleme yok</option>
+                  <option value="">{messages.noMapping}</option>
                   {preview.headers.map((header) => (
                     <option key={header}>{header}</option>
                   ))}
@@ -138,16 +150,13 @@ export function ImportWizard({
             </table>
           </div>
           <div className="import-actions">
-            <small>
-              İlk 8 satır gösteriliyor. Formül benzeri hücreler güvenli metne
-              dönüştürülür.
-            </small>
+            <small>{messages.firstRows}</small>
             <button
               className="primary"
               disabled={!mapping.name || busy}
               onClick={() => void request("execute")}
             >
-              {busy ? "İçe aktarılıyor…" : "İçe aktarmayı başlat"}
+              {busy ? messages.importing : messages.startImport}
             </button>
           </div>
         </>
@@ -155,20 +164,17 @@ export function ImportWizard({
       {result && (
         <div className="import-result">
           <strong>
-            {result.simulated
-              ? "Demo içe aktarma tamamlandı"
-              : "İçe aktarma tamamlandı"}
+            {result.simulated ? messages.demoComplete : messages.complete}
           </strong>
           <p>
-            {result.importedRows ?? result.importableRows ?? 0} satır hazır ·{" "}
-            {result.skippedRows} satır atlandı
+            {formatNumber(
+              result.importedRows ?? result.importableRows ?? 0,
+              locale,
+            )}{" "}
+            {messages.rowsReady} · {formatNumber(result.skippedRows, locale)}{" "}
+            {messages.rowsSkipped}
           </p>
-          {result.simulated && (
-            <small>
-              Supabase bağlandığında aynı doğrulanmış satırlar veritabanına
-              yazılır.
-            </small>
-          )}
+          {result.simulated && <small>{messages.demoNote}</small>}
         </div>
       )}
     </section>

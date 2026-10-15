@@ -10,6 +10,7 @@ import 'package:kartvizyon_mobile/data/local/app_database.dart';
 import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/customers/customer_detail_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 
 class _EmptySessionStore extends SecureSessionStore {
   const _EmptySessionStore();
@@ -80,9 +81,13 @@ void main() {
         client: client,
       ),
     );
+    addTearDown(services.dispose);
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('tr'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
         home: CustomerDetailScreen(
           services: services,
           companyId: '00000000-0000-4000-8000-000000000101',
@@ -101,6 +106,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('ABC Makina arşivlensin mi?'), findsOneWidget);
     expect(find.textContaining('14 ziyaret'), findsOneWidget);
-    expect(find.textContaining('Bu kayıtlar silinmeyecek'), findsOneWidget);
+    expect(find.textContaining('Bu kayıtlar silinmez'), findsOneWidget);
   });
 }

@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
+import { formatDateTime } from "@/lib/i18n/locale";
+import { getDemoRecords } from "@/lib/i18n/demo-records";
 
 type Visit = {
   id: string;
@@ -9,31 +13,33 @@ type Visit = {
   completed_at: string | null;
   company: { name: string } | null;
 };
-const demos: Visit[] = [
-  {
-    id: "demo-review",
-    status: "needs_review",
-    purpose: "Yeni cihaz teklifi",
-    completed_at: "2026-08-02T10:42:00Z",
-    company: { name: "Atlas Medikal" },
-  },
-  {
-    id: "demo-approved",
-    status: "approved",
-    purpose: "Bakım sözleşmesi",
-    completed_at: "2026-08-01T15:10:00Z",
-    company: { name: "Nova Otomasyon" },
-  },
-  {
-    id: "demo-draft",
-    status: "draft",
-    purpose: "Fiyat görüşmesi",
-    completed_at: null,
-    company: { name: "Marmara Ambalaj" },
-  },
-];
-
-async function getVisits(): Promise<{ visits: Visit[]; demo: boolean }> {
+async function getVisits(
+  locale: "en" | "tr",
+): Promise<{ visits: Visit[]; demo: boolean }> {
+  const demo = getDemoRecords(locale);
+  const demos: Visit[] = [
+    {
+      id: "demo-review",
+      status: "needs_review",
+      purpose: demo.visitPurposes[0],
+      completed_at: "2026-08-02T10:42:00Z",
+      company: { name: demo.companies[0] },
+    },
+    {
+      id: "demo-approved",
+      status: "approved",
+      purpose: demo.visitPurposes[1],
+      completed_at: "2026-08-01T15:10:00Z",
+      company: { name: demo.companies[1] },
+    },
+    {
+      id: "demo-draft",
+      status: "draft",
+      purpose: demo.visitPurposes[2],
+      completed_at: null,
+      company: { name: demo.companies[2] },
+    },
+  ];
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { visits: demos, demo: true };
   const {
@@ -54,56 +60,54 @@ async function getVisits(): Promise<{ visits: Visit[]; demo: boolean }> {
   return { visits: (data as unknown as Visit[] | null) ?? [], demo: false };
 }
 
-const labels: Record<string, string> = {
-  draft: "Taslak",
-  processing: "İşleniyor",
-  needs_review: "Onay bekliyor",
-  approved: "Onaylandı",
-  rejected: "Reddedildi",
-  archived: "Arşivlendi",
-};
-
 export default async function VisitsPage() {
-  const { visits, demo } = await getVisits();
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).visits;
+  const { visits, demo: isDemo } = await getVisits(locale);
+  const labels: Record<string, string> = {
+    draft: m.draftStatus,
+    processing: m.processingStatus,
+    needs_review: m.needsReviewStatus,
+    approved: m.approvedStatus,
+    rejected: m.rejectedStatus,
+    archived: m.archivedStatus,
+  };
   return (
     <main className="customers-page">
       <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">SAHA AKTİVİTESİ</span>
-          <h1>Ziyaretler</h1>
-          <p>
-            Taslaklardan onaylanmış kurumsal kayıtlara kadar tüm ziyaret akışı.
-          </p>
+          <span className="eyebrow">{m.eyebrow}</span>
+          <h1>{m.title}</h1>
+          <p>{m.description}</p>
         </div>
         <Link href="/visits/demo-draft/debrief" className="primary">
-          + Ziyaret kaydet
+          {m.add}
         </Link>
       </header>
-      {demo && (
+      {isDemo && (
         <div className="demo-notice">
-          <strong>Demo akışı.</strong> Canlı veriler Supabase bağlantısından
-          sonra RLS kurallarıyla listelenir.
+          <strong>{m.demoTitle}</strong> {m.demoBody}
         </div>
       )}
       <section className="visit-summary-row">
         <article>
-          <small>Onay bekliyor</small>
+          <small>{m.awaitingReview}</small>
           <strong>
             {visits.filter((v) => v.status === "needs_review").length}
           </strong>
         </article>
         <article>
-          <small>Onaylandı</small>
+          <small>{m.approved}</small>
           <strong>
             {visits.filter((v) => v.status === "approved").length}
           </strong>
         </article>
         <article>
-          <small>Taslak</small>
+          <small>{m.drafts}</small>
           <strong>{visits.filter((v) => v.status === "draft").length}</strong>
         </article>
       </section>
@@ -112,26 +116,23 @@ export default async function VisitsPage() {
           <article key={visit.id}>
             <span className={`status-dot ${visit.status}`} />
             <div>
-              <strong>{visit.company?.name ?? "Firma bulunamadı"}</strong>
-              <p>{visit.purpose ?? "Ziyaret amacı eklenmedi"}</p>
+              <strong>{visit.company?.name ?? m.companyMissing}</strong>
+              <p>{visit.purpose ?? m.purposeMissing}</p>
               <small>
                 {visit.completed_at
-                  ? new Intl.DateTimeFormat("tr-TR", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    }).format(new Date(visit.completed_at))
-                  : "Henüz tamamlanmadı"}
+                  ? formatDateTime(visit.completed_at, locale)
+                  : m.notCompleted}
               </small>
             </div>
             <span className={`status-pill ${visit.status}`}>
-              {labels[visit.status] ?? visit.status}
+              {labels[visit.status] ?? m.unknownStatus}
             </span>
             {visit.status === "needs_review" ? (
-              <Link href={`/visits/${visit.id}/review`}>İncele →</Link>
+              <Link href={`/visits/${visit.id}/review`}>{m.review}</Link>
             ) : visit.status === "draft" ? (
-              <Link href={`/visits/${visit.id}/debrief`}>Not ekle →</Link>
+              <Link href={`/visits/${visit.id}/debrief`}>{m.addNote}</Link>
             ) : (
-              <button aria-label="Ziyaret menüsü">•••</button>
+              <button aria-label={m.menu}>•••</button>
             )}
           </article>
         ))}

@@ -19,7 +19,10 @@ const eventSchema = z.object({
 export async function POST(request: Request) {
   try {
     const input = eventSchema.parse(await request.json());
-    const supabase = await createSupabaseServerClient();
+    // Mobil istemciler çerez taşımaz; Bearer token'ı bu isteğin başlığından
+    // okumak için Request'i iletmek gerekir. Aksi halde her mobil saha olayı
+    // oturumsuz görünür ve mobil istemci bunu geçersiz oturum sanıp çıkış yapar.
+    const supabase = await createSupabaseServerClient(request);
     if (!supabase) return serviceUnavailable();
     const {
       data: { user },

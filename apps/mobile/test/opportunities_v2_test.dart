@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:kartvizyon_mobile/core/mobile_services.dart';
@@ -11,6 +12,7 @@ import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/more/opportunity_form_screen.dart';
 import 'package:kartvizyon_mobile/features/more/workspace_module_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 
 class _Session extends SecureSessionStore {
   const _Session();
@@ -84,6 +86,9 @@ void main() {
     });
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('tr', 'TR'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: OpportunityFormScreen(
           services: service,
           opportunity: {
@@ -160,6 +165,9 @@ void main() {
     });
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('tr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: WorkspaceModuleScreen(
           services: service,
           module: WorkspaceModule.opportunities,
@@ -167,9 +175,24 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('TRY 1000'), findsOneWidget);
-    expect(find.text('USD 2000'), findsOneWidget);
-    expect(find.textContaining('EUR 3000'), findsNothing);
+    expect(
+      find.text(
+        NumberFormat.compactCurrency(locale: 'tr', name: 'TRY').format(1000),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        NumberFormat.compactCurrency(locale: 'tr', name: 'USD').format(2000),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        NumberFormat.compactCurrency(locale: 'tr', name: 'EUR').format(3000),
+      ),
+      findsNothing,
+    );
     expect(find.text('Kazanılan fırsat'), findsNothing);
     await tester.tap(find.text('Kazanılan'));
     await tester.pump();
@@ -188,7 +211,12 @@ void main() {
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(textScaler: TextScaler.linear(2)),
-        child: MaterialApp(home: OpportunityFormScreen(services: service)),
+        child: MaterialApp(
+          locale: const Locale('tr', 'TR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: OpportunityFormScreen(services: service),
+        ),
       ),
     );
     await tester.pumpAndSettle();

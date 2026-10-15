@@ -2,9 +2,13 @@ import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { FormCenter } from "../interaction-workbench";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 const demoWorkspace = "00000000-0000-4000-8000-000000000001";
 export default async function FormsPage() {
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).operations;
   const context = await getWebWorkspaceContext();
   const [templates, submissions] = context
     ? await Promise.all([
@@ -28,22 +32,16 @@ export default async function FormsPage() {
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">ÖZEL SAHA FORMLARI</span>
-          <h1>Form tasarımcısı</h1>
-          <p>
-            Teknik keşif, numune ve ziyaret formlarını sürümlü şablonlarla
-            yönetin.
-          </p>
+          <span className="eyebrow">{m.formsEyebrow}</span>
+          <h1>{m.formsTitle}</h1>
+          <p>{m.formsDescription}</p>
         </div>
       </header>
-      {!context && (
-        <div className="demo-notice">
-          Form kaydetmek için Supabase oturumu gerekir.
-        </div>
-      )}
+      {!context && <div className="demo-notice">{m.formsDemoBody}</div>}
       <FormCenter
+        locale={locale}
         workspaceId={context?.workspaceId ?? demoWorkspace}
         initialTemplates={(templates.data ?? []) as Item[]}
         initialSubmissions={(submissions.data ?? []) as Item[]}

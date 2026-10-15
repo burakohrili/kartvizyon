@@ -560,9 +560,7 @@ class MobileServices {
 
   Future<void> switchWorkspace(String targetId) async {
     final previousId = workspaceId;
-    await fieldMode.stop(
-      reason: 'Çalışma alanı değiştiği için saha modu kapatıldı.',
-    );
+    await fieldMode.stop(reason: FieldModeMessage.workspaceChanged);
     workspaceId = targetId;
     try {
       await refreshContext(force: true);

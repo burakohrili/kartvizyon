@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 
 class WorkspaceModuleActions {
   const WorkspaceModuleActions._();
@@ -28,6 +29,7 @@ class WorkspaceModuleActions {
     BuildContext context,
     MobileServices services,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final sku = TextEditingController();
     final name = TextEditingController();
     final price = TextEditingController(text: '0');
@@ -35,26 +37,30 @@ class WorkspaceModuleActions {
       final accepted = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Yeni ürün'),
+          title: Text(l10n.moduleNewProductDialogTitle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: sku,
-                  decoration: const InputDecoration(labelText: 'Stok kodu *'),
+                  decoration: InputDecoration(
+                    labelText: l10n.moduleStockCodeRequired,
+                  ),
                 ),
                 TextField(
                   controller: name,
-                  decoration: const InputDecoration(labelText: 'Ürün adı *'),
+                  decoration: InputDecoration(
+                    labelText: l10n.moduleProductNameRequired,
+                  ),
                 ),
                 TextField(
                   controller: price,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
-                    labelText: 'Liste fiyatı (TRY) *',
+                  decoration: InputDecoration(
+                    labelText: l10n.moduleListPriceTryRequired,
                   ),
                 ),
               ],
@@ -63,14 +69,14 @@ class WorkspaceModuleActions {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Vazgeç'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(
                 dialogContext,
                 sku.text.trim().isNotEmpty && name.text.trim().length >= 2,
               ),
-              child: const Text('Ekle'),
+              child: Text(l10n.moduleAdd),
             ),
           ],
         ),
@@ -102,6 +108,7 @@ class WorkspaceModuleActions {
     BuildContext context,
     MobileServices services,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -109,12 +116,12 @@ class WorkspaceModuleActions {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Belgeyi fotoğraflayın'),
+              title: Text(l10n.moduleCaptureDocument),
               onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Galeriden görsel seçin'),
+              title: Text(l10n.moduleChooseDocumentImage),
               onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
             ),
           ],
@@ -150,6 +157,7 @@ class WorkspaceModuleActions {
     MobileServices services,
     Map<String, dynamic> template,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final fields = List<Map<String, dynamic>>.from(
       template['fields'] as List? ?? const [],
     );
@@ -162,7 +170,9 @@ class WorkspaceModuleActions {
       final accepted = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: Text(template['name']?.toString() ?? 'Saha formu'),
+          title: Text(
+            template['name']?.toString() ?? l10n.moduleFieldFormFallback,
+          ),
           content: Form(
             key: formKey,
             child: SingleChildScrollView(
@@ -186,7 +196,7 @@ class WorkspaceModuleActions {
                       ),
                       validator: required
                           ? (value) => (value?.trim().isEmpty ?? true)
-                                ? 'Bu alan zorunlu.'
+                                ? l10n.moduleFieldRequired
                                 : null
                           : null,
                     ),
@@ -198,14 +208,14 @@ class WorkspaceModuleActions {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Vazgeç'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () {
                 if (!formKey.currentState!.validate()) return;
                 Navigator.pop(dialogContext, true);
               },
-              child: const Text('Gönder'),
+              child: Text(l10n.moduleSend),
             ),
           ],
         ),
@@ -237,14 +247,15 @@ class WorkspaceModuleActions {
     Map<String, dynamic> item, {
     required bool canApprove,
   }) async {
+    final l10n = AppLocalizations.of(context)!;
     final current = item['status']?.toString();
     final choices = switch (current) {
-      'draft' => const {'pending_approval': 'Onaya gönder'},
-      'pending_approval' when canApprove => const {
-        'approved': 'Onayla',
-        'rejected': 'Reddet',
+      'draft' => {'pending_approval': l10n.moduleSendForApproval},
+      'pending_approval' when canApprove => {
+        'approved': l10n.moduleApprove,
+        'rejected': l10n.moduleReject,
       },
-      _ => const <String, String>{},
+      _ => <String, String>{},
     };
     if (choices.isEmpty) return false;
     final status = await showModalBottomSheet<String>(
@@ -271,29 +282,29 @@ class WorkspaceModuleActions {
       reason = await showDialog<String>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Sipariş taslağını reddet'),
+          title: Text(l10n.moduleOrderRejectTitle),
           content: TextField(
             controller: controller,
             autofocus: true,
             minLines: 2,
             maxLines: 4,
             maxLength: 500,
-            decoration: const InputDecoration(
-              labelText: 'Red nedeni *',
-              hintText: 'Örn. Fiyat güncellenmeli',
+            decoration: InputDecoration(
+              labelText: l10n.moduleRejectionReasonRequired,
+              hintText: l10n.moduleRejectionReasonExample,
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Vazgeç'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () {
                 final value = controller.text.trim();
                 if (value.length >= 2) Navigator.pop(dialogContext, value);
               },
-              child: const Text('Reddet'),
+              child: Text(l10n.moduleReject),
             ),
           ],
         ),

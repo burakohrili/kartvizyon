@@ -1,8 +1,12 @@
+import { visitAudioFileName } from "@/lib/visit-audio-format";
+
 export type QueuedDebrief = {
   clientMutationId: string;
   ownerId: string;
   visitId: string;
   transcript: string;
+  /** Optional for old IndexedDB queue rows created before language support. */
+  language?: "en" | "tr";
   audio: Blob | null;
   createdAt: string;
   attempts: number;
@@ -77,8 +81,11 @@ export async function syncQueuedDebriefs(ownerId: string) {
   for (const item of await queuedDebriefs(ownerId)) {
     const form = new FormData();
     form.set("clientMutationId", item.clientMutationId);
+    form.set("language", item.language === "en" ? "en" : "tr");
     if (item.transcript) form.set("transcript", item.transcript);
-    if (item.audio) form.set("audio", item.audio, "ziyaret-notu.webm");
+    if (item.audio) {
+      form.set("audio", item.audio, visitAudioFileName(item.audio.type));
+    }
 
     try {
       const response = await fetch(`/api/visits/${item.visitId}/debrief`, {

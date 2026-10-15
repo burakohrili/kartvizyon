@@ -41,18 +41,21 @@ void main() {
     setUp(() => database = AppDatabase.forTesting(NativeDatabase.memory()));
     tearDown(() => database.close());
 
-    Future<void> enqueue(String mutation, DateTime createdAt) =>
-        database.enqueue(
-          SyncQueueItemsCompanion.insert(
-            id: mutation,
-            ownerId: 'user-a',
-            workspaceId: 'workspace-1',
-            entityType: 'visit_debrief',
-            clientMutationId: mutation,
-            payloadJson: '{"visitId":"visit-$mutation","transcript":"not"}',
-            createdAt: createdAt,
-          ),
-        );
+    Future<void> enqueue(
+      String mutation,
+      DateTime createdAt,
+    ) => database.enqueue(
+      SyncQueueItemsCompanion.insert(
+        id: mutation,
+        ownerId: 'user-a',
+        workspaceId: 'workspace-1',
+        entityType: 'visit_debrief',
+        clientMutationId: mutation,
+        payloadJson:
+            '{"visitId":"visit-$mutation","transcript":"not","language":"en"}',
+        createdAt: createdAt,
+      ),
+    );
 
     SyncEngine engineReturning(List<int> statuses, List<Uri> seen) {
       var index = 0;
@@ -132,6 +135,29 @@ void main() {
 
       // 5xx'te sunucuyu dövmemek için sıradaki kayda geçilmez.
       expect(seen, hasLength(1));
+    });
+
+    test('seçili debrief dilini çevrimdışı kuyruktan sunucuya taşır', () async {
+      await enqueue('english', DateTime.utc(2026, 8, 18, 9));
+      String? uploadedLanguage;
+      String? uploadedBody;
+      final engine = SyncEngine(
+        database: database,
+        sessions: const _FakeSessionStore(),
+        baseUrl: Uri.parse('https://app.kartvizyon.app'),
+        client: MockClient((request) async {
+          uploadedBody = request.body;
+          if (uploadedBody!.contains('name="language"')) {
+            uploadedLanguage = 'en';
+          }
+          return http.Response('{}', 200);
+        }),
+      );
+
+      final result = await engine.run(ownerId: 'user-a');
+
+      expect(result.synced, 1);
+      expect(uploadedLanguage, 'en');
     });
   });
 

@@ -33,10 +33,14 @@ DateTime? taskDueDate(Map<String, dynamic> task) {
 }
 
 /// Kart alt satırında gösterilecek tarih; tarihsiz görevde boş döner.
-String taskDueLabel(Map<String, dynamic> task) {
+String taskDueLabel(Map<String, dynamic> task, {String locale = 'tr'}) {
   final due = taskDueDate(task);
   if (due == null) return '';
-  final day = due.day.toString().padLeft(2, '0');
-  final month = due.month.toString().padLeft(2, '0');
-  return '$day.$month.${due.year}';
+  return taskDateLabel(due, locale: locale);
 }
+
+String taskDateLabel(DateTime? date, {String locale = 'tr'}) => date == null
+    ? ''
+    : locale.toLowerCase().startsWith('en')
+    ? '${date.month}/${date.day}/${date.year}'
+    : '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';

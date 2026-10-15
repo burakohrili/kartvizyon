@@ -45,6 +45,45 @@ void main() {
     expect(plans.map((item) => item.id).toSet().length, plans.length);
   });
 
+  test(
+    'scheduled notification copy follows the persisted interface locale',
+    () {
+      final visit = _visit(start: now.add(const Duration(days: 2)));
+      final turkish = buildReminderPlans(
+        visits: [visit],
+        tasks: [_task(due: now.add(const Duration(days: 1)))],
+        preferences: enabled,
+        now: now,
+        locale: 'tr',
+      );
+      final english = buildReminderPlans(
+        visits: [visit],
+        tasks: [_task(due: now.add(const Duration(days: 1)))],
+        preferences: enabled,
+        now: now,
+        locale: 'en',
+      );
+      expect(
+        turkish.firstWhere((item) => item.key.endsWith(':24h')).title,
+        'Yaklaşan ziyaret',
+      );
+      expect(
+        english.firstWhere((item) => item.key.endsWith(':24h')).title,
+        'Upcoming visit',
+      );
+      expect(
+        english.firstWhere((item) => item.key == 'task:task-1:due').title,
+        "Today's task",
+      );
+      expect(
+        english
+            .firstWhere((item) => item.key.startsWith('field-morning:'))
+            .body,
+        contains('planned visits today'),
+      );
+    },
+  );
+
   test('reschedule aynı stable ID ile yeni zamanı değiştirir', () {
     final before = buildReminderPlans(
       visits: [_visit(start: now.add(const Duration(days: 2)))],

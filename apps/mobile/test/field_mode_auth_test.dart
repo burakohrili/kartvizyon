@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
 import 'package:http/http.dart' as http;
@@ -10,6 +11,8 @@ import 'package:kartvizyon_mobile/core/mobile_services.dart';
 import 'package:kartvizyon_mobile/data/local/app_database.dart';
 import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
+import 'package:kartvizyon_mobile/features/field_mode/field_mode_service.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 class _EmptySessionStore extends SecureSessionStore {
@@ -112,6 +115,30 @@ http.Response _session({
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('yakın müşteri bildirimi seçili dile göre biçimlenir', () async {
+    final services = _services(MockClient((_) async => _session()));
+    addTearDown(services.dispose);
+    final candidate = <String, dynamic>{
+      'distanceKm': 1.25,
+      'daysSinceVisit': 3,
+      'overdueTaskCount': 2,
+    };
+
+    final turkish = await AppLocalizations.delegate.load(const Locale('tr'));
+    services.fieldMode.setLocale('tr');
+    expect(
+      services.fieldMode.describeCandidate(candidate, turkish),
+      '1,3 km uzakta · Son ziyaret 3 gün önce · 2 geciken takip',
+    );
+
+    final english = await AppLocalizations.delegate.load(const Locale('en'));
+    services.fieldMode.setLocale('en');
+    expect(
+      services.fieldMode.describeCandidate(candidate, english),
+      '1.3 km away · Last visited 3 days ago · 2 overdue follow-ups',
+    );
+  });
+
   test('geçerli oturum bile 21.00 saatinde saha modunu başlatamaz', () async {
     final services = _services(
       MockClient((_) async => _session()),
@@ -121,7 +148,7 @@ void main() {
     expect(await services.fieldMode.start(), isFalse);
     expect(services.fieldMode.isActive.value, isFalse);
     expect(services.sessionExpired.value, isFalse);
-    expect(services.fieldMode.lastMessage.value, contains('21.00'));
+    expect(services.fieldMode.lastMessage.value, FieldModeMessage.afterHours);
   });
 
   test(
@@ -137,7 +164,7 @@ void main() {
       expect(
         await services.fieldMode.start(),
         isTrue,
-        reason: services.fieldMode.lastMessage.value,
+        reason: services.fieldMode.lastMessage.value?.name,
       );
       expect(services.fieldMode.isActive.value, isTrue);
       expect(services.sessionExpired.value, isFalse);
@@ -234,7 +261,7 @@ void main() {
     expect(await services.fieldMode.start(), isFalse);
     expect(services.fieldMode.isActive.value, isFalse);
     expect(services.sessionExpired.value, isFalse);
-    expect(services.fieldMode.lastMessage.value, contains('Bağlantınızı'));
+    expect(services.fieldMode.lastMessage.value, FieldModeMessage.startFailed);
   });
 
   test('konum izni reddi login değil açık hata gösterir', () async {
@@ -247,7 +274,10 @@ void main() {
     });
     expect(await services.fieldMode.start(), isFalse);
     expect(services.sessionExpired.value, isFalse);
-    expect(services.fieldMode.lastMessage.value, contains('Konum izni'));
+    expect(
+      services.fieldMode.lastMessage.value,
+      FieldModeMessage.locationPermission,
+    );
   });
 
   test('read-only saha modunu engeller ama login açmaz', () async {
@@ -262,7 +292,10 @@ void main() {
     });
     expect(await services.fieldMode.start(), isFalse);
     expect(services.sessionExpired.value, isFalse);
-    expect(services.fieldMode.lastMessage.value, contains('abonelik'));
+    expect(
+      services.fieldMode.lastMessage.value,
+      FieldModeMessage.accessRequired,
+    );
   });
 
   test(
@@ -293,7 +326,7 @@ void main() {
       expect(
         await services.fieldMode.start(),
         isTrue,
-        reason: services.fieldMode.lastMessage.value,
+        reason: services.fieldMode.lastMessage.value?.name,
       );
       geo.positions.add(
         Position(

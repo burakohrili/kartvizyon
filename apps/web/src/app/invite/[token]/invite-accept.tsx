@@ -2,36 +2,49 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getMessages } from "@/lib/i18n/messages";
+import type { AppLocale } from "@/lib/i18n/locale";
 
-export function InviteAccept({ token }: { token: string }) {
+export function InviteAccept({
+  token,
+  locale,
+}: {
+  token: string;
+  locale: AppLocale;
+}) {
+  const messages = getMessages(locale).auth;
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   async function accept() {
     setBusy(true);
-    const response = await fetch("/api/invitations/accept", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    const payload = response.status === 204 ? {} : await response.json();
-    if (!response.ok) {
-      setMessage(payload.error ?? "Davet kabul edilemedi.");
+    try {
+      const response = await fetch("/api/invitations/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (!response.ok) {
+        setMessage(messages.inviteFailed);
+        return;
+      }
+      router.push("/workspaces");
+      router.refresh();
+    } catch {
+      setMessage(messages.inviteFailed);
+    } finally {
       setBusy(false);
-      return;
     }
-    router.push("/workspaces");
-    router.refresh();
   }
   return (
     <div className="accept-box">
       <ul>
-        <li>Onaylı ziyaret ve müşteri hafızasına erişim</li>
-        <li>Rol ve bölgeyle sınırlı kurumsal görünürlük</li>
-        <li>Kişisel verileriniz şirket alanına otomatik taşınmaz</li>
+        {messages.inviteBenefits.map((benefit) => (
+          <li key={benefit}>{benefit}</li>
+        ))}
       </ul>
       <button className="primary" disabled={busy} onClick={() => void accept()}>
-        {busy ? "Davet kabul ediliyor…" : "Daveti kabul et"}
+        {busy ? messages.inviteAccepting : messages.acceptInvite}
       </button>
       {message && <p>{message}</p>}
     </div>

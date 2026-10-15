@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import type { AppLocale } from "@/lib/i18n/locale";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/i18n/locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 type Option = { id: string; name: string };
 
@@ -8,11 +11,14 @@ export function OpportunityWorkbench({
   workspaceId,
   initialItems,
   companies,
+  locale,
 }: {
   workspaceId: string;
   initialItems: Array<Record<string, unknown>>;
   companies: Option[];
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).operations;
   const [items, setItems] = useState(initialItems);
   const [message, setMessage] = useState("");
 
@@ -33,8 +39,8 @@ export function OpportunityWorkbench({
     const result = await response.json();
     if (response.ok) {
       setItems((current) => [result.data, ...current]);
-      setMessage("Fırsat oluşturuldu.");
-    } else setMessage(result.error ?? "Fırsat oluşturulamadı.");
+      setMessage(m.opportunityCreated);
+    } else setMessage(m.opportunityCreateFailed);
   }
 
   async function changeStage(id: string, stage: string) {
@@ -53,9 +59,9 @@ export function OpportunityWorkbench({
   return (
     <div className="operations-grid">
       <form action={create} className="operation-form">
-        <h2>Yeni fırsat</h2>
+        <h2>{m.newOpportunity}</h2>
         <label>
-          Firma
+          {m.company}
           <select name="companyId" required>
             {companies.map((company) => (
               <option key={company.id} value={company.id}>
@@ -65,15 +71,15 @@ export function OpportunityWorkbench({
           </select>
         </label>
         <label>
-          Başlık
+          {m.title}
           <input name="title" required minLength={2} />
         </label>
         <label>
-          Tahmini değer
+          {m.estimatedValue}
           <input name="estimatedValue" type="number" min="0" defaultValue="0" />
         </label>
         <button className="primary" type="submit" disabled={!companies.length}>
-          Oluştur
+          {m.create}
         </button>
         {message && (
           <p className="form-message" role="status">
@@ -88,25 +94,28 @@ export function OpportunityWorkbench({
             <article key={String(item.id)}>
               <div>
                 <strong>{String(item.title)}</strong>
-                <small>{company?.name ?? "Firma"}</small>
+                <small>{company?.name ?? m.companyFallback}</small>
               </div>
               <span>
-                {Number(item.estimated_value ?? 0).toLocaleString("tr-TR")}{" "}
-                {String(item.currency ?? "TRY")}
+                {formatCurrency(
+                  Number(item.estimated_value ?? 0),
+                  String(item.currency ?? "TRY"),
+                  locale,
+                )}
               </span>
               <select
-                aria-label="Fırsat aşaması"
+                aria-label={m.stageLabel}
                 value={String(item.stage)}
                 onChange={(event) =>
                   void changeStage(String(item.id), event.target.value)
                 }
               >
-                <option value="lead">Yeni</option>
-                <option value="qualified">Nitelikli</option>
-                <option value="proposal">Teklif</option>
-                <option value="negotiation">Müzakere</option>
-                <option value="won">Kazanıldı</option>
-                <option value="lost">Kaybedildi</option>
+                <option value="lead">{m.stageLead}</option>
+                <option value="qualified">{m.stageQualified}</option>
+                <option value="proposal">{m.stageProposal}</option>
+                <option value="negotiation">{m.stageNegotiation}</option>
+                <option value="won">{m.stageWon}</option>
+                <option value="lost">{m.stageLost}</option>
               </select>
             </article>
           );
@@ -119,10 +128,13 @@ export function OpportunityWorkbench({
 export function ProductWorkbench({
   workspaceId,
   initialItems,
+  locale,
 }: {
   workspaceId: string;
   initialItems: Array<Record<string, unknown>>;
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).operations;
   const [items, setItems] = useState(initialItems);
   const [message, setMessage] = useState("");
   async function create(formData: FormData) {
@@ -142,27 +154,31 @@ export function ProductWorkbench({
     const result = await response.json();
     if (response.ok) {
       setItems((current) => [...current, result.data]);
-      setMessage("Ürün eklendi.");
-    } else setMessage(result.error ?? "Ürün eklenemedi.");
+      setMessage(m.productAdded);
+    } else setMessage(m.productAddFailed);
   }
   return (
     <div className="operations-grid">
       <form action={create} className="operation-form">
-        <h2>Yeni ürün</h2>
+        <h2>{m.newProduct}</h2>
         <label>
-          SKU
+          {m.sku}
           <input name="sku" required />
         </label>
         <label>
-          Ürün adı
+          {m.productName}
           <input name="name" required />
         </label>
         <label>
-          Birim
-          <input name="unit" defaultValue="adet" required />
+          {m.unit}
+          <input
+            name="unit"
+            defaultValue={locale === "en" ? "piece" : "adet"}
+            required
+          />
         </label>
         <label>
-          KDV %
+          {m.taxRate}
           <input
             name="taxRate"
             type="number"
@@ -172,11 +188,11 @@ export function ProductWorkbench({
           />
         </label>
         <label>
-          Liste fiyatı
+          {m.listPrice}
           <input name="listPrice" type="number" min="0" step="0.01" required />
         </label>
         <button className="primary" type="submit">
-          Ekle
+          {m.add}
         </button>
         {message && (
           <p className="form-message" role="status">
@@ -194,8 +210,11 @@ export function ProductWorkbench({
               </small>
             </div>
             <span>
-              {Number(item.list_price).toLocaleString("tr-TR")}{" "}
-              {String(item.currency)}
+              {formatCurrency(
+                Number(item.list_price),
+                String(item.currency ?? "TRY"),
+                locale,
+              )}
             </span>
           </article>
         ))}
@@ -213,14 +232,17 @@ export function ProductWorkbench({
  */
 export function PriceListWorkbench({
   initialItems,
+  locale,
 }: {
   initialItems: Array<Record<string, unknown>>;
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).operations;
   const [items, setItems] = useState(initialItems);
   const [message, setMessage] = useState("");
   async function upload(formData: FormData) {
     formData.set("purpose", "price_list");
-    setMessage("Fiyat listesi doğrulanıyor ve karantinaya yükleniyor…");
+    setMessage(m.priceListValidating);
     const response = await fetch("/api/documents", {
       method: "POST",
       body: formData,
@@ -228,16 +250,16 @@ export function PriceListWorkbench({
     const result = await response.json();
     if (response.ok) {
       setItems((current) => [result.data, ...current]);
-      setMessage(result.message);
-    } else setMessage(result.error ?? "Fiyat listesi yüklenemedi.");
+      setMessage(m.priceListUploaded);
+    } else setMessage(m.priceListUploadFailed);
   }
   return (
     <div className="operations-grid">
       <form action={upload} className="operation-form">
-        <h2>Fiyat listesi yükle</h2>
-        <p>PDF · en fazla 20 MB · tarama temiz çıkana kadar indirilemez</p>
+        <h2>{m.uploadPriceList}</h2>
+        <p>{m.priceListRequirements}</p>
         <input name="file" type="file" required accept=".pdf" />
-        <button className="primary">Karantinaya yükle</button>
+        <button className="primary">{m.quarantineUpload}</button>
         {message && (
           <p className="form-message" role="status">
             {message}
@@ -249,14 +271,22 @@ export function PriceListWorkbench({
           <article key={String(item.id)}>
             <div>
               <strong>{String(item.file_name)}</strong>
-              <small>
-                {new Date(String(item.created_at)).toLocaleDateString("tr-TR")}
-              </small>
+              <small>{formatDate(String(item.created_at), locale)}</small>
             </div>
             {item.scan_status === "clean" ? (
-              <a href={`/api/documents/${String(item.id)}/download`}>İndir</a>
+              <a href={`/api/documents/${String(item.id)}/download`}>
+                {m.download}
+              </a>
             ) : (
-              <span>{String(item.scan_status)}</span>
+              <span>
+                {item.scan_status === "pending"
+                  ? m.scanPending
+                  : item.scan_status === "infected"
+                    ? m.scanInfected
+                    : item.scan_status === "error"
+                      ? m.scanError
+                      : m.scanUnknown}
+              </span>
             )}
           </article>
         ))}
@@ -270,12 +300,15 @@ export function OrderWorkbench({
   initialItems,
   companies,
   products,
+  locale,
 }: {
   workspaceId: string;
   initialItems: Array<Record<string, unknown>>;
   companies: Option[];
   products: Array<Option & { listPrice: number }>;
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).operations;
   const [items, setItems] = useState(initialItems);
   const [message, setMessage] = useState("");
   async function create(formData: FormData) {
@@ -303,8 +336,8 @@ export function OrderWorkbench({
     const result = await response.json();
     if (response.ok) {
       setItems((current) => [result.data, ...current]);
-      setMessage("Sipariş taslağı oluşturuldu.");
-    } else setMessage(result.error ?? "Taslak oluşturulamadı.");
+      setMessage(m.orderCreated);
+    } else setMessage(m.orderCreateFailed);
   }
   async function transition(id: string, status: string) {
     const response = await fetch(`/api/orders/${id}/transition`, {
@@ -312,8 +345,7 @@ export function OrderWorkbench({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         status,
-        rejectionReason:
-          status === "rejected" ? "Yönetici tarafından reddedildi" : null,
+        rejectionReason: status === "rejected" ? m.rejectedByManager : null,
       }),
     });
     if (response.ok)
@@ -324,9 +356,9 @@ export function OrderWorkbench({
   return (
     <div className="operations-grid">
       <form action={create} className="operation-form">
-        <h2>Yeni sipariş taslağı</h2>
+        <h2>{m.newOrderDraft}</h2>
         <label>
-          Firma
+          {m.company}
           <select name="companyId" required>
             {companies.map((item) => (
               <option key={item.id} value={item.id}>
@@ -336,7 +368,7 @@ export function OrderWorkbench({
           </select>
         </label>
         <label>
-          Ürün
+          {m.product}
           <select name="productId" required>
             {products.map((item) => (
               <option key={item.id} value={item.id}>
@@ -346,7 +378,7 @@ export function OrderWorkbench({
           </select>
         </label>
         <label>
-          Miktar
+          {m.quantity}
           <input
             name="quantity"
             type="number"
@@ -356,7 +388,7 @@ export function OrderWorkbench({
           />
         </label>
         <label>
-          İskonto %
+          {m.discount}
           <input
             name="discountPercent"
             type="number"
@@ -370,7 +402,7 @@ export function OrderWorkbench({
           type="submit"
           disabled={!companies.length || !products.length}
         >
-          Taslak oluştur
+          {m.createDraft}
         </button>
         {message && (
           <p className="form-message" role="status">
@@ -384,12 +416,25 @@ export function OrderWorkbench({
           return (
             <article key={String(item.id)}>
               <div>
-                <strong>{company?.name ?? "Firma"}</strong>
-                <small>{String(item.status)}</small>
+                <strong>{company?.name ?? m.companyFallback}</strong>
+                <small>
+                  {item.status === "draft"
+                    ? m.statusDraft
+                    : item.status === "pending_approval"
+                      ? m.statusPending
+                      : item.status === "approved"
+                        ? m.statusApproved
+                        : item.status === "rejected"
+                          ? m.statusRejected
+                          : m.statusDraft}
+                </small>
               </div>
               <span>
-                {Number(item.grand_total ?? 0).toLocaleString("tr-TR")}{" "}
-                {String(item.currency)}
+                {formatCurrency(
+                  Number(item.grand_total ?? 0),
+                  String(item.currency ?? "TRY"),
+                  locale,
+                )}
               </span>
               <div className="inline-actions">
                 {item.status === "draft" && (
@@ -398,7 +443,7 @@ export function OrderWorkbench({
                       void transition(String(item.id), "pending_approval")
                     }
                   >
-                    Onaya gönder
+                    {m.submitForApproval}
                   </button>
                 )}
                 {item.status === "pending_approval" && (
@@ -408,14 +453,14 @@ export function OrderWorkbench({
                         void transition(String(item.id), "approved")
                       }
                     >
-                      Onayla
+                      {m.approve}
                     </button>
                     <button
                       onClick={() =>
                         void transition(String(item.id), "rejected")
                       }
                     >
-                      Reddet
+                      {m.reject}
                     </button>
                   </>
                 )}
@@ -433,12 +478,15 @@ export function CalendarWorkbench({
   userId,
   companies,
   initialVisits,
+  locale,
 }: {
   workspaceId: string;
   userId: string;
   companies: Option[];
   initialVisits: Array<Record<string, unknown>>;
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).calendar;
   const [visits, setVisits] = useState(initialVisits);
   const [message, setMessage] = useState("");
   async function create(formData: FormData) {
@@ -459,15 +507,15 @@ export function CalendarWorkbench({
     const result = await response.json();
     if (response.ok) {
       setVisits((current) => [...current, result.data]);
-      setMessage("Ziyaret planlandı.");
-    } else setMessage(result.error ?? "Ziyaret planlanamadı.");
+      setMessage(m.planned);
+    } else setMessage(m.failed);
   }
   return (
     <div className="operations-grid">
       <form action={create} className="operation-form">
-        <h2>Ziyaret planla</h2>
+        <h2>{m.planVisit}</h2>
         <label>
-          Firma
+          {m.company}
           <select name="companyId">
             {companies.map((item) => (
               <option key={item.id} value={item.id}>
@@ -477,15 +525,15 @@ export function CalendarWorkbench({
           </select>
         </label>
         <label>
-          Amaç
+          {m.purpose}
           <input name="purpose" required />
         </label>
         <label>
-          Tarih ve saat
+          {m.dateTime}
           <input name="start" type="datetime-local" required />
         </label>
         <button className="primary" disabled={!companies.length}>
-          Planla
+          {m.plan}
         </button>
         {message && <p className="form-message">{message}</p>}
       </form>
@@ -495,13 +543,11 @@ export function CalendarWorkbench({
           return (
             <article key={String(visit.id)}>
               <div>
-                <strong>{company?.name ?? "Firma"}</strong>
-                <small>{String(visit.purpose ?? "Planlı ziyaret")}</small>
+                <strong>{company?.name ?? m.noCompany}</strong>
+                <small>{String(visit.purpose ?? m.plannedVisit)}</small>
               </div>
               <time>
-                {new Date(String(visit.planned_start_at)).toLocaleString(
-                  "tr-TR",
-                )}
+                {formatDateTime(String(visit.planned_start_at), locale)}
               </time>
             </article>
           );

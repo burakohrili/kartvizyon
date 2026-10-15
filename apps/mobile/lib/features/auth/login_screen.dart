@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 
 const authCallbackUrl = 'app.kartvizyon.mobile://login-callback';
 
@@ -95,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       if (!mounted || !awaitingOAuth || sessionHandled) return;
       awaitingOAuth = false;
       setState(() => busy = false);
-      _showMessage('Giriş tamamlanmadı. Dilerseniz tekrar deneyin.');
+      _showMessage(AppLocalizations.of(context)!.loginIncomplete);
     });
   }
 
@@ -118,21 +119,20 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   String _authErrorMessage(Object error) {
+    final l10n = AppLocalizations.of(context)!;
     if (error is! AuthException) {
-      return 'Giriş tamamlanamadı. Lütfen tekrar deneyin.';
+      return l10n.authFailed;
     }
     return switch (error.code) {
       // Bağlantı tek kullanımlık ve kısa ömürlüdür.
-      'otp_expired' || 'access_denied' =>
-        'Bağlantının süresi dolmuş veya daha önce kullanılmış. Aşağıdan yeni '
-            'bir bağlantı isteyin.',
+      'otp_expired' || 'access_denied' => l10n.authLinkExpired,
       // PKCE doğrulayıcısı bu cihazda başlatılan istekle eşleşmiyor: bağlantı
       // başka cihazda açılmış, ikinci kez tıklanmış ya da arada yeni bir
       // bağlantı istenmiş olabilir.
-      'bad_code_verifier' =>
-        'Bu bağlantı başka bir cihazda veya daha önce kullanılmış. Girişi bu '
-            'cihazdan yeniden başlatın.',
-      _ => error.message,
+      'bad_code_verifier' => l10n.authLinkWrongDevice,
+      // Provider/server messages can be English or expose implementation
+      // details. Keep the UI language consistent and avoid leaking them.
+      _ => l10n.authFailed,
     };
   }
 
@@ -166,6 +166,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   }
 
   Future<void> submit() async {
+    final l10n = AppLocalizations.of(context)!;
     FocusManager.instance.primaryFocus?.unfocus();
     if (!widget.services.config.hasSupabase) {
       await widget.onSignedIn();
@@ -174,17 +175,17 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
 
     final normalizedEmail = email.text.trim();
     if (normalizedEmail.isEmpty || !normalizedEmail.contains('@')) {
-      _showMessage('Geçerli bir e-posta adresi girin.');
+      _showMessage(l10n.emailInvalid);
       return;
     }
     if (password.text.length < 6) {
-      _showMessage('Şifreniz en az 6 karakter olmalıdır.');
+      _showMessage(l10n.passwordTooShort);
       return;
     }
 
     setState(() {
       busy = true;
-      message = register ? 'Hesabınız oluşturuluyor…' : 'Giriş yapılıyor…';
+      message = register ? l10n.accountCreating : l10n.signingIn;
       awaitingEmailConfirmation = false;
     });
     try {
@@ -205,30 +206,24 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         // when sign-up is repeated for an existing address. Do not claim that
         // another message was sent in that case.
         if (register && (response.user?.identities?.isEmpty ?? false)) {
-          _showMessage(
-            'Bu e-posta zaten kayıtlı olabilir. “Hesabım var” ile giriş yapın veya şifrenizi yenileyin.',
-          );
+          _showMessage(l10n.accountMayExist);
           return;
         }
-        _showMessage(
-          'Hesabınız oluşturuldu. E-postanıza gönderdiğimiz bağlantıya dokunun; doğrulama tamamlanınca uygulama otomatik açılır.',
-          confirmation: true,
-        );
+        _showMessage(l10n.confirmAccountEmail, confirmation: true);
         return;
       }
       await _completeSession(session);
     } on AuthException catch (error) {
-      _showMessage(error.message);
+      _showMessage(_authErrorMessage(error));
     } catch (_) {
-      _showMessage(
-        'İşlem tamamlanamadı. Bağlantınızı kontrol edip tekrar deneyin.',
-      );
+      _showMessage(l10n.networkOperationFailed);
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
   Future<void> resendConfirmation() async {
+    final l10n = AppLocalizations.of(context)!;
     final normalizedEmail = email.text.trim();
     if (normalizedEmail.isEmpty || busy) return;
     FocusManager.instance.primaryFocus?.unfocus();
@@ -239,38 +234,48 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         email: normalizedEmail,
         emailRedirectTo: authCallbackUrl,
       );
-      _showMessage(
-        'Yeni doğrulama e-postası gönderildi. En son gelen e-postadaki bağlantıyı kullanın.',
-        confirmation: true,
-      );
+      _showMessage(l10n.verificationResent, confirmation: true);
     } on AuthException catch (error) {
-      _showMessage(error.message);
+      _showMessage(_authErrorMessage(error));
+    } catch (_) {
+      _showMessage(l10n.networkOperationFailed);
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
   Future<void> resetPassword() async {
+    final l10n = AppLocalizations.of(context)!;
     if (!widget.services.config.hasSupabase || email.text.trim().isEmpty) {
-      _showMessage('Önce e-posta adresinizi girin.');
+      _showMessage(l10n.enterEmailFirst);
       return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
-    await Supabase.instance.client.auth.resetPasswordForEmail(
-      email.text.trim(),
-      redirectTo: authCallbackUrl,
-    );
-    _showMessage('Şifre yenileme e-postası gönderildi.');
+    setState(() => busy = true);
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email.text.trim(),
+        redirectTo: authCallbackUrl,
+      );
+      _showMessage(l10n.passwordResetSent);
+    } on AuthException catch (error) {
+      _showMessage(_authErrorMessage(error));
+    } catch (_) {
+      _showMessage(l10n.networkOperationFailed);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   Future<void> social(OAuthProvider provider) async {
+    final l10n = AppLocalizations.of(context)!;
     if (!widget.services.config.hasSupabase || busy) return;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       busy = true;
       message = provider == OAuthProvider.google
-          ? 'Google güvenli giriş ekranı açılıyor…'
-          : 'Apple güvenli giriş ekranı açılıyor…';
+          ? l10n.googleAuthOpening
+          : l10n.appleAuthOpening;
       awaitingEmailConfirmation = false;
       awaitingOAuth = true;
     });
@@ -282,14 +287,14 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
       );
       if (!opened) {
         awaitingOAuth = false;
-        _showMessage('Giriş ekranı açılamadı. Lütfen tekrar deneyin.');
+        _showMessage(l10n.loginScreenCouldNotOpen);
       }
     } on AuthException catch (error) {
       awaitingOAuth = false;
-      _showMessage(error.message);
+      _showMessage(_authErrorMessage(error));
     } catch (_) {
       awaitingOAuth = false;
-      _showMessage('Giriş ekranı açılamadı. Lütfen tekrar deneyin.');
+      _showMessage(l10n.loginScreenCouldNotOpen);
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -318,6 +323,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: SafeArea(
@@ -350,18 +356,15 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Saha müşteri hafızanıza güvenli erişim',
-                      textAlign: TextAlign.center,
-                    ),
+                    Text(l10n.loginDescription, textAlign: TextAlign.center),
                     const SizedBox(height: 28),
                     TextField(
                       controller: email,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       autofillHints: const [AutofillHints.email],
-                      decoration: const InputDecoration(
-                        labelText: 'E-posta',
+                      decoration: InputDecoration(
+                        labelText: l10n.email,
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -376,8 +379,8 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                       autofillHints: register
                           ? const [AutofillHints.newPassword]
                           : const [AutofillHints.password],
-                      decoration: const InputDecoration(
-                        labelText: 'Şifre',
+                      decoration: InputDecoration(
+                        labelText: l10n.password,
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -419,31 +422,29 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                           : submit,
                       child: Text(
                         busy
-                            ? 'Bekleyin…'
+                            ? l10n.wait
                             : awaitingEmailConfirmation
-                            ? 'E-posta gönderildi'
+                            ? l10n.emailSent
                             : register
-                            ? 'Hesap oluştur'
-                            : 'Giriş yap',
+                            ? l10n.createAccount
+                            : l10n.signIn,
                       ),
                     ),
                     if (awaitingEmailConfirmation)
                       TextButton(
                         onPressed: busy ? null : resendConfirmation,
-                        child: const Text(
-                          'Doğrulama e-postasını yeniden gönder',
-                        ),
+                        child: Text(l10n.resendVerificationEmail),
                       ),
                     TextButton(
                       onPressed: busy ? null : toggleRegister,
                       child: Text(
-                        register ? 'Hesabım var' : 'Yeni hesap oluştur',
+                        register ? l10n.existingAccount : l10n.createNewAccount,
                       ),
                     ),
                     if (!register)
                       TextButton(
                         onPressed: busy ? null : resetPassword,
-                        child: const Text('Şifremi unuttum'),
+                        child: Text(l10n.forgotPassword),
                       ),
                     if (googleAuthAvailable || appleAuthAvailable)
                       const Divider(height: 30),
@@ -453,7 +454,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                             ? null
                             : () => social(OAuthProvider.google),
                         icon: const Icon(Icons.g_mobiledata),
-                        label: const Text('Google ile devam et'),
+                        label: Text(l10n.continueWithGoogle),
                       ),
                     if (googleAuthAvailable && appleAuthAvailable)
                       const SizedBox(height: 8),
@@ -463,14 +464,11 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                             ? null
                             : () => social(OAuthProvider.apple),
                         icon: const Icon(Icons.apple),
-                        label: const Text('Apple ile devam et'),
+                        label: Text(l10n.continueWithApple),
                       ),
                     if (!widget.services.config.hasSupabase) ...[
                       const SizedBox(height: 16),
-                      const Text(
-                        'Demo yapılandırması etkin. Giriş yap düğmesi yerel önizlemeyi açar.',
-                        textAlign: TextAlign.center,
-                      ),
+                      Text(l10n.demoConfiguration, textAlign: TextAlign.center),
                     ],
                   ],
                 ),

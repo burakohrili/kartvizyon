@@ -1,15 +1,55 @@
-import type { Metadata } from "next";
-import { LegalPage } from "../legal-page";
+import { LegalPage, localizedLegalMetadata } from "../legal-page";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
 
-export const metadata: Metadata = {
-  title: "Hakkımızda",
-  description: "KartVizyon ve Noesis Social hakkında.",
-  alternates: { canonical: "https://kartvizyon.app/about" },
-};
+export const generateMetadata = () =>
+  localizedLegalMetadata({
+    turkishTitle: "Hakkımızda",
+    englishTitle: "About KartVizyon",
+    turkishDescription: "KartVizyon ve Noesis Social hakkında.",
+    englishDescription: "About KartVizyon and Noesis Social.",
+    canonical: "https://kartvizyon.app/about",
+  });
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const locale = await getRequestLocale();
+  if (locale === "en") {
+    return (
+      <LegalPage
+        title="About KartVizyon"
+        locale={locale}
+        updated="September 12, 2026"
+      >
+        <p>
+          KartVizyon is software developed by Noesis Social - Burak OHRİLİ. It
+          helps field professionals and sales teams manage customer context,
+          visits, and follow-ups in a shared workspace.
+        </p>
+        <h2>The problem we address</h2>
+        <p>
+          KartVizyon helps keep meeting notes from getting lost across personal
+          memory, messages, and disconnected files. It brings pre-visit
+          briefings, offline field notes, human-reviewed AI debriefs, tasks, and
+          manager reports together on a customer timeline.
+        </p>
+        <h2>Product principles</h2>
+        <p>
+          AI output is a draft until a person approves it. Organization data is
+          separated by workspace. Location is used only after a user-initiated
+          action or while the user-visible Field Mode is active; the product is
+          not designed for covert continuous tracking. Users can initiate data
+          export and account deletion requests in the product.
+        </p>
+        <h2>Business</h2>
+        <p>
+          Noesis Social - Burak OHRİLİ · Aegean Tax Office · Tax ID 6360302767 ·
+          5499/1 Street No:9, Gazi Osmanpaşa Neighborhood, Bornova / İzmir,
+          Türkiye
+        </p>
+      </LegalPage>
+    );
+  }
   return (
-    <LegalPage title="Hakkımızda">
+    <LegalPage title="Hakkımızda" locale={locale}>
       <p>
         KartVizyon, Noesis Social - Burak OHRİLİ tarafından geliştirilen;
         bireysel saha profesyonelleri ile satış ekiplerinin müşteri bağlamını,

@@ -3,26 +3,31 @@ import { getWebWorkspaceContext } from "@/lib/web-context";
 import { PrivacyPanel } from "../settings-workbench";
 import { SettingsNav } from "../settings-nav";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 export default async function PrivacyPage() {
   const context = await getWebWorkspaceContext();
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).settings;
   return (
     <main className="customers-page">
       <DemoBanner />
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">KVKK</span>
-          <h1>Gizlilik ve veri hakları</h1>
-          <p>
-            Açık rızalarınızı yönetin; dışa aktarma veya silme talebi oluşturun.
-          </p>
+          <span className="eyebrow">{m.privacyEyebrow}</span>
+          <h1>{m.privacyTitle}</h1>
+          <p>{m.privacyIntro}</p>
         </div>
       </header>
-      <SettingsNav />
-      <PrivacyPanel workspaceId={context?.workspaceId ?? null} />
+      <SettingsNav locale={locale} />
+      <PrivacyPanel
+        workspaceId={context?.workspaceId ?? null}
+        locale={locale}
+      />
     </main>
   );
 }

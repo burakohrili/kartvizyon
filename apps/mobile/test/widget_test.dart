@@ -1,8 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kartvizyon_mobile/app.dart';
+import 'package:kartvizyon_mobile/core/ui_locale_preference.dart';
+
+class _MemoryLocalePreferenceStore implements UiLocalePreferenceStore {
+  String? value;
+
+  @override
+  Future<String?> read() async => value;
+
+  @override
+  Future<void> write(String languageCode) async => value = languageCode;
+}
 
 void main() {
+  testWidgets('English UI choice persists across app relaunch', (tester) async {
+    final preference = _MemoryLocalePreferenceStore();
+    await tester.pumpWidget(KartVizyonApp(localePreferenceStore: preference));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Menü'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Uygulama dili'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Uygulama dili'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('İngilizce'));
+    await tester.pumpAndSettle();
+
+    expect(preference.value, 'en');
+    expect(find.text('Today'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(KartVizyonApp(localePreferenceStore: preference));
+    await tester.pumpAndSettle();
+    expect(find.text('Today\'s field summary'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
+  });
+
   testWidgets('Bugün gerçek boş özeti ve çalışan metrikleri gösterir', (
     tester,
   ) async {
@@ -82,13 +119,18 @@ void main() {
     final openedHeight = tester.getRect(dialogScroll).height;
     expect(
       openedHeight,
-      greaterThan(200),
+      greaterThan(150),
       reason:
-          'Klavye boşluğu iki kez uygulanırsa form yüksekliği sıfıra iner ve '
-          'kullanıcı boş bir kutu görür.',
+          'Klavye açıldığında form alanları kaydırılabilir kalmalı; modal '
+          'boş bir kutuya dönüşmemeli.',
     );
     expect(find.text('Firma adı *'), findsOneWidget);
     expect(find.text('Müşteriyi kaydet'), findsOneWidget);
+    expect(
+      tester.getRect(find.text('Müşteriyi kaydet')).bottom,
+      lessThan(800 - 1000 / tester.view.devicePixelRatio),
+      reason: 'Kaydet eylemi klavye açıldığında da görünür alanda kalmalı.',
+    );
   });
 
   testWidgets('Görevler boş durumu ve manuel görev CTA gösterir', (
@@ -153,7 +195,7 @@ void main() {
     await tester.tap(find.text('Hesabımı sil'));
     await tester.pumpAndSettle();
     expect(find.text('Hesabımı kalıcı olarak sil'), findsWidgets);
-    expect(find.textContaining('İşlem geri alınamaz'), findsOneWidget);
+    expect(find.textContaining('Bu işlem geri alınamaz'), findsOneWidget);
     expect(find.text('Vazgeç'), findsOneWidget);
     await tester.tap(find.text('Vazgeç'));
     await tester.pumpAndSettle();

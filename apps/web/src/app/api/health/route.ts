@@ -21,6 +21,16 @@ const REQUIRED_COLUMNS: { table: string; column: string; migration: string }[] =
       column: "location_source",
       migration: "0022_company_location_source",
     },
+    {
+      table: "visits",
+      column: "planning_note",
+      migration: "0037_visit_planning_schema_repair",
+    },
+    {
+      table: "visits",
+      column: "visit_type",
+      migration: "0037_visit_planning_schema_repair",
+    },
   ];
 
 async function findSchemaDrift(): Promise<string[]> {

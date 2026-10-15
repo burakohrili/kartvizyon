@@ -12,6 +12,7 @@ import 'package:kartvizyon_mobile/data/local/app_database.dart';
 import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/more/company_identity_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 
 MobileServices services() => MobileServices.create(
   const MobileConfig(
@@ -79,7 +80,14 @@ void main() {
       ],
     );
     addTearDown(router.dispose);
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('tr', 'TR'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
     await tester.enterText(find.byType(TextFormField).at(0), 'Burak Yılmaz');
     await tester.enterText(find.byType(TextFormField).at(1), 'Ohrili Makina');
     await tester.tap(find.text('Kaydet'));
@@ -89,6 +97,27 @@ void main() {
       'companyName': 'Ohrili Makina',
     });
     expect(find.text('Home'), findsOneWidget);
+  });
+
+  testWidgets('company identity onboarding follows selected English locale', (
+    tester,
+  ) async {
+    final subject = services();
+    addTearDown(subject.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: CompanyIdentityScreen(services: subject, onboarding: true),
+      ),
+    );
+    expect(find.text('Before you begin'), findsOneWidget);
+    expect(
+      find.text('Tell us about you and the company you represent.'),
+      findsOneWidget,
+    );
+    expect(find.text('Save'), findsOneWidget);
   });
 
   testWidgets('Home gerçek adı ve firma bağlamını gösterir', (tester) async {

@@ -23,5 +23,10 @@ void main() {
 
       expect(FieldModeService.sessionEndFor(start), start);
     });
+
+    test('başlangıç sınırı 21.00 yerel saatinde kapanır', () {
+      expect(FieldModeService.canStartAt(DateTime(2026, 9, 3, 20, 59)), isTrue);
+      expect(FieldModeService.canStartAt(DateTime(2026, 9, 3, 21)), isFalse);
+    });
   });
 }

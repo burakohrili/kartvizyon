@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 
 class VisitReviewScreen extends StatefulWidget {
   const VisitReviewScreen({
@@ -39,7 +40,7 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
     final data = Map<String, dynamic>.from(response['data'] as Map);
     final summary = data['ai_summary'] as Map?;
     if (summary == null) {
-      throw const MobileApiException(409, 'İncelenecek AI özeti bulunamadı.');
+      throw const MobileApiException(409, 'AI summary unavailable');
     }
     originalSummary = Map<String, dynamic>.from(summary);
     summaryController.text = summary['summary']?.toString() ?? '';
@@ -54,10 +55,11 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
   }
 
   Future<void> approve() async {
+    final l10n = AppLocalizations.of(context)!;
     if (summaryController.text.trim().length < 10 || originalSummary == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Özet en az 10 karakter olmalıdır.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.summaryMinLength)));
       return;
     }
     setState(() => busy = true);
@@ -79,18 +81,17 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
         SnackBar(
           content: Text(
             createdTasks == 0
-                ? 'Ziyaret onaylandı ve hafızaya eklendi.'
-                : 'Ziyaret onaylandı. Seçtiğiniz $createdTasks takip '
-                      'Görevler ekranına eklendi.',
+                ? l10n.visitApprovedMemory
+                : l10n.visitApprovedTasks(createdTasks),
           ),
         ),
       );
       context.go('/visits');
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ).showSnackBar(SnackBar(content: Text(l10n.summaryApprovalFailed)));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -103,22 +104,20 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
   /// inceleme kuyruğunda kalıyordu. Reddedilen ziyaret silinmez, yalnız
   /// kurumsal hafızaya girmez.
   Future<void> reject() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('AI özeti reddedilsin mi?'),
-        content: const Text(
-          'Ziyaret kurumsal hafızaya eklenmez ve takip görevi oluşmaz. '
-          'Notunuz ve ses kaydınız silinmez.',
-        ),
+        title: Text(l10n.rejectSummaryDialogTitle),
+        content: Text(l10n.rejectSummaryDialogBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Reddet'),
+            child: Text(l10n.reject),
           ),
         ],
       ),
@@ -131,21 +130,15 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
         const {},
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Özet reddedildi; hafızaya eklenmedi.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.summaryRejected)));
       context.go('/visits');
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is MobileApiException
-                ? error.message
-                : 'Reddedilemedi. Tekrar deneyin.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.summaryRejectFailed)));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -158,162 +151,182 @@ class _VisitReviewScreenState extends State<VisitReviewScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('AI özetini incele')),
-    body: FutureBuilder<Map<String, dynamic>>(
-      future: visit,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                snapshot.error.toString(),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          );
-        }
-        final data = snapshot.data!;
-        final company = data['company'] as Map? ?? {};
-        final sensitive = originalSummary?['sensitiveContentDetected'] == true;
-        return ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              company['name']?.toString() ?? 'Müşteri ziyareti',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'AI çıktısı siz onaylamadan kurumsal hafızaya eklenmez.',
-            ),
-            // Uyarı listenin dibinde duruyordu; onay düğmesine inen kullanıcı
-            // görmeden geçebiliyordu.
-            if (sensitive) ...[
-              const SizedBox(height: 12),
-              Card(
-                color: Theme.of(context).colorScheme.errorContainer,
-                child: const Padding(
-                  padding: EdgeInsets.all(14),
-                  child: Text(
-                    'Hassas kişisel veri olasılığı var. Onaylamadan önce '
-                    'özeti düzenleyin.',
-                  ),
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.reviewAiSummary)),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: visit,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  snapshot.error is MobileApiException
+                      ? l10n.aiSummaryNotFound
+                      : l10n.reviewLoadFailed,
+                  textAlign: TextAlign.center,
                 ),
               ),
-            ],
-            const SizedBox(height: 18),
-            TextField(
-              controller: summaryController,
-              minLines: 5,
-              maxLines: 9,
-              maxLength: 1200,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Ziyaret özeti',
+            );
+          }
+          final data = snapshot.data!;
+          final company = data['company'] as Map? ?? {};
+          final sensitive =
+              originalSummary?['sensitiveContentDetected'] == true;
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text(
+                company['name']?.toString() ?? l10n.customerVisit,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              // ignore: deprecated_member_use
-              value: outcome,
-              decoration: const InputDecoration(labelText: 'Sonuç'),
-              items: const [
-                DropdownMenuItem(value: 'positive', child: Text('Olumlu')),
-                DropdownMenuItem(value: 'neutral', child: Text('Nötr')),
-                DropdownMenuItem(value: 'negative', child: Text('Olumsuz')),
-                DropdownMenuItem(value: 'unknown', child: Text('Belirsiz')),
+              const SizedBox(height: 6),
+              Text(l10n.aiOutputApprovalNotice),
+              // Uyarı listenin dibinde duruyordu; onay düğmesine inen kullanıcı
+              // görmeden geçebiliyordu.
+              if (sensitive) ...[
+                const SizedBox(height: 12),
+                Card(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Text(l10n.sensitiveDataWarning),
+                  ),
+                ),
               ],
-              onChanged: busy
-                  ? null
-                  : (value) => setState(() => outcome = value ?? 'unknown'),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'Önerilen takipler',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            if (followUps.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 10),
-                child: Text('Takip önerisi bulunamadı.'),
-              )
-            else
-              ...List.generate(
-                followUps.length,
-                (index) => CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: selectedFollowUps.contains(index),
-                  title: Text(followUps[index]['title']?.toString() ?? 'Takip'),
-                  // Tarih ve sorumlu ipucu gösterilmiyordu; onaylanan takip
-                  // veritabanı trigger'ı ile bu tarihten göreve yazılıyor,
-                  // yani kullanıcı görmediği bir tarihi onaylıyordu.
-                  subtitle: Text(_followUpDetail(followUps[index])),
-                  onChanged: busy
-                      ? null
-                      : (selected) => setState(() {
-                          if (selected == true) {
-                            selectedFollowUps.add(index);
-                          } else {
-                            selectedFollowUps.remove(index);
-                          }
-                        }),
+              const SizedBox(height: 18),
+              TextField(
+                controller: summaryController,
+                minLines: 5,
+                maxLines: 9,
+                maxLength: 1200,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: l10n.visitSummary,
                 ),
               ),
-            // Özetin kaynağı. Karşılaştıracak metin olmadan yapılan onay,
-            // onay değil kabuldür.
-            if ((data['transcript']?.toString() ?? '').isNotEmpty) ...[
-              const SizedBox(height: 18),
-              ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                title: const Text('Kayıt metni'),
-                subtitle: const Text('Özeti kaynağıyla karşılaştırın'),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(data['transcript'].toString()),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                // ignore: deprecated_member_use
+                value: outcome,
+                decoration: InputDecoration(labelText: l10n.outcome),
+                items: [
+                  DropdownMenuItem(
+                    value: 'positive',
+                    child: Text(l10n.positive),
                   ),
+                  DropdownMenuItem(value: 'neutral', child: Text(l10n.neutral)),
+                  DropdownMenuItem(
+                    value: 'negative',
+                    child: Text(l10n.negative),
+                  ),
+                  DropdownMenuItem(value: 'unknown', child: Text(l10n.unknown)),
                 ],
+                onChanged: busy
+                    ? null
+                    : (value) => setState(() => outcome = value ?? 'unknown'),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                l10n.suggestedFollowUps,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              if (followUps.isEmpty)
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Text(l10n.noFollowUpsFound),
+                )
+              else
+                ...List.generate(
+                  followUps.length,
+                  (index) => CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: selectedFollowUps.contains(index),
+                    title: Text(
+                      followUps[index]['title']?.toString() ??
+                          l10n.followUpFallback,
+                    ),
+                    // Tarih ve sorumlu ipucu gösterilmiyordu; onaylanan takip
+                    // veritabanı trigger'ı ile bu tarihten göreve yazılıyor,
+                    // yani kullanıcı görmediği bir tarihi onaylıyordu.
+                    subtitle: Text(
+                      _followUpDetail(followUps[index], l10n, locale),
+                    ),
+                    onChanged: busy
+                        ? null
+                        : (selected) => setState(() {
+                            if (selected == true) {
+                              selectedFollowUps.add(index);
+                            } else {
+                              selectedFollowUps.remove(index);
+                            }
+                          }),
+                  ),
+                ),
+              // Özetin kaynağı. Karşılaştıracak metin olmadan yapılan onay,
+              // onay değil kabuldür.
+              if ((data['transcript']?.toString() ?? '').isNotEmpty) ...[
+                const SizedBox(height: 18),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: Text(l10n.transcript),
+                  subtitle: Text(l10n.compareSummarySource),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(data['transcript'].toString()),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: busy ? null : approve,
+                icon: const Icon(Icons.verified_outlined),
+                label: Text(busy ? l10n.approving : l10n.approveAndAddMemory),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: busy ? null : reject,
+                icon: const Icon(Icons.block_outlined),
+                label: Text(l10n.rejectAiSummary),
               ),
             ],
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: busy ? null : approve,
-              icon: const Icon(Icons.verified_outlined),
-              label: Text(busy ? 'Onaylanıyor…' : 'Onayla ve hafızaya ekle'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: busy ? null : reject,
-              icon: const Icon(Icons.block_outlined),
-              label: const Text('Özeti reddet'),
-            ),
-          ],
-        );
-      },
-    ),
-  );
+          );
+        },
+      ),
+    );
+  }
 
   /// Takip önerisinin tarihi ve sorumlu ipucu.
-  static String _followUpDetail(Map<String, dynamic> followUp) {
+  static String _followUpDetail(
+    Map<String, dynamic> followUp,
+    AppLocalizations l10n,
+    String locale,
+  ) {
     final parts = <String>[];
     final due = followUp['dueDate']?.toString();
     if (due != null && due.isNotEmpty) {
       final parsed = DateTime.tryParse(due);
       parts.add(
         parsed == null
-            ? 'Son tarih $due'
-            : 'Son tarih ${parsed.day.toString().padLeft(2, '0')}.'
-                  '${parsed.month.toString().padLeft(2, '0')}.${parsed.year}',
+            ? l10n.dueDatePrefix(due)
+            : l10n.dueDatePrefix(
+                locale == 'en'
+                    ? '${parsed.month}/${parsed.day}/${parsed.year}'
+                    : '${parsed.day.toString().padLeft(2, '0')}.${parsed.month.toString().padLeft(2, '0')}.${parsed.year}',
+              ),
       );
     } else {
-      parts.add('Tarihsiz');
+      parts.add(l10n.undated);
     }
     final owner = followUp['ownerHint']?.toString();
     if (owner != null && owner.isNotEmpty) parts.add(owner);

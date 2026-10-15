@@ -1,6 +1,6 @@
 # KartVizyon AI mağaza metinleri
 
-Durum: Yayın taslağı · 3 Ağustos 2026
+Durum: Abonelik metaverisi güncellendi · 2 Ekim 2026
 
 ## Kimlik
 
@@ -37,7 +37,12 @@ Ziyaretten önce son görüşmeleri, açık sözleri ve kritik notları tek brif
 
 KartVizyon sürekli konum takibi yapmaz. Kamera, mikrofon ve konum yalnız ilgili özelliği siz başlattığınızda istenir; reddedildiğinde manuel alternatifler kullanılabilir.
 
-Bireysel saha profesyonelleri ve kurumsal satış ekipleri için tasarlanmıştır.
+Bireysel saha profesyonelleri ve kurumsal satış ekipleri için tasarlanmıştır. Bireysel Premium aboneliği uygulama içinde Apple App Store üzerinden satın alınabilir ve yönetilebilir.
+
+KartVizyon Bireysel Aylık, aylık otomatik yenilenen bir aboneliktir. Ayda 125 kartvizit taraması, 240 dakika ses işleme ve 125 AI özeti sunar. Geçerli fiyat ve para birimi satın alma öncesinde App Store ekranında gösterilir. Aboneliğin yenilenmesini App Store hesap ayarlarınızdan kapatabilirsiniz.
+
+Kullanım Koşulları (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Gizlilik Politikası: https://kartvizyon.app/privacy
 
 ## Anahtar kelimeler (App Store)
 
