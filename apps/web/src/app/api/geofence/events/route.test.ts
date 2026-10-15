@@ -42,7 +42,6 @@ describe("saha modu olay kaydı", () => {
         }),
       },
     );
-
     const response = await POST(request);
 
     expect(response.status).toBe(204);
