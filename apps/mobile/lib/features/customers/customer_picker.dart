@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 import 'customer_identity.dart';
 
 class CustomerChoice {
@@ -13,10 +14,13 @@ class CustomerChoice {
     this.address,
   });
 
-  factory CustomerChoice.fromMap(Map<String, dynamic> value) => CustomerChoice(
+  factory CustomerChoice.fromMap(
+    Map<String, dynamic> value, {
+    String fallback = '',
+  }) => CustomerChoice(
     id: value['id']?.toString() ?? '',
-    name: customerDisplayName(value),
-    legalName: customerLegalName(value),
+    name: customerDisplayName(value, fallback: fallback),
+    legalName: customerLegalName(value, fallback: fallback),
     address: value['address']?.toString(),
   );
 
@@ -111,18 +115,27 @@ class _CustomerPickerSheetState extends State<_CustomerPickerSheet> {
               )
               as Map<String, dynamic>;
       if (!mounted || requestGeneration != generation) return;
-      final next = List<Map<String, dynamic>>.from(
-        response['data'] as List? ?? const [],
-      ).map(CustomerChoice.fromMap).where((item) => item.id.isNotEmpty);
+      final next =
+          List<Map<String, dynamic>>.from(response['data'] as List? ?? const [])
+              .map((item) {
+                final l10n = AppLocalizations.of(context)!;
+                return CustomerChoice.fromMap(
+                  item,
+                  fallback: l10n.companyFallback,
+                );
+              })
+              .where((item) => item.id.isNotEmpty);
       final page = response['page'] as Map?;
       setState(() {
         items.addAll(next);
         hasMore = page?['hasMore'] == true;
         error = null;
       });
-    } catch (caught) {
+    } catch (_) {
       if (!mounted || requestGeneration != generation) return;
-      setState(() => error = caught.toString());
+      setState(
+        () => error = AppLocalizations.of(context)!.customerPickerLoadFailed,
+      );
     } finally {
       if (mounted && requestGeneration == generation) {
         setState(() => loading = false);
@@ -131,102 +144,105 @@ class _CustomerPickerSheetState extends State<_CustomerPickerSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Müşteri seç',
-                style: Theme.of(context).textTheme.titleLarge,
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.customerPickerTitle,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
-            ),
-            IconButton(
-              tooltip: 'Kapat',
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close),
-            ),
-          ],
-        ),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        child: TextField(
-          controller: query,
-          autofocus: true,
-          onChanged: _onQueryChanged,
-          textInputAction: TextInputAction.search,
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search),
-            hintText: 'Kısa ad, firma, adres veya e-posta ara',
-            border: OutlineInputBorder(),
+              IconButton(
+                tooltip: l10n.customerPickerClose,
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+              ),
+            ],
           ),
         ),
-      ),
-      if (widget.allowNone)
-        ListTile(
-          leading: const Icon(Icons.not_interested_outlined),
-          title: const Text('Müşteri seçmeden devam et'),
-          onTap: () => Navigator.pop(context),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: TextField(
+            controller: query,
+            autofocus: true,
+            onChanged: _onQueryChanged,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              prefixIcon: Icon(Icons.search),
+              hintText: l10n.customerPickerSearch,
+              border: OutlineInputBorder(),
+            ),
+          ),
         ),
-      const Divider(height: 1),
-      Expanded(
-        child: error != null && items.isEmpty
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(error!, textAlign: TextAlign.center),
-                      TextButton(
-                        onPressed: _reload,
-                        child: const Text('Tekrar dene'),
-                      ),
-                    ],
+        if (widget.allowNone)
+          ListTile(
+            leading: const Icon(Icons.not_interested_outlined),
+            title: Text(l10n.customerPickerNone),
+            onTap: () => Navigator.pop(context),
+          ),
+        const Divider(height: 1),
+        Expanded(
+          child: error != null && items.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(error!, textAlign: TextAlign.center),
+                        TextButton(
+                          onPressed: _reload,
+                          child: Text(l10n.customerPickerRetry),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              )
-            : items.isEmpty && loading
-            ? const Center(child: CircularProgressIndicator())
-            : items.isEmpty
-            ? const Center(child: Text('Aramaya uygun müşteri bulunamadı.'))
-            : ListView.separated(
-                controller: scroll,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: items.length + (loading ? 1 : 0),
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  if (index == items.length) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
+                )
+              : items.isEmpty && loading
+              ? const Center(child: CircularProgressIndicator())
+              : items.isEmpty
+              ? Center(child: Text(l10n.customerPickerEmpty))
+              : ListView.separated(
+                  controller: scroll,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: items.length + (loading ? 1 : 0),
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    if (index == items.length) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final item = items[index];
+                    return ListTile(
+                      leading: const Icon(Icons.apartment_outlined),
+                      title: Text(
+                        item.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        [
+                          if (item.legalName != null) item.legalName!,
+                          if ((item.address ?? '').trim().isNotEmpty)
+                            item.address!,
+                        ].join(' · '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => Navigator.pop(context, item),
                     );
-                  }
-                  final item = items[index];
-                  return ListTile(
-                    leading: const Icon(Icons.apartment_outlined),
-                    title: Text(
-                      item.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      [
-                        if (item.legalName != null) item.legalName!,
-                        if ((item.address ?? '').trim().isNotEmpty)
-                          item.address!,
-                      ].join(' · '),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () => Navigator.pop(context, item),
-                  );
-                },
-              ),
-      ),
-    ],
-  );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
 }

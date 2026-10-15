@@ -2,9 +2,15 @@ import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { NotificationCenter } from "../interaction-workbench";
 import { DemoBanner } from "@/app/demo-banner";
+import { getMessages } from "@/lib/i18n/messages";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
 
 export default async function NotificationsPage() {
-  const context = await getWebWorkspaceContext();
+  const [context, locale] = await Promise.all([
+    getWebWorkspaceContext(),
+    getRequestLocale(),
+  ]);
+  const m = getMessages(locale).notifications;
   const result = context
     ? await context.supabase
         .from("notifications")
@@ -19,15 +25,16 @@ export default async function NotificationsPage() {
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">BİLDİRİMLER</span>
-          <h1>Bildirim merkezi</h1>
-          <p>Yönetici yorumları, görevler, onaylar ve eşitleme olayları.</p>
+          <span className="eyebrow">{m.eyebrow}</span>
+          <h1>{m.title}</h1>
+          <p>{m.description}</p>
         </div>
       </header>
       <NotificationCenter
         initialItems={(result.data ?? []) as Array<Record<string, unknown>>}
+        locale={locale}
       />
     </main>
   );

@@ -2,6 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
+import { formatDate, formatDateTime } from "@/lib/i18n/locale";
+import { getDemoRecords } from "@/lib/i18n/demo-records";
 
 type Company = {
   id?: string;
@@ -54,28 +58,47 @@ const demoTasks: Task[] = [
   },
 ];
 
-async function getCustomer(id: string) {
+async function getCustomer(id: string, locale: "en" | "tr") {
   if (id.startsWith("demo-")) {
+    const demo = getDemoRecords(locale);
+    const contact = (index: number) => demo.contactNames[index].split(" ");
     const name =
       id === "demo-1"
-        ? "Atlas Medikal"
+        ? demo.companies[0]
         : id === "demo-2"
-          ? "Nova Otomasyon"
-          : "Marmara Ambalaj";
+          ? demo.companies[1]
+          : demo.companies[2];
+    const firstContact = contact(0);
+    const secondContact = contact(1);
     return {
       company: {
         id,
         name,
-        address: "İstanbul",
+        address: locale === "en" ? "Istanbul" : "İstanbul",
         phone: "+90 212 555 12 20",
         email: "bilgi@firma.com",
       } satisfies Company,
-      contacts: demoContacts,
-      tasks: demoTasks,
+      contacts: [
+        {
+          ...demoContacts[0],
+          first_name: firstContact[0],
+          last_name: firstContact.slice(1).join(" "),
+          title: demo.contactTitles[0],
+        },
+        {
+          ...demoContacts[1],
+          first_name: secondContact[0],
+          last_name: secondContact.slice(1).join(" "),
+          title: demo.contactTitles[1],
+        },
+      ],
+      tasks: demoTasks.map((task, index) => ({
+        ...task,
+        title: demo.tasks[index],
+      })),
       memory: {
-        summary:
-          "Son görüşmede bakım paketi, garanti seçenekleri ve revize teklif tarihi konuşuldu. Satın alma müdürü teknik demo tarihini bekliyor.",
-        open_promises: ["Revize teklif"],
+        summary: demo.customerSummary,
+        open_promises: [demo.customerPromise],
         source_visit_ids: ["v1", "v2", "v3"],
         generated_at: "2026-08-02T10:42:00Z",
         stale_after: "2026-08-09T10:42:00Z",
@@ -139,13 +162,13 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const data = await getCustomer(id);
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).customerDetail;
+  const data = await getCustomer(id, locale);
   if (!data) notFound();
   const { company, contacts, tasks, memory, lastVisit } = data;
   const lastVisitLabel = lastVisit?.approved_at
-    ? new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" }).format(
-        new Date(lastVisit.approved_at),
-      )
+    ? formatDate(lastVisit.approved_at, locale)
     : null;
   return (
     <main className="form-page">
@@ -154,40 +177,38 @@ export default async function CustomerDetailPage({
         <div className="detail-top">
           <div>
             <Link href="/customers" className="back-link">
-              ← Müşteriler
+              {m.back}
             </Link>
-            <span className="eyebrow">MÜŞTERİ HAFIZA KARTI</span>
+            <span className="eyebrow">{m.eyebrow}</span>
             <h1>{company.name}</h1>
             <p>
-              {company.address ?? "Konum eklenmedi"} ·{" "}
-              {company.phone ?? "Telefon eklenmedi"}
+              {company.address ?? m.locationMissing} ·{" "}
+              {company.phone ?? m.phoneMissing}
             </p>
           </div>
           <Link
             className="primary button-link"
             href={`/visits?companyId=${id}`}
           >
-            + Ziyaret kaydet
+            {m.recordVisit}
           </Link>
         </div>
         <div className="memory-detail">
-          <strong>Bir sonraki ziyarete hazırlık</strong>
-          <p>
-            {memory?.summary ??
-              "Henüz onaylı ziyaret olmadığı için hafıza kartı oluşturulmadı."}
-          </p>
+          <strong>{m.nextVisitPrep}</strong>
+          <p>{memory?.summary ?? m.memoryUnavailable}</p>
           <div>
             <span>
-              Son ziyaret
-              <strong>{lastVisitLabel ?? "Henüz yok"}</strong>
+              {m.lastVisit}
+              <strong>{lastVisitLabel ?? m.noLastVisit}</strong>
             </span>
             <span>
-              Açık takip<strong>{tasks.length}</strong>
+              {m.openFollowUps}
+              <strong>{tasks.length}</strong>
             </span>
             <span>
-              Kaynak
+              {m.sources}
               <strong>
-                {memory?.source_visit_ids.length ?? 0} onaylı ziyaret
+                {memory?.source_visit_ids.length ?? 0} {m.approvedVisits}
               </strong>
             </span>
           </div>
@@ -195,11 +216,11 @@ export default async function CustomerDetailPage({
         <div className="customer-detail-grid">
           <section className="detail-panel">
             <div className="detail-heading">
-              <h2>İlgili kişiler</h2>
-              <Link href={`/customers/${id}/contacts/new`}>+ Kişi ekle</Link>
+              <h2>{m.contacts}</h2>
+              <Link href={`/customers/${id}/contacts/new`}>{m.addContact}</Link>
             </div>
             {contacts.length === 0 ? (
-              <p className="muted-empty">İlgili kişi eklenmedi.</p>
+              <p className="muted-empty">{m.noContacts}</p>
             ) : (
               contacts.map((contact) => (
                 <article className="contact-row" key={contact.id}>
@@ -211,10 +232,8 @@ export default async function CustomerDetailPage({
                     <strong>
                       {contact.first_name} {contact.last_name}
                     </strong>
-                    <small>{contact.title ?? "Pozisyon eklenmedi"}</small>
-                    <p>
-                      {contact.phone ?? contact.email ?? "İletişim bilgisi yok"}
-                    </p>
+                    <small>{contact.title ?? m.noPosition}</small>
+                    <p>{contact.phone ?? contact.email ?? m.noContactInfo}</p>
                   </div>
                 </article>
               ))
@@ -222,26 +241,24 @@ export default async function CustomerDetailPage({
           </section>
           <section className="detail-panel">
             <div className="detail-heading">
-              <h2>Açık takipler</h2>
-              <button>+ Takip ekle</button>
+              <h2>{m.tasks}</h2>
+              <button>{m.addTask}</button>
             </div>
             {tasks.length === 0 ? (
-              <p className="muted-empty">Açık takip bulunmuyor.</p>
+              <p className="muted-empty">{m.noTasks}</p>
             ) : (
               tasks.map((task) => (
                 <article className="task-row" key={task.id}>
                   <input
                     type="checkbox"
-                    aria-label={`${task.title} görevini tamamla`}
+                    aria-label={m.completeTask.replace("{task}", task.title)}
                   />
                   <div>
                     <strong>{task.title}</strong>
                     <small>
                       {task.due_at
-                        ? new Intl.DateTimeFormat("tr-TR", {
-                            dateStyle: "medium",
-                          }).format(new Date(task.due_at))
-                        : "Tarih yok"}
+                        ? formatDate(task.due_at, locale)
+                        : m.noDueDate}
                     </small>
                   </div>
                 </article>
@@ -251,12 +268,10 @@ export default async function CustomerDetailPage({
         </div>
         {memory && (
           <p className="memory-source-note">
-            Hafıza kartı{" "}
-            {new Intl.DateTimeFormat("tr-TR", {
-              dateStyle: "medium",
-              timeStyle: "short",
-            }).format(new Date(memory.generated_at))}{" "}
-            tarihinde yalnızca onaylı kayıtlardan yenilendi.
+            {m.memoryUpdated.replace(
+              "{date}",
+              formatDateTime(memory.generated_at, locale),
+            )}
           </p>
         )}
       </section>

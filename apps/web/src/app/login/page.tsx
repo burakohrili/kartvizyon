@@ -1,12 +1,6 @@
 import { signIn, signUp } from "./actions";
-
-const messages: Record<string, string> = {
-  config: "Supabase ortam değişkenleri henüz yapılandırılmadı.",
-  credentials: "E-posta veya şifre hatalı.",
-  signup: "Hesap oluşturulamadı. Bilgileri kontrol edin.",
-  verification:
-    "E-posta doğrulama bağlantısı geçersiz veya süresi dolmuş. Yeni bir doğrulama e-postası isteyin.",
-};
+import { getMessages } from "@/lib/i18n/messages";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
 
 export default async function LoginPage({
   searchParams,
@@ -14,6 +8,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; message?: string }>;
 }) {
   const query = await searchParams;
+  const messages = getMessages(await getRequestLocale()).auth;
   return (
     <main className="auth-page">
       <section className="auth-card">
@@ -21,28 +16,29 @@ export default async function LoginPage({
           <span>KV</span>
           <div>
             <strong>KartVizyon AI</strong>
-            <small>Saha müşteri hafızası</small>
+            <small>{messages.brandSubtitle}</small>
           </div>
         </div>
-        <h1>Tekrar hoş geldiniz</h1>
-        <p>Ziyaretlerinize kaldığınız yerden devam edin.</p>
+        <h1>{messages.welcomeTitle}</h1>
+        <p>{messages.welcomeBody}</p>
         {query.error && (
           <div className="form-message error-message">
-            {messages[query.error] ?? "Bir hata oluştu."}
+            {messages.errors[query.error as keyof typeof messages.errors] ??
+              messages.errors.unknown}
           </div>
         )}
         {query.message === "verify" && (
           <div className="form-message success-message">
-            Doğrulama bağlantısı e-posta adresinize gönderildi.
+            {messages.verificationSent}
           </div>
         )}
         <form action={signIn} className="auth-form">
           <label>
-            E-posta
+            {messages.email}
             <input name="email" type="email" autoComplete="email" required />
           </label>
           <label>
-            Şifre
+            {messages.password}
             <input
               name="password"
               type="password"
@@ -52,22 +48,22 @@ export default async function LoginPage({
             />
           </label>
           <button className="primary" type="submit">
-            Giriş yap
+            {messages.signIn}
           </button>
         </form>
         <details>
-          <summary>Yeni hesap oluştur</summary>
+          <summary>{messages.createAccount}</summary>
           <form action={signUp} className="auth-form signup-form">
             <label>
-              Ad soyad
+              {messages.fullName}
               <input name="fullName" minLength={2} maxLength={120} required />
             </label>
             <label>
-              E-posta
+              {messages.email}
               <input name="email" type="email" autoComplete="email" required />
             </label>
             <label>
-              Şifre
+              {messages.password}
               <input
                 name="password"
                 type="password"
@@ -77,14 +73,11 @@ export default async function LoginPage({
               />
             </label>
             <button className="secondary light" type="submit">
-              Ücretsiz hesap oluştur
+              {messages.createFreeAccount}
             </button>
           </form>
         </details>
-        <small className="privacy-note">
-          AI tarafından oluşturulan kayıtlar onayınız olmadan yöneticilerle
-          paylaşılmaz.
-        </small>
+        <small className="privacy-note">{messages.privacyNote}</small>
       </section>
     </main>
   );

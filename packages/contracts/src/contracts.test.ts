@@ -96,6 +96,27 @@ describe("ziyaret öncelik skoru", () => {
     });
     expect(urgent.total).toBeGreaterThan(routine.total);
     expect(urgent.reasons.length).toBeGreaterThan(0);
+    expect(urgent.reasons.map((reason) => reason.code)).toEqual([
+      "last-visit",
+      "overdue-follow-ups",
+      "customer-value",
+      "distance",
+    ]);
+  });
+  it("returns stable reason codes for localization without changing Turkish labels", () => {
+    const score = calculateVisitPriority({
+      daysSinceVisit: null,
+      overdueTaskCount: 1,
+      customerValue: 0.5,
+      distanceKm: 1,
+    });
+    expect(score.reasons.map((reason) => reason.code)).toEqual([
+      "no-visit",
+      "overdue-follow-ups",
+      "customer-value",
+      "distance",
+    ]);
+    expect(score.reasons[0]?.label).toBe("Henüz ziyaret edilmedi");
   });
   it("İstanbul içi iki noktanın mesafesini hesaplar", () => {
     const distance = haversineDistanceKm(

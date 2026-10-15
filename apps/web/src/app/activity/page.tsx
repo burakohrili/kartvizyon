@@ -2,21 +2,32 @@ import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { ActivityFeed } from "../interaction-workbench";
 import { DemoBanner } from "@/app/demo-banner";
+import { getMessages } from "@/lib/i18n/messages";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getDemoRecords } from "@/lib/i18n/demo-records";
 
-const demoVisits = [
-  {
-    id: "00000000-0000-4000-8000-000000000701",
-    approved_at: new Date().toISOString(),
-    company: { name: "Atlas Medikal" },
-    representative: { full_name: "Ece Yılmaz" },
-    ai_summary: {
-      summary: "Yeni cihaz teklifi ve teknik demo tarihi onaylandı.",
+function demoVisitsFor(locale: "en" | "tr") {
+  const demo = getDemoRecords(locale);
+  return [
+    {
+      id: "00000000-0000-4000-8000-000000000701",
+      approved_at: new Date().toISOString(),
+      company: { name: demo.companies[0] },
+      representative: { full_name: demo.representative },
+      ai_summary: {
+        summary: demo.activitySummary,
+      },
     },
-  },
-];
+  ];
+}
 
 export default async function ActivityPage() {
-  const context = await getWebWorkspaceContext();
+  const [context, locale] = await Promise.all([
+    getWebWorkspaceContext(),
+    getRequestLocale(),
+  ]);
+  const m = getMessages(locale).activity;
+  const demoVisits = demoVisitsFor(locale);
   const [visits, comments] = context
     ? await Promise.all([
         context.supabase
@@ -42,24 +53,18 @@ export default async function ActivityPage() {
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">YÖNETİCİ AKTİVİTESİ</span>
-          <h1>Onaylı saha akışı</h1>
-          <p>
-            Yalnızca temsilcinin onayladığı ziyaretler, yorumlar ve
-            yönlendirmeler.
-          </p>
+          <span className="eyebrow">{m.eyebrow}</span>
+          <h1>{m.title}</h1>
+          <p>{m.description}</p>
         </div>
       </header>
-      {!context && (
-        <div className="demo-notice">
-          Demo akışı; yorum için Supabase oturumu gerekir.
-        </div>
-      )}
+      {!context && <div className="demo-notice">{m.demo}</div>}
       <ActivityFeed
         initialVisits={(visits.data ?? []) as Item[]}
         initialComments={(comments.data ?? []) as Item[]}
+        locale={locale}
       />
     </main>
   );

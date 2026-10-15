@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import type { AppLocale } from "@/lib/i18n/locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 type Item = Record<string, unknown>;
 
@@ -8,11 +10,14 @@ export function OrganizationStructure({
   workspaceId,
   initialRegions,
   initialTeams,
+  locale,
 }: {
   workspaceId: string;
   initialRegions: Item[];
   initialTeams: Item[];
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).workspaceAdmin;
   const [regions, setRegions] = useState(initialRegions);
   const [teams, setTeams] = useState(initialTeams);
   const [message, setMessage] = useState("");
@@ -28,8 +33,8 @@ export function OrganizationStructure({
     const result = await response.json();
     if (response.ok) {
       setRegions((current) => [...current, result.data]);
-      setMessage("Bölge oluşturuldu.");
-    } else setMessage(result.error ?? "Bölge oluşturulamadı.");
+      setMessage(m.regionCreated);
+    } else setMessage(m.regionFailed);
   }
   async function createTeam(formData: FormData) {
     const response = await fetch("/api/organization/structure", {
@@ -48,33 +53,33 @@ export function OrganizationStructure({
     const result = await response.json();
     if (response.ok) {
       setTeams((current) => [...current, result.data]);
-      setMessage("Takım oluşturuldu.");
-    } else setMessage(result.error ?? "Takım oluşturulamadı.");
+      setMessage(m.teamCreated);
+    } else setMessage(m.teamFailed);
   }
   return (
     <div className="operations-grid">
       <div>
         <form action={createRegion} className="operation-form">
-          <h2>Bölge oluştur</h2>
+          <h2>{m.createRegion}</h2>
           <label>
-            Bölge adı
+            {m.regionName}
             <input name="name" required minLength={2} />
           </label>
-          <button className="primary">Oluştur</button>
+          <button className="primary">{m.create}</button>
         </form>
         <form
           action={createTeam}
           className="operation-form structure-team-form"
         >
-          <h2>Takım oluştur</h2>
+          <h2>{m.createTeam}</h2>
           <label>
-            Takım adı
+            {m.teamName}
             <input name="name" required minLength={2} />
           </label>
           <label>
-            Bölge
+            {m.region}
             <select name="regionId">
-              <option value="">Bölgesiz</option>
+              <option value="">{m.noRegion}</option>
               {regions.map((region) => (
                 <option key={String(region.id)} value={String(region.id)}>
                   {String(region.name)}
@@ -82,17 +87,17 @@ export function OrganizationStructure({
               ))}
             </select>
           </label>
-          <button className="primary">Oluştur</button>
+          <button className="primary">{m.create}</button>
         </form>
         {message && <p className="form-message">{message}</p>}
       </div>
       <section className="operation-list">
-        <h2>Organizasyon yapısı</h2>
+        <h2>{m.organizationStructure}</h2>
         {regions.map((region) => (
           <article key={String(region.id)}>
             <div>
               <strong>{String(region.name)}</strong>
-              <small>Bölge</small>
+              <small>{m.region}</small>
             </div>
           </article>
         ))}
@@ -102,7 +107,9 @@ export function OrganizationStructure({
             <article key={String(team.id)}>
               <div>
                 <strong>{String(team.name)}</strong>
-                <small>Takım · {region?.name ?? "Bölgesiz"}</small>
+                <small>
+                  {m.createTeam} · {region?.name ?? m.noRegion}
+                </small>
               </div>
             </article>
           );

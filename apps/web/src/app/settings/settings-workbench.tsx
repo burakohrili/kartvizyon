@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { formatTry, IAP_INDIVIDUAL_MONTHLY_TRY } from "@/lib/pricing";
+import { IAP_INDIVIDUAL_MONTHLY_TRY } from "@/lib/pricing";
+import { getMessages } from "@/lib/i18n/messages";
+import type { AppLocale } from "@/lib/i18n/locale";
+import { formatCurrency, formatNumber } from "@/lib/i18n/locale";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -13,7 +16,14 @@ function Status({ message }: { message: string }) {
   ) : null;
 }
 
-export function BillingPanel({ enabled }: { enabled: boolean }) {
+export function BillingPanel({
+  enabled,
+  locale,
+}: {
+  enabled: boolean;
+  locale: AppLocale;
+}) {
+  const m = getMessages(locale).settings.billing;
   const [data, setData] = useState<JsonRecord | null>(null);
   const [loadedAt, setLoadedAt] = useState<number | null>(null);
   const [message, setMessage] = useState("");
@@ -26,22 +36,16 @@ export function BillingPanel({ enabled }: { enabled: boolean }) {
         if (ok) {
           setData(result);
           setLoadedAt(Date.now());
-        } else setMessage(result.error ?? "Kullanım bilgisi alınamadı.");
+        } else setMessage(m.loadFailed);
       })
       .catch((error: Error) => {
-        if (error.name !== "AbortError")
-          setMessage("Kullanım bilgisi alınamadı.");
+        if (error.name !== "AbortError") setMessage(m.loadFailed);
       });
     return () => controller.abort();
-  }, [enabled]);
-  if (!enabled)
-    return (
-      <div className="demo-notice">
-        Canlı paket bilgisi için Supabase oturumu gerekir.
-      </div>
-    );
+  }, [enabled, m.loadFailed]);
+  if (!enabled) return <div className="demo-notice">{m.demoNotice}</div>;
   if (!data || loadedAt === null)
-    return <Status message={message || "Kullanım bilgisi yükleniyor…"} />;
+    return <Status message={message || m.loading} />;
   const plans = (data.plans as JsonRecord[]) ?? [];
   const entitlement = data.entitlement as JsonRecord;
   const limits = entitlement.limits as JsonRecord;
@@ -56,37 +60,41 @@ export function BillingPanel({ enabled }: { enabled: boolean }) {
     <div className="settings-stack">
       <p role="status">
         {entitlement.readOnly
-          ? "Erişim süreniz doldu. Mevcut verileri görüntüleme, dışa aktarma ve hesap silme açık. Yeni işlemler için abonelik başlatın."
+          ? m.readOnly
           : entitlement.trialActive
-            ? `Denemenizin ${daysLeft <= 1 ? "son günü" : `bitmesine ${daysLeft} gün kaldı`}. Otomatik ücret alınmaz.`
-            : "Aboneliğiniz etkin. Haklarınız her ay yenilenir."}
+            ? daysLeft <= 1
+              ? m.trialLastDay
+              : m.trialDays.replace("{days}", formatNumber(daysLeft, locale))
+            : m.active}
       </p>
       <section className="settings-summary">
         <article>
-          <small>Aktif paket</small>
+          <small>{m.activePlan}</small>
           <strong>{String(entitlement.planName)}</strong>
         </article>
         <article>
-          <small>Kullanılan koltuk</small>
+          <small>{m.seatsUsed}</small>
           <strong>{String(data.seatsUsed ?? 0)}</strong>
         </article>
         <article>
           <small>AI ses</small>
           <strong>
-            {(Number(usage.audio_seconds ?? 0) / 60).toFixed(1)} /{" "}
-            {String(limits.aiMinutes)} dk
+            {formatNumber(Number(usage.audio_seconds ?? 0) / 60, locale)} /{" "}
+            {String(limits.aiMinutes)} {m.minutes}
           </strong>
         </article>
         <article>
-          <small>Kartvizit tarama</small>
+          <small>{m.cardScans}</small>
           <strong>
-            {String(usage.ocr ?? 0)} / {String(limits.ocr ?? "Sınırsız")}
+            {formatNumber(Number(usage.ocr ?? 0), locale)} /{" "}
+            {String(limits.ocr ?? m.unlimited)}
           </strong>
         </article>
         <article>
-          <small>AI özeti</small>
+          <small>{m.aiSummaries}</small>
           <strong>
-            {String(usage.ai_summary ?? 0)} / {String(limits.aiSummaries)}
+            {formatNumber(Number(usage.ai_summary ?? 0), locale)} /{" "}
+            {formatNumber(Number(limits.aiSummaries), locale)}
           </strong>
         </article>
       </section>
@@ -96,12 +104,13 @@ export function BillingPanel({ enabled }: { enabled: boolean }) {
             <h2>{String(plan.name)}</h2>
             <strong>
               {Number(plan.monthly_price_try)
-                ? `${Number(plan.monthly_price_try).toLocaleString("tr-TR")} ₺/ay`
-                : "Teklif alın"}
+                ? `${formatCurrency(Number(plan.monthly_price_try), "TRY", locale)}/${locale === "en" ? "month" : "ay"}`
+                : m.getQuote}
             </strong>
             <p>
-              {String(plan.seat_limit)} kullanıcı ·{" "}
-              {String(plan.monthly_ai_minutes)} AI dakika
+              {formatNumber(Number(plan.seat_limit), locale)} {m.users} ·{" "}
+              {formatNumber(Number(plan.monthly_ai_minutes), locale)}{" "}
+              {m.aiMinutes}
             </p>
             <ul>
               {((plan.features as string[]) ?? []).map((feature) => (
@@ -112,12 +121,10 @@ export function BillingPanel({ enabled }: { enabled: boolean }) {
         ))}
       </section>
       <p className="muted">
-        Bireysel abonelik mobil uygulamada App Store veya Google Play üzerinden
-        başlatılır. Standart fiyat KDV dahil{" "}
-        {formatTry(IAP_INDIVIDUAL_MONTHLY_TRY)}/aydır. Deneme: 60 tarama, 120
-        dakika ses, 60 AI özeti. Ücretli: ayda 125 tarama, 240 dakika ses, 125
-        AI özeti. Kart gerekmeden 14 gün deneyebilirsiniz; deneme sonunda
-        otomatik ücret alınmaz.
+        {m.individualNote.replace(
+          "{price}",
+          formatCurrency(IAP_INDIVIDUAL_MONTHLY_TRY, "TRY", locale),
+        )}
       </p>
     </div>
   );
@@ -125,9 +132,12 @@ export function BillingPanel({ enabled }: { enabled: boolean }) {
 
 export function IntegrationsPanel({
   workspaceId,
+  locale,
 }: {
   workspaceId: string | null;
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).settings.integrations;
   const [credentials, setCredentials] = useState<JsonRecord[]>([]);
   const [webhooks, setWebhooks] = useState<JsonRecord[]>([]);
   const [secret, setSecret] = useState("");
@@ -139,8 +149,8 @@ export function IntegrationsPanel({
     if (response.ok) {
       setCredentials(result.credentials ?? []);
       setWebhooks(result.webhooks ?? []);
-    } else setMessage(result.error ?? "Entegrasyonlar alınamadı.");
-  }, [workspaceId]);
+    } else setMessage(m.loadFailed);
+  }, [workspaceId, m.loadFailed]);
   useEffect(() => {
     if (!workspaceId) return;
     const controller = new AbortController();
@@ -150,14 +160,13 @@ export function IntegrationsPanel({
         if (ok) {
           setCredentials(result.credentials ?? []);
           setWebhooks(result.webhooks ?? []);
-        } else setMessage(result.error ?? "Entegrasyonlar alınamadı.");
+        } else setMessage(m.loadFailed);
       })
       .catch((error: Error) => {
-        if (error.name !== "AbortError")
-          setMessage("Entegrasyonlar alınamadı.");
+        if (error.name !== "AbortError") setMessage(m.loadFailed);
       });
     return () => controller.abort();
-  }, [workspaceId]);
+  }, [workspaceId, m.loadFailed]);
   async function createCredential(formData: FormData) {
     const response = await fetch("/api/settings/integrations", {
       method: "POST",
@@ -174,9 +183,9 @@ export function IntegrationsPanel({
     const result = await response.json();
     if (response.ok) {
       setSecret(result.secret);
-      setMessage("Anahtar yalnızca bu kez gösterilir.");
+      setMessage(m.keyShownOnce);
       await load();
-    } else setMessage(result.error ?? "Anahtar oluşturulamadı.");
+    } else setMessage(m.keyCreateFailed);
   }
   async function createWebhook(formData: FormData) {
     const response = await fetch("/api/settings/integrations", {
@@ -195,9 +204,9 @@ export function IntegrationsPanel({
     const result = await response.json();
     if (response.ok) {
       setSecret(result.secret);
-      setMessage("İmzalama sırrı yalnızca bu kez gösterilir.");
+      setMessage(m.secretShownOnce);
       await load();
-    } else setMessage(result.error ?? "Webhook oluşturulamadı.");
+    } else setMessage(m.webhookCreateFailed);
   }
   async function revoke(kind: string, id: unknown) {
     const response = await fetch("/api/settings/integrations", {
@@ -207,61 +216,56 @@ export function IntegrationsPanel({
     });
     if (response.ok) await load();
   }
-  if (!workspaceId)
-    return (
-      <div className="demo-notice">
-        Entegrasyon yönetimi için Supabase oturumu gerekir.
-      </div>
-    );
+  if (!workspaceId) return <div className="demo-notice">{m.demoNotice}</div>;
   return (
     <div className="settings-stack">
       {secret && (
         <div className="secret-once">
-          <strong>Şimdi güvenli yere kaydedin</strong>
+          <strong>{m.saveSecret}</strong>
           <code>{secret}</code>
         </div>
       )}
       <Status message={message} />
       <div className="settings-columns">
         <form action={createCredential} className="settings-card">
-          <h2>API anahtarı</h2>
+          <h2>{m.apiKey}</h2>
           <label>
-            Ad
+            {m.name}
             <input name="name" required minLength={2} />
           </label>
-          <button className="primary">Salt okunur anahtar üret</button>
+          <button className="primary">{m.createReadOnlyKey}</button>
         </form>
         <form action={createWebhook} className="settings-card">
-          <h2>Webhook</h2>
+          <h2>{m.webhook}</h2>
           <label>
-            Ad
+            {m.name}
             <input name="name" required minLength={2} />
           </label>
           <label>
-            HTTPS adresi
+            {m.httpsUrl}
             <input name="url" type="url" pattern="https://.*" required />
           </label>
-          <button className="primary">Webhook ekle</button>
+          <button className="primary">{m.addWebhook}</button>
         </form>
       </div>
       <section className="settings-card">
-        <h2>Etkin kimlik bilgileri</h2>
+        <h2>{m.activeCredentials}</h2>
         {credentials.map((item) => (
           <p key={String(item.id)}>
             <code>{String(item.token_prefix)}…</code> {String(item.name)}{" "}
             <button onClick={() => void revoke("api_credential", item.id)}>
-              İptal et
+              {m.revoke}
             </button>
           </p>
         ))}
       </section>
       <section className="settings-card">
-        <h2>Webhook uçları</h2>
+        <h2>{m.webhookEndpoints}</h2>
         {webhooks.map((item) => (
           <p key={String(item.id)}>
             <strong>{String(item.name)}</strong> {String(item.url)}{" "}
             <button onClick={() => void revoke("webhook", item.id)}>
-              Devre dışı bırak
+              {m.disable}
             </button>
           </p>
         ))}
@@ -270,7 +274,14 @@ export function IntegrationsPanel({
   );
 }
 
-export function PrivacyPanel({ workspaceId }: { workspaceId: string | null }) {
+export function PrivacyPanel({
+  workspaceId,
+  locale,
+}: {
+  workspaceId: string | null;
+  locale: AppLocale;
+}) {
+  const m = getMessages(locale).settings.privacy;
   const [data, setData] = useState<JsonRecord>({ consents: [], requests: [] });
   const [message, setMessage] = useState("");
   const load = useCallback(async () => {
@@ -278,8 +289,8 @@ export function PrivacyPanel({ workspaceId }: { workspaceId: string | null }) {
     const response = await fetch("/api/settings/privacy");
     const result = await response.json();
     if (response.ok) setData(result);
-    else setMessage(result.error ?? "Veri hakları yüklenemedi.");
-  }, [workspaceId]);
+    else setMessage(m.loadFailed);
+  }, [workspaceId, m.loadFailed]);
   useEffect(() => {
     if (!workspaceId) return;
     const controller = new AbortController();
@@ -287,14 +298,13 @@ export function PrivacyPanel({ workspaceId }: { workspaceId: string | null }) {
       .then((response) => Promise.all([response.ok, response.json()]))
       .then(([ok, result]) => {
         if (ok) setData(result);
-        else setMessage(result.error ?? "Veri hakları yüklenemedi.");
+        else setMessage(m.loadFailed);
       })
       .catch((error: Error) => {
-        if (error.name !== "AbortError")
-          setMessage("Veri hakları yüklenemedi.");
+        if (error.name !== "AbortError") setMessage(m.loadFailed);
       });
     return () => controller.abort();
-  }, [workspaceId]);
+  }, [workspaceId, m.loadFailed]);
   const consentMap = new Map(
     ((data.consents as JsonRecord[]) ?? []).map((item) => [
       item.purpose,
@@ -308,7 +318,7 @@ export function PrivacyPanel({ workspaceId }: { workspaceId: string | null }) {
       body: JSON.stringify({ workspaceId, purpose, granted }),
     });
     if (response.ok) await load();
-    else setMessage("Tercih kaydedilemedi.");
+    else setMessage(m.preferenceSaveFailed);
   }
   async function createRequest(kind: "export" | "deletion") {
     const response = await fetch("/api/settings/privacy", {
@@ -317,28 +327,19 @@ export function PrivacyPanel({ workspaceId }: { workspaceId: string | null }) {
       body: JSON.stringify({ workspaceId, kind }),
     });
     const result = await response.json();
-    setMessage(
-      response.ok
-        ? "Talebiniz alındı ve audit kaydına işlendi."
-        : (result.error ?? "Talep alınamadı."),
-    );
+    setMessage(response.ok ? m.requestReceived : m.requestFailed);
     if (response.ok) await load();
   }
-  if (!workspaceId)
-    return (
-      <div className="demo-notice">
-        KVKK talepleri için Supabase oturumu gerekir.
-      </div>
-    );
+  if (!workspaceId) return <div className="demo-notice">{m.demoNotice}</div>;
   const options = [
-    ["product_analytics", "Ürün analitiği"],
-    ["ai_processing", "AI ile not işleme"],
-    ["email_notifications", "E-posta bildirimleri"],
+    ["product_analytics", m.analytics],
+    ["ai_processing", m.aiProcessing],
+    ["email_notifications", m.emailNotifications],
   ];
   return (
     <div className="settings-stack">
       <section className="settings-card">
-        <h2>Açık rıza tercihleri</h2>
+        <h2>{m.consentTitle}</h2>
         {options.map(([purpose, label]) => (
           <label className="consent-row" key={purpose}>
             <span>{label}</span>
@@ -353,38 +354,41 @@ export function PrivacyPanel({ workspaceId }: { workspaceId: string | null }) {
         ))}
       </section>
       <section className="settings-card">
-        <h2>Veri hakları</h2>
-        <p>
-          Dışa aktarma ve silme talepleri 30 günlük yasal operasyon süresiyle
-          izlenir.
-        </p>
+        <h2>{m.dataRights}</h2>
+        <p>{m.rightsNotice}</p>
         <div className="button-row">
           <button onClick={() => void createRequest("export")}>
-            Verilerimi dışa aktar
+            {m.export}
           </button>
           <button
             className="danger"
             onClick={() => void createRequest("deletion")}
           >
-            Silme talebi oluştur
+            {m.createDeletion}
           </button>
         </div>
       </section>
       <Status message={message} />
       <section className="settings-card">
-        <h2>Taleplerim</h2>
+        <h2>{m.myRequests}</h2>
         {((data.requests as JsonRecord[]) ?? []).map((item) => (
           <p key={String(item.id)}>
-            {item.kind === "export" ? "Dışa aktarma" : "Silme"} ·{" "}
-            <strong>{String(item.status)}</strong> ·{" "}
-            {new Date(String(item.requested_at)).toLocaleDateString("tr-TR")}
+            {item.kind === "export" ? m.exportLabel : m.deletionLabel} ·{" "}
+            <strong>
+              {m.statuses[String(item.status) as keyof typeof m.statuses] ??
+                m.statuses.unknown}
+            </strong>{" "}
+            ·{" "}
+            {new Intl.DateTimeFormat(locale === "en" ? "en-US" : "tr-TR", {
+              dateStyle: "medium",
+            }).format(new Date(String(item.requested_at)))}
             {item.resolution_note ? ` · ${String(item.resolution_note)}` : ""}
             {item.kind === "export" && item.status === "ready" ? (
               <>
                 {" "}
                 ·{" "}
                 <a href={`/api/settings/privacy/export/${String(item.id)}`}>
-                  İndir
+                  {m.download}
                 </a>
               </>
             ) : null}

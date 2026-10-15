@@ -1,48 +1,35 @@
 import 'sync_engine.dart';
+import '../l10n/app_localizations.dart';
 
 /// Kuyruk hatasını kullanıcının okuyabileceği bir cümleye çevirir.
 ///
 /// Eşitleme merkezi bu satırda ham kodu (`http_409`, `network_error`)
 /// gösteriyordu. Testçi ekranda "http_409" görüp ne olduğunu da, ne yapması
 /// gerektiğini de anlayamadı. Etiket sebebi **ve çıkış yolunu** birlikte söyler.
-String syncErrorLabel(String? lastError) {
+String syncErrorLabel(String? lastError, AppLocalizations l10n) {
   if (lastError == null || lastError.isEmpty) {
-    return 'Gönderilmeyi bekliyor';
+    return l10n.syncErrorWaiting;
   }
   final code = lastError.startsWith(syncBlockedPrefix)
       ? lastError.substring(syncBlockedPrefix.length)
       : lastError;
 
   return switch (code) {
-    'network_error' =>
-      'Bağlantı kurulamadı. Ağ geldiğinde kendiliğinden denenecek.',
-    'http_401' ||
-    'http_403' => 'Oturum süresi doldu. Çıkıp yeniden giriş yapın.',
-    'http_402' =>
-      'Abonelik veya kullanım kotası gerekli. Taslağınız korunur; '
-          'abonelik ekranını kontrol edip yeniden deneyebilirsiniz.',
-    'http_404' =>
-      'Bu notun bağlı olduğu ziyaret bulunamadı. Kayıt silinebilir.',
-    'http_409' =>
-      'Bu not sunucuda hâlâ işleniyor. Kısa süre sonra kendiliğinden '
-          'tamamlanacak.',
-    'http_413' =>
-      'Ses kaydı 25 MB sınırını aşıyor. Daha kısa bir not kaydedin; '
-          'bu kaydı silebilirsiniz.',
-    'http_415' =>
-      'Ses biçimi sunucu tarafından kabul edilmedi. Kaydı silip yeniden '
-          'kaydedin.',
-    'http_429' => 'Çok fazla istek gönderildi. Biraz sonra tekrar deneyin.',
-    'visit_id_missing' => 'Kayıt eksik oluşmuş; gönderilemez, silinebilir.',
-    'unsupported_entity' =>
-      'Bu kayıt türü uygulamanın bu sürümü tarafından gönderilemiyor.',
-    _ when code.startsWith('http_5') =>
-      'Sunucu şu an yanıt veremiyor. Kısa süre sonra tekrar denenecek.',
-    _ => 'Gönderilemedi. Tekrar deneyebilir ya da kaydı silebilirsiniz.',
+    'network_error' => l10n.syncErrorNetwork,
+    'http_401' || 'http_403' => l10n.syncErrorAuth,
+    'http_402' => l10n.syncErrorAccess,
+    'http_404' => l10n.syncErrorVisitMissing,
+    'http_409' => l10n.syncErrorProcessing,
+    'http_413' => l10n.syncErrorAudioTooLarge,
+    'http_415' => l10n.syncErrorAudioUnsupported,
+    'http_429' => l10n.syncErrorRateLimit,
+    'visit_id_missing' => l10n.syncErrorVisitMissing,
+    'unsupported_entity' => l10n.syncErrorUnsupportedEntity,
+    _ when code.startsWith('http_5') => l10n.syncErrorServer,
+    _ => l10n.syncErrorGeneric,
   };
 }
 
 /// Kalıcı hataya düşmüş kayıt için başlıkta gösterilecek uyarı.
-String blockedQueueNotice(int blocked) => blocked == 1
-    ? '1 kayıt gönderilemiyor. Aşağıdan tekrar deneyin ya da silin.'
-    : '$blocked kayıt gönderilemiyor. Aşağıdan tekrar deneyin ya da silin.';
+String blockedQueueNotice(int blocked, AppLocalizations l10n) =>
+    blocked == 1 ? l10n.syncBlockedOne : l10n.syncBlockedCount(blocked);

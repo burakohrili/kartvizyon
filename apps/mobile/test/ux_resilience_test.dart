@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kartvizyon_mobile/app.dart';
 import 'package:kartvizyon_mobile/features/more/workspace_module_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations_en.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations_tr.dart';
 
 /// Saha cihazlarının gerçek koşullarına karşı UX dayanıklılığı.
 ///
@@ -169,23 +171,29 @@ void main() {
     ) async {
       // Bu ekranlar yalnız "… için henüz kayıt bulunmuyor." diyordu; kullanıcı
       // ne olduğunu da, kaydın nereden geleceğini de bilmiyordu.
-      for (final module in WorkspaceModule.values) {
-        expect(
-          module.emptyTitle.isNotEmpty,
-          isTrue,
-          reason: '${module.title} için boş durum başlığı yok',
-        );
-        expect(
-          module.emptyBody.length,
-          greaterThan(40),
-          reason: '${module.title} boş durumu ne olduğunu anlatmıyor',
-        );
-        // Mağaza kuralı: mobilde pazarlama sitesine bağlantı verilmez.
-        expect(
-          module.emptyBody.contains('http'),
-          isFalse,
-          reason: '${module.title} boş durumunda bağlantı var',
-        );
+      for (final l10n in [AppLocalizationsTr(), AppLocalizationsEn()]) {
+        for (final module in WorkspaceModule.values) {
+          final title = module.localizedTitle(l10n);
+          final emptyTitle = module.localizedEmptyTitle(l10n);
+          final emptyBody = module.localizedEmptyBody(l10n);
+          expect(
+            emptyTitle.isNotEmpty,
+            isTrue,
+            reason: '$title has no empty-state title (${l10n.localeName})',
+          );
+          expect(
+            emptyBody.length,
+            greaterThan(40),
+            reason:
+                '$title empty state does not explain the module (${l10n.localeName})',
+          );
+          // Store policy: mobile empty states do not link to marketing pages.
+          expect(
+            emptyBody.contains('http'),
+            isFalse,
+            reason: '$title empty state contains a link (${l10n.localeName})',
+          );
+        }
       }
     });
   });

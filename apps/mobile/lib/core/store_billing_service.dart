@@ -5,9 +5,18 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 
 import 'mobile_services.dart';
 
+enum StoreBillingFailure {
+  configurationUnavailable,
+  offeringUnavailable,
+  sessionRequired,
+  purchaseCancelled,
+  purchaseFailed,
+  restoreFailed,
+}
+
 class StoreBillingException implements Exception {
-  const StoreBillingException(this.message, {this.cancelled = false});
-  final String message;
+  const StoreBillingException(this.failure, {this.cancelled = false});
+  final StoreBillingFailure failure;
   final bool cancelled;
 }
 
@@ -21,7 +30,7 @@ class StoreBillingService {
         : config.revenueCatGoogleApiKey;
     if (apiKey.isEmpty) {
       throw const StoreBillingException(
-        'Mağaza ödeme yapılandırması henüz tamamlanmadı.',
+        StoreBillingFailure.configurationUnavailable,
       );
     }
     if (!await Purchases.isConfigured) {
@@ -37,7 +46,7 @@ class StoreBillingService {
     final offering = (await Purchases.getOfferings()).current;
     if (offering == null) {
       throw const StoreBillingException(
-        'Bu mağaza için satın alınabilir plan bulunamadı.',
+        StoreBillingFailure.offeringUnavailable,
       );
     }
     return offering.availablePackages;
@@ -52,13 +61,11 @@ class StoreBillingService {
       final code = PurchasesErrorHelper.getErrorCode(error);
       if (code == PurchasesErrorCode.purchaseCancelledError) {
         throw const StoreBillingException(
-          'Satın alma iptal edildi.',
+          StoreBillingFailure.purchaseCancelled,
           cancelled: true,
         );
       }
-      throw const StoreBillingException(
-        'Satın alma tamamlanamadı. Mağaza hesabınızı kontrol edip yeniden deneyin.',
-      );
+      throw const StoreBillingException(StoreBillingFailure.purchaseFailed);
     }
   }
 
@@ -66,9 +73,7 @@ class StoreBillingService {
     try {
       return await Purchases.restorePurchases();
     } on PlatformException {
-      throw const StoreBillingException(
-        'Satın almalar geri yüklenemedi. Mağaza hesabınızı kontrol edin.',
-      );
+      throw const StoreBillingException(StoreBillingFailure.restoreFailed);
     }
   }
 

@@ -2,30 +2,41 @@ import Image from "next/image";
 import Link from "next/link";
 import { loadDashboard } from "@/lib/dashboard";
 import { DemoBanner } from "@/app/demo-banner";
-
-const nav = [
-  { label: "Genel Bakış", href: "/dashboard" },
-  { label: "Aktivite", href: "/activity" },
-  { label: "Müşteriler", href: "/customers" },
-  { label: "Harita", href: "/map" },
-  { label: "Ziyaretler", href: "/visits" },
-  { label: "Takvim", href: "/calendar" },
-  { label: "Görevler", href: "/tasks" },
-  { label: "Fırsatlar", href: "/opportunities" },
-  { label: "Siparişler", href: "/orders" },
-  { label: "Ürün ve Fiyatlar", href: "/products" },
-  { label: "Raporlar", href: "/reports" },
-  { label: "Formlar", href: "/forms" },
-  { label: "Belgeler", href: "/documents" },
-  { label: "Bildirimler", href: "/notifications" },
-  { label: "Hesap Güvenliği", href: "/settings/security" },
-  { label: "Paket ve Kullanım", href: "/settings/billing" },
-  { label: "Entegrasyonlar", href: "/settings/integrations" },
-  { label: "KVKK", href: "/settings/privacy" },
-];
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import {
+  formatDate,
+  formatDateTime,
+  formatNumber,
+  intlLocale,
+} from "@/lib/i18n/locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 export default async function DashboardHome() {
-  const dashboard = await loadDashboard();
+  const [dashboard, locale] = await Promise.all([
+    loadDashboard(),
+    getRequestLocale(),
+  ]);
+  const m = getMessages(locale).dashboard;
+  const nav = [
+    { label: m.overview, href: "/dashboard" },
+    { label: m.activity, href: "/activity" },
+    { label: m.customers, href: "/customers" },
+    { label: m.map, href: "/map" },
+    { label: m.visits, href: "/visits" },
+    { label: m.calendar, href: "/calendar" },
+    { label: m.tasks, href: "/tasks" },
+    { label: m.opportunities, href: "/opportunities" },
+    { label: m.orders, href: "/orders" },
+    { label: m.products, href: "/products" },
+    { label: m.reports, href: "/reports" },
+    { label: m.forms, href: "/forms" },
+    { label: m.documents, href: "/documents" },
+    { label: m.notifications, href: "/notifications" },
+    { label: m.security, href: "/settings/security" },
+    { label: m.billing, href: "/settings/billing" },
+    { label: m.integrations, href: "/settings/integrations" },
+    { label: m.privacy, href: "/settings/privacy" },
+  ];
   const now = new Date();
   const userName = String(dashboard.userName);
   const initials = userName
@@ -33,7 +44,7 @@ export default async function DashboardHome() {
     .slice(0, 2)
     .map((part: string) => part[0])
     .join("")
-    .toLocaleUpperCase("tr-TR");
+    .toLocaleUpperCase(intlLocale(locale));
 
   return (
     <main className="app-shell">
@@ -48,10 +59,10 @@ export default async function DashboardHome() {
             priority
           />
           <div>
-            KartVizyon<small>AI saha hafızası</small>
+            KartVizyon<small>{m.brandSubtitle}</small>
           </div>
         </div>
-        <nav aria-label="Ana menü">
+        <nav aria-label={m.navigation}>
           {nav.map((item, index) => (
             <a
               className={index === 0 ? "active" : ""}
@@ -63,24 +74,22 @@ export default async function DashboardHome() {
           ))}
         </nav>
         <Link href="/workspaces" className="workspace">
-          <span>Çalışma alanı</span>
+          <span>{m.workspace}</span>
           <strong>{dashboard.workspaceName}</strong>
-          <small>
-            {dashboard.demo ? "Demo çalışma alanı" : "Aktif çalışma alanı"}
-          </small>
+          <small>{dashboard.demo ? m.demoWorkspace : m.activeWorkspace}</small>
         </Link>
       </aside>
 
       <section className="content">
         <header className="topbar">
           <div>
-            <p>{now.toLocaleDateString("tr-TR", { dateStyle: "full" })}</p>
-            <h1>Günaydın, {userName}</h1>
+            <p>{formatDate(now, locale, { dateStyle: "full" })}</p>
+            <h1>{m.welcome.replace("{name}", userName)}</h1>
           </div>
           <div className="top-actions">
             <Link
               className="icon-button"
-              aria-label="Bildirimler"
+              aria-label={m.notifications}
               href="/notifications"
             >
               ●
@@ -91,53 +100,50 @@ export default async function DashboardHome() {
 
         <section className="hero">
           <div>
-            <span className="eyebrow">BUGÜNÜN SAHA ÖZETİ</span>
+            <span className="eyebrow">{m.today}</span>
             <h2>
-              Ekibiniz müşterileriyle
+              {m.heroTitle.split("\n")[0]}
               <br />
-              kaldığı yerden devam ediyor.
+              {m.heroTitle.split("\n")[1]}
             </h2>
-            <p>
-              Onaylanmış ziyaretler, açık takipler ve yaklaşan görüşmeler tek
-              görünümde.
-            </p>
+            <p>{m.heroBody}</p>
           </div>
           <Link className="primary button-link" href="/visits">
-            + Ziyaret planla
+            {m.planVisit}
           </Link>
         </section>
 
-        <section className="metrics" aria-label="Günlük metrikler">
+        <section className="metrics" aria-label={m.dailyMetrics}>
           <article>
             <span className="metric-icon navy">✓</span>
             <div>
-              <small>Tamamlanan ziyaret</small>
+              <small>{m.completedVisits}</small>
               <strong>{dashboard.completedToday}</strong>
-              <em>Yalnızca onaylanmış kayıtlar</em>
+              <em>{m.approvedOnly}</em>
             </div>
           </article>
           <article>
             <span className="metric-icon yellow">!</span>
             <div>
-              <small>Geciken takip</small>
+              <small>{m.overdueFollowUps}</small>
               <strong>{dashboard.overdueTasks}</strong>
-              <em className="warning">Açık ve tarihi geçmiş görevler</em>
+              <em className="warning">{m.openPastDue}</em>
             </div>
           </article>
           <article>
             <span className="metric-icon blue">◎</span>
             <div>
-              <small>Onay bekleyen</small>
+              <small>{m.pendingReview}</small>
               <strong>{dashboard.pendingReview}</strong>
-              <em>Kullanıcı incelemesi gerekli</em>
+              <em>{m.userReviewRequired}</em>
             </div>
           </article>
           <article>
             <span className="metric-icon green">↗</span>
             <div>
-              <small>Veri kaynağı</small>
-              <strong>{dashboard.demo ? "Demo" : "Canlı"}</strong>
-              <em>Tenant ve rol kuralları etkin</em>
+              <small>{m.dataSource}</small>
+              <strong>{dashboard.demo ? m.demo : m.live}</strong>
+              <em>{m.tenantRules}</em>
             </div>
           </article>
         </section>
@@ -146,11 +152,11 @@ export default async function DashboardHome() {
           <article className="panel activity-panel">
             <div className="panel-heading">
               <div>
-                <span className="eyebrow">KURUMSAL HAFIZA</span>
-                <h3>Son onaylanan ziyaretler</h3>
+                <span className="eyebrow">{m.companyMemory}</span>
+                <h3>{m.recentVisits}</h3>
               </div>
               <Link className="link-button" href="/visits">
-                Tümünü gör →
+                {m.seeAll}
               </Link>
             </div>
             <div className="timeline">
@@ -161,14 +167,16 @@ export default async function DashboardHome() {
                     <div className="activity-title">
                       <strong>{activity.company}</strong>
                       <time>
-                        {new Date(activity.approvedAt).toLocaleString("tr-TR", {
+                        {formatDateTime(activity.approvedAt, locale, {
                           dateStyle: "short",
                           timeStyle: "short",
                         })}
                       </time>
                     </div>
                     <p>{activity.summary}</p>
-                    <small>{activity.representative} · Saha satış</small>
+                    <small>
+                      {activity.representative} · {m.fieldSales}
+                    </small>
                   </div>
                 </div>
               ))}
@@ -176,21 +184,17 @@ export default async function DashboardHome() {
           </article>
 
           <aside className="panel briefing">
-            <span className="eyebrow">SIRADAKİ ZİYARET</span>
+            <span className="eyebrow">{m.nextVisit}</span>
             {dashboard.nextVisit ? (
               <>
                 <div className="brief-time">
-                  {new Date(
-                    dashboard.nextVisit.plannedStartAt,
-                  ).toLocaleTimeString("tr-TR", {
+                  {new Intl.DateTimeFormat(intlLocale(locale), {
                     hour: "2-digit",
                     minute: "2-digit",
                     timeZone: "Europe/Istanbul",
-                  })}{" "}
+                  }).format(new Date(dashboard.nextVisit.plannedStartAt))}{" "}
                   <span>
-                    {new Date(
-                      dashboard.nextVisit.plannedStartAt,
-                    ).toLocaleDateString("tr-TR", {
+                    {formatDate(dashboard.nextVisit.plannedStartAt, locale, {
                       day: "2-digit",
                       month: "short",
                       timeZone: "Europe/Istanbul",
@@ -202,15 +206,17 @@ export default async function DashboardHome() {
                   <p className="location">📍 {dashboard.nextVisit.address}</p>
                 ) : null}
                 <div className="memory">
-                  <strong>Müşteri hafıza kartı</strong>
+                  <strong>{m.customerMemory}</strong>
                   <p>
-                    {dashboard.nextVisit.memorySummary ??
-                      "Bu müşteri için henüz onaylı ziyaret özeti bulunmuyor."}
+                    {dashboard.nextVisit.memorySummary ?? m.noApprovedSummary}
                   </p>
                   <ul>
-                    <li>{dashboard.nextVisit.openTasks} açık takip</li>
                     <li>
-                      {dashboard.nextVisit.sourceCount} onaylı ziyaret kaynağı
+                      {formatNumber(dashboard.nextVisit.openTasks, locale)}{" "}
+                      {m.openFollowUps}
+                    </li>
+                    <li>
+                      {dashboard.nextVisit.sourceCount} {m.approvedVisitSources}
                     </li>
                   </ul>
                 </div>
@@ -218,20 +224,21 @@ export default async function DashboardHome() {
                   className="secondary button-link"
                   href={`/customers/${dashboard.nextVisit.companyId}`}
                 >
-                  Ziyaret brifingini aç
+                  {m.openBriefing}
                 </Link>
                 <small className="source">
-                  {dashboard.nextVisit.sourceCount} onaylı kaynaktan hazırlandı
+                  {m.preparedSources.replace(
+                    "{count}",
+                    String(dashboard.nextVisit.sourceCount),
+                  )}
                 </small>
               </>
             ) : (
               <>
-                <h3>Planlı ziyaret bulunmuyor</h3>
-                <p className="location">
-                  Takvime yeni bir ziyaret eklediğinizde brifing burada görünür.
-                </p>
+                <h3>{m.noPlannedVisits}</h3>
+                <p className="location">{m.addVisitForBriefing}</p>
                 <Link className="secondary button-link" href="/calendar">
-                  Ziyaret planla
+                  {m.planVisit}
                 </Link>
               </>
             )}
@@ -242,13 +249,11 @@ export default async function DashboardHome() {
           <div className="review-icon">AI</div>
           <div>
             <strong>
-              {dashboard.pendingReview} AI özeti onayınızı bekliyor
+              {dashboard.pendingReview} {m.reviewSummary}
             </strong>
-            <p>
-              Onaylamadan önce özetleri ve oluşturulan takipleri kontrol edin.
-            </p>
+            <p>{m.reviewBeforeApproval}</p>
           </div>
-          <Link href="/visits">İncele</Link>
+          <Link href="/visits">{m.review}</Link>
         </section>
       </section>
     </main>

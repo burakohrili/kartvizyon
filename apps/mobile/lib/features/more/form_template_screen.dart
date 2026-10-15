@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 
-const formFieldTypes = <String, String>{
-  'text': 'Kısa metin',
-  'textarea': 'Uzun metin',
-  'number': 'Sayı',
-  'boolean': 'Evet / Hayır',
-  'single_select': 'Tek seçim',
-  'multi_select': 'Çoklu seçim',
-  'date': 'Tarih',
+Map<String, String> _formFieldTypes(AppLocalizations l10n) => {
+  'text': l10n.formTemplateText,
+  'textarea': l10n.formTemplateLongText,
+  'number': l10n.formTemplateNumber,
+  'boolean': l10n.formTemplateYesNo,
+  'single_select': l10n.formTemplateSingleSelect,
+  'multi_select': l10n.formTemplateMultiSelect,
+  'date': l10n.formTemplateDate,
 };
 
 class FormTemplateScreen extends StatefulWidget {
@@ -61,6 +62,8 @@ class _FormTemplateScreenState extends State<FormTemplateScreen> {
   }
 
   Future<void> _addField() async {
+    final l10n = AppLocalizations.of(context)!;
+    final typeLabels = _formFieldTypes(l10n);
     final label = TextEditingController();
     final help = TextEditingController();
     final options = TextEditingController();
@@ -70,21 +73,25 @@ class _FormTemplateScreenState extends State<FormTemplateScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Alan ekle'),
+          title: Text(l10n.formTemplateAddFieldTitle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: label,
-                  decoration: const InputDecoration(labelText: 'Başlık *'),
+                  decoration: InputDecoration(
+                    labelText: l10n.formTemplateFieldTitle,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: type,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Alan türü'),
-                  items: formFieldTypes.entries
+                  decoration: InputDecoration(
+                    labelText: l10n.formTemplateFieldType,
+                  ),
+                  items: typeLabels.entries
                       .map(
                         (entry) => DropdownMenuItem(
                           value: entry.key,
@@ -98,21 +105,23 @@ class _FormTemplateScreenState extends State<FormTemplateScreen> {
                 TextField(
                   controller: help,
                   maxLength: 240,
-                  decoration: const InputDecoration(labelText: 'Yardım metni'),
+                  decoration: InputDecoration(
+                    labelText: l10n.formTemplateHelpText,
+                  ),
                 ),
                 if (type == 'single_select' || type == 'multi_select')
                   TextField(
                     controller: options,
-                    decoration: const InputDecoration(
-                      labelText: 'Seçenekler *',
-                      hintText: 'Her satıra bir seçenek',
+                    decoration: InputDecoration(
+                      labelText: l10n.formTemplateOptions,
+                      hintText: l10n.formTemplateOptionsHint,
                     ),
                     minLines: 3,
                     maxLines: 6,
                   ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Zorunlu alan'),
+                  title: Text(l10n.formTemplateRequired),
                   value: required,
                   onChanged: (value) => setDialogState(() => required = value),
                 ),
@@ -122,7 +131,7 @@ class _FormTemplateScreenState extends State<FormTemplateScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Vazgeç'),
+              child: Text(l10n.formTemplateCancel),
             ),
             FilledButton(
               onPressed: () {
@@ -135,6 +144,11 @@ class _FormTemplateScreenState extends State<FormTemplateScreen> {
                 if (title.length < 2 ||
                     ((type == 'single_select' || type == 'multi_select') &&
                         values.isEmpty)) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(
+                      content: Text(l10n.formTemplateFieldTitleRequired),
+                    ),
+                  );
                   return;
                 }
                 Navigator.pop(dialogContext, {
@@ -148,7 +162,7 @@ class _FormTemplateScreenState extends State<FormTemplateScreen> {
                   if (values.isNotEmpty) 'options': values,
                 });
               },
-              child: const Text('Ekle'),
+              child: Text(l10n.formTemplateAdd),
             ),
           ],
         ),
@@ -161,6 +175,7 @@ class _FormTemplateScreenState extends State<FormTemplateScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
     if (submitting) return;
     setState(() => attempted = true);
     if (!(formKey.currentState?.validate() ?? false) || fields.isEmpty) return;
@@ -179,19 +194,17 @@ class _FormTemplateScreenState extends State<FormTemplateScreen> {
         },
       });
       if (mounted) Navigator.pop(context, true);
-    } on MobileApiException catch (error) {
+    } on MobileApiException catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        ).showSnackBar(SnackBar(content: Text(l10n.formTemplateSaveFailed)));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bağlantı kurulamadı. Formunuz korunuyor.'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.formTemplateSaveFailed)));
       }
     } finally {
       if (mounted) setState(() => submitting = false);
@@ -199,79 +212,87 @@ class _FormTemplateScreenState extends State<FormTemplateScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Yeni saha formu')),
-    body: Form(
-      key: formKey,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
-        children: [
-          const Text(
-            'Mağaza kontrolü, rakip analizi, servis kontrolü veya özel ziyaret kontrol listeleri oluşturun.',
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: name,
-            maxLength: 160,
-            decoration: const InputDecoration(
-              labelText: 'Form adı *',
-              border: OutlineInputBorder(),
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final typeLabels = _formFieldTypes(l10n);
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.formTemplateTitle)),
+      body: Form(
+        key: formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+          children: [
+            Text(l10n.formTemplateIntro),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: name,
+              maxLength: 160,
+              decoration: InputDecoration(
+                labelText: l10n.formTemplateName,
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) => (value?.trim().length ?? 0) < 2
+                  ? l10n.formTemplateNameRequired
+                  : null,
             ),
-            validator: (value) =>
-                (value?.trim().length ?? 0) < 2 ? 'Form adını yazın.' : null,
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: description,
-            maxLength: 500,
-            minLines: 2,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              labelText: 'Açıklama',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('Alanlar', style: Theme.of(context).textTheme.titleMedium),
-          for (var index = 0; index < fields.length; index++)
-            Card(
-              child: ListTile(
-                title: Text(fields[index]['label']),
-                subtitle: Text(
-                  '${formFieldTypes[fields[index]['type']]}${fields[index]['required'] == true ? ' · Zorunlu' : ''}${fields[index]['helpText'] == null ? '' : '\n${fields[index]['helpText']}'}',
-                ),
-                isThreeLine: fields[index]['helpText'] != null,
-                trailing: IconButton(
-                  tooltip: 'Alanı kaldır',
-                  onPressed: submitting
-                      ? null
-                      : () => setState(() => fields.removeAt(index)),
-                  icon: const Icon(Icons.delete_outline),
-                ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: description,
+              maxLength: 500,
+              minLines: 2,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: l10n.formTemplateDescription,
+                border: OutlineInputBorder(),
               ),
             ),
-          OutlinedButton.icon(
-            onPressed: submitting ? null : _addField,
-            icon: const Icon(Icons.add),
-            label: const Text('Alan ekle'),
-          ),
-          if (attempted && fields.isEmpty)
-            const Text(
-              'En az bir alan ekleyin.',
-              style: TextStyle(color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              l10n.formTemplateFields,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-        ],
-      ),
-    ),
-    bottomNavigationBar: SafeArea(
-      minimum: const EdgeInsets.all(16),
-      child: FilledButton(
-        onPressed: submitting || !widget.services.canWrite ? null : _submit,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Text(submitting ? 'Oluşturuluyor…' : 'Formu oluştur'),
+            for (var index = 0; index < fields.length; index++)
+              Card(
+                child: ListTile(
+                  title: Text(fields[index]['label']),
+                  subtitle: Text(
+                    '${typeLabels[fields[index]['type']]}${fields[index]['required'] == true ? ' · ${l10n.formTemplateRequired}' : ''}${fields[index]['helpText'] == null ? '' : '\n${fields[index]['helpText']}'}',
+                  ),
+                  isThreeLine: fields[index]['helpText'] != null,
+                  trailing: IconButton(
+                    tooltip: l10n.formTemplateRemoveField,
+                    onPressed: submitting
+                        ? null
+                        : () => setState(() => fields.removeAt(index)),
+                    icon: const Icon(Icons.delete_outline),
+                  ),
+                ),
+              ),
+            OutlinedButton.icon(
+              onPressed: submitting ? null : _addField,
+              icon: const Icon(Icons.add),
+              label: Text(l10n.formTemplateAddField),
+            ),
+            if (attempted && fields.isEmpty)
+              Text(
+                l10n.formTemplateNeedsField,
+                style: TextStyle(color: Colors.red),
+              ),
+          ],
         ),
       ),
-    ),
-  );
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.all(16),
+        child: FilledButton(
+          onPressed: submitting || !widget.services.canWrite ? null : _submit,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Text(
+              submitting ? l10n.formTemplateCreating : l10n.formTemplateCreate,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

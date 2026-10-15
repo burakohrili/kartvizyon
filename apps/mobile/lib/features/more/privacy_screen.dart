@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 
 class PrivacyScreen extends StatefulWidget {
   const PrivacyScreen({
@@ -27,35 +28,50 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
         const {'requested', 'processing', 'ready'}.contains(status);
   });
 
-  String _openRequestMessage(String kind) => kind == 'deletion'
-      ? 'Hesap silme talebiniz zaten açık. Güncel durumunu Taleplerim bölümünden takip edebilirsiniz.'
-      : 'Dışa aktarma talebiniz zaten açık. Hazır olduğunda Taleplerim bölümünden indirebilirsiniz.';
+  String _openRequestMessage(String kind, AppLocalizations l10n) =>
+      kind == 'deletion'
+      ? l10n.privacyOpenDeletionRequest
+      : l10n.privacyOpenExportRequest;
+
+  String _apiFailure(
+    Object error,
+    AppLocalizations l10n, {
+    required String fallback,
+  }) {
+    if (error is MobileApiException && error.statusCode == 401) {
+      return l10n.privacySignInRequired;
+    }
+    if (error is MobileApiException && error.statusCode == 429) {
+      return l10n.privacyRequestRateLimited;
+    }
+    return fallback;
+  }
+
   @override
   void initState() {
     super.initState();
-    load();
-    if (widget.openDeletion) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => confirmDeletion());
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      load();
+      if (widget.openDeletion) confirmDeletion();
+    });
   }
 
   Future<void> confirmDeletion() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Hesabımı kalıcı olarak sil'),
-        content: const Text(
-          'Bu işlem hesabınızı, müşteri ve ziyaret kayıtlarınızı, görevlerinizi '
-          've diğer kişisel verilerinizi kalıcı olarak siler. İşlem geri alınamaz.',
-        ),
+        title: Text(l10n.privacyDeleteConfirmTitle),
+        content: Text(l10n.privacyDeleteConfirmBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Hesabımı sil'),
+            child: Text(l10n.deleteAccount),
           ),
         ],
       ),
@@ -64,7 +80,11 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
   }
 
   Future<void> load() async {
-    if (!widget.services.config.hasSupabase) return;
+    final l10n = AppLocalizations.of(context)!;
+    if (!widget.services.config.hasSupabase) {
+      if (mounted) setState(() => message = l10n.privacySignInRequired);
+      return;
+    }
     try {
       final result =
           await widget.services.api.get('/api/settings/privacy')
@@ -82,11 +102,20 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
         );
       });
     } catch (error) {
-      if (mounted) setState(() => message = error.toString());
+      if (mounted) {
+        setState(
+          () => message = _apiFailure(
+            error,
+            l10n,
+            fallback: l10n.privacyLoadFailed,
+          ),
+        );
+      }
     }
   }
 
   Future<void> update(String purpose, bool granted) async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() => consents[purpose] = granted);
     try {
       await widget.services.api.patch('/api/settings/privacy', {
@@ -98,20 +127,25 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       if (mounted) {
         setState(() {
           consents[purpose] = !granted;
-          message = error.toString();
+          message = _apiFailure(
+            error,
+            l10n,
+            fallback: l10n.privacyConsentUpdateFailed,
+          );
         });
       }
     }
   }
 
   Future<void> createRequest(String kind) async {
+    final l10n = AppLocalizations.of(context)!;
     if (!widget.services.config.hasSupabase) {
-      setState(() => message = 'Demo modunda talep oluşturulmaz.');
+      setState(() => message = l10n.privacyDemoRequestUnavailable);
       return;
     }
     if (submittingRequest) return;
     if (_hasOpenRequest(kind)) {
-      setState(() => message = _openRequestMessage(kind));
+      setState(() => message = _openRequestMessage(kind, l10n));
       return;
     }
 
@@ -129,10 +163,10 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       if (!mounted) return;
       setState(
         () => message = result['duplicate'] == true
-            ? _openRequestMessage(kind)
+            ? _openRequestMessage(kind, l10n)
             : kind == 'deletion'
-            ? 'Hesap silme işlemi başlatıldı. Hesabınız ve kişisel verileriniz kalıcı olarak silinecek.'
-            : 'Talebiniz güvenli biçimde alındı.',
+            ? l10n.privacyDeletionRequestSubmitted
+            : l10n.privacyRequestReceived,
       );
       await load();
     } on MobileApiException catch (error) {
@@ -142,13 +176,19 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       if (error.statusCode == 409) {
         await load();
         if (mounted) {
-          setState(() => message = _openRequestMessage(kind));
+          setState(() => message = _openRequestMessage(kind, l10n));
         }
         return;
       }
-      setState(() => message = error.message);
+      setState(
+        () => message = _apiFailure(
+          error,
+          l10n,
+          fallback: l10n.privacyRequestFailed,
+        ),
+      );
     } catch (error) {
-      if (mounted) setState(() => message = error.toString());
+      if (mounted) setState(() => message = l10n.privacyRequestFailed);
     } finally {
       if (mounted) setState(() => submittingRequest = false);
     }
@@ -158,113 +198,134 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
   ///
   /// Bağlantı 60 saniye geçerlidir; loglanmaz ve ekranda bırakılmaz.
   Future<void> download(String? id) async {
+    final l10n = AppLocalizations.of(context)!;
     if (id == null) return;
     try {
       final result =
           await widget.services.api.get('/api/settings/privacy/export/$id')
               as Map<String, dynamic>;
       final url = result['url']?.toString();
-      if (url == null || url.isEmpty) throw StateError('boş bağlantı');
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      if (url == null || url.isEmpty) {
+        throw StateError('Missing signed export URL');
+      }
+      final opened = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!opened) throw StateError('Could not open signed export URL');
     } catch (error) {
       if (!mounted) return;
       setState(
-        () => message = error is MobileApiException
-            ? error.message
-            : 'Dışa aktarma açılamadı. Kısa süre sonra tekrar deneyin.',
+        () => message = _apiFailure(
+          error,
+          l10n,
+          fallback: l10n.privacyExportDownloadFailed,
+        ),
       );
     }
   }
 
-  static String _statusLabel(String status) => switch (status) {
-    'requested' => 'Alındı, sıraya girdi',
-    'processing' => 'Hazırlanıyor',
-    'ready' => 'Hazır',
-    'completed' => 'Tamamlandı',
-    'failed' => 'Hazırlanamadı',
-    'rejected' => 'Reddedildi',
-    _ => status,
-  };
+  static String _statusLabel(String status, AppLocalizations l10n) =>
+      switch (status) {
+        'requested' => l10n.privacyStatusReceived,
+        'processing' => l10n.privacyStatusProcessing,
+        'ready' => l10n.privacyStatusReady,
+        'completed' => l10n.privacyStatusCompleted,
+        'failed' => l10n.privacyStatusFailed,
+        'rejected' => l10n.privacyStatusRejected,
+        _ => l10n.privacyStatusUnknown,
+      };
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('KVKK ve veri hakları')),
-    body: ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text(
-          'Rıza tercihlerinizi değiştirebilir, verilerinizi dışa aktarma veya silme talebi oluşturabilirsiniz.',
-        ),
-        const SizedBox(height: 12),
-        SwitchListTile(
-          title: const Text('Ürün analitiği'),
-          value: consents['product_analytics'] ?? false,
-          onChanged: (value) => update('product_analytics', value),
-        ),
-        SwitchListTile(
-          title: const Text('AI ile not işleme'),
-          value: consents['ai_processing'] ?? false,
-          onChanged: (value) => update('ai_processing', value),
-        ),
-        SwitchListTile(
-          title: const Text('E-posta bildirimleri'),
-          value: consents['email_notifications'] ?? false,
-          onChanged: (value) => update('email_notifications', value),
-        ),
-        const Divider(),
-        FilledButton.tonalIcon(
-          onPressed: submittingRequest || _hasOpenRequest('export')
-              ? null
-              : () => createRequest('export'),
-          icon: const Icon(Icons.download_outlined),
-          label: Text(
-            _hasOpenRequest('export')
-                ? 'Dışa aktarma talebi açık'
-                : 'Verilerimi dışa aktar',
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.privacyScreenTitle)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(l10n.privacyIntro),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            title: Text(l10n.privacyConsentAnalytics),
+            value: consents['product_analytics'] ?? false,
+            onChanged: widget.services.config.hasSupabase
+                ? (value) => update('product_analytics', value)
+                : null,
           ),
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: submittingRequest || _hasOpenRequest('deletion')
-              ? null
-              : confirmDeletion,
-          icon: const Icon(Icons.delete_outline),
-          label: Text(
-            _hasOpenRequest('deletion')
-                ? 'Hesap silme talebi açık'
-                : 'Hesabımı kalıcı olarak sil',
+          SwitchListTile(
+            title: Text(l10n.privacyConsentAiProcessing),
+            value: consents['ai_processing'] ?? false,
+            onChanged: widget.services.config.hasSupabase
+                ? (value) => update('ai_processing', value)
+                : null,
           ),
-        ),
-        if (message != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Text(message!),
+          SwitchListTile(
+            title: Text(l10n.privacyConsentEmailNotifications),
+            value: consents['email_notifications'] ?? false,
+            onChanged: widget.services.config.hasSupabase
+                ? (value) => update('email_notifications', value)
+                : null,
           ),
-        if (requests.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          const Text(
-            'Taleplerim',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          const Divider(),
+          FilledButton.tonalIcon(
+            onPressed: submittingRequest || _hasOpenRequest('export')
+                ? null
+                : () => createRequest('export'),
+            icon: const Icon(Icons.download_outlined),
+            label: Text(
+              _hasOpenRequest('export')
+                  ? l10n.privacyExportRequestOpen
+                  : l10n.privacyExportMyData,
+            ),
           ),
-          ...requests.map((item) {
-            final status = item['status']?.toString() ?? 'requested';
-            final ready = item['kind'] == 'export' && status == 'ready';
-            return ListTile(
-              title: Text(item['kind'] == 'export' ? 'Dışa aktarma' : 'Silme'),
-              subtitle: Text(_statusLabel(status)),
-              // Dosya hazır olduğu halde ekranda yalnız "ready" yazıyordu ve
-              // indirme yolu hiç sunulmuyordu.
-              trailing: ready
-                  ? FilledButton.tonalIcon(
-                      onPressed: () => download(item['id']?.toString()),
-                      icon: const Icon(Icons.download),
-                      label: const Text('İndir'),
-                    )
-                  : null,
-            );
-          }),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: submittingRequest || _hasOpenRequest('deletion')
+                ? null
+                : confirmDeletion,
+            icon: const Icon(Icons.delete_outline),
+            label: Text(
+              _hasOpenRequest('deletion')
+                  ? l10n.privacyDeletionRequestOpen
+                  : l10n.privacyDeleteAccountPermanently,
+            ),
+          ),
+          if (message != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(message!),
+            ),
+          if (requests.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Text(
+              l10n.privacyMyRequests,
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            ...requests.map((item) {
+              final status = item['status']?.toString() ?? 'requested';
+              final ready = item['kind'] == 'export' && status == 'ready';
+              return ListTile(
+                title: Text(
+                  item['kind'] == 'export'
+                      ? l10n.privacyExportRequestKind
+                      : l10n.privacyDeletionRequestKind,
+                ),
+                subtitle: Text(_statusLabel(status, l10n)),
+                // Dosya hazır olduğu halde ekranda yalnız "ready" yazıyordu ve
+                // indirme yolu hiç sunulmuyordu.
+                trailing: ready
+                    ? FilledButton.tonalIcon(
+                        onPressed: () => download(item['id']?.toString()),
+                        icon: const Icon(Icons.download),
+                        label: Text(l10n.privacyDownload),
+                      )
+                    : null,
+              );
+            }),
+          ],
         ],
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }

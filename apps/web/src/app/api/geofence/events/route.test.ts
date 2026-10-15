@@ -24,22 +24,24 @@ describe("saha modu olay kaydı", () => {
   });
 
   it("mobil Bearer oturumunu Supabase doğrulamasına iletir", async () => {
-    const request = new Request("https://app.kartvizyon.app/api/geofence/events", {
-      method: "POST",
-      headers: {
-        authorization: "Bearer mobile-access-token",
-        "content-type": "application/json",
+    const request = new Request(
+      "https://app.kartvizyon.app/api/geofence/events",
+      {
+        method: "POST",
+        headers: {
+          authorization: "Bearer mobile-access-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          workspaceId: "11111111-1111-4111-8111-111111111111",
+          organizationId: null,
+          companyId: "22222222-2222-4222-8222-222222222222",
+          priorityScore: 80,
+          distanceMeters: 120,
+          outcome: "shown",
+        }),
       },
-      body: JSON.stringify({
-        workspaceId: "11111111-1111-4111-8111-111111111111",
-        organizationId: null,
-        companyId: "22222222-2222-4222-8222-222222222222",
-        priorityScore: 80,
-        distanceMeters: 120,
-        outcome: "shown",
-      }),
-    });
-
+    );
     const response = await POST(request);
 
     expect(response.status).toBe(204);

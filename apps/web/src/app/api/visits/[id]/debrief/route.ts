@@ -8,8 +8,10 @@ import {
   summarizeVisitTranscript,
   transcribeVisitAudio,
   visitAiLimits,
+  parseVisitLanguage,
 } from "@/lib/openai/visit-ai";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { normalizeVisitAudioMimeType } from "@/lib/visit-audio-format";
 
 export const runtime = "nodejs";
 
@@ -22,6 +24,7 @@ const mutationIdSchema = z.uuid();
 const staleProcessingMs = 10 * 60 * 1000;
 
 function extensionFor(mime: string) {
+  const normalizedMime = normalizeVisitAudioMimeType(mime);
   return (
     {
       "audio/webm": "webm",
@@ -29,7 +32,7 @@ function extensionFor(mime: string) {
       "audio/x-m4a": "m4a",
       "audio/mpeg": "mp3",
       "audio/wav": "wav",
-    }[mime] ?? "bin"
+    }[normalizedMime] ?? "bin"
   );
 }
 
@@ -82,6 +85,9 @@ export async function POST(
     const clientMutationId = mutationIdSchema.parse(
       form.get("clientMutationId"),
     );
+    // Existing clients omit this field and retain the historical Turkish
+    // behavior. Only explicitly selected English is treated as English.
+    const language = parseVisitLanguage(form.get("language"));
 
     const submittedAudio = form.get("audio");
     const audio =
@@ -112,7 +118,11 @@ export async function POST(
           { status: 413 },
         );
       }
-      if (!visitAiLimits.acceptedAudioTypes.has(audio.type)) {
+      if (
+        !visitAiLimits.acceptedAudioTypes.has(
+          normalizeVisitAudioMimeType(audio.type),
+        )
+      ) {
         return Response.json(
           { error: "Ses biçimi desteklenmiyor." },
           { status: 415 },
@@ -148,7 +158,10 @@ export async function POST(
       if (audio) {
         const metadata = await parseBuffer(
           new Uint8Array(await audio.arrayBuffer()),
-          { mimeType: audio.type, size: audio.size },
+          {
+            mimeType: normalizeVisitAudioMimeType(audio.type),
+            size: audio.size,
+          },
           { duration: true },
         );
         const duration = metadata.format.duration;
@@ -227,7 +240,7 @@ export async function POST(
         audioAssetId = asset.data.id;
       }
 
-      const transcription = await transcribeVisitAudio(audio);
+      const transcription = await transcribeVisitAudio(audio, language);
       transcript = transcriptSchema.parse(transcription.text);
       transcriptionModel = transcription.model;
     }
@@ -259,10 +272,15 @@ export async function POST(
     if (organizationResult?.error) throw organizationResult.error;
     const sourceName =
       organizationResult?.data?.name ?? workspaceResult.data.name;
-    const generated = await summarizeVisitTranscript(transcript, {
-      workspaceCompanyName: sourceName === "Kişisel Alanım" ? null : sourceName,
-      customerCompanyName: customerResult.data.name,
-    });
+    const generated = await summarizeVisitTranscript(
+      transcript,
+      {
+        workspaceCompanyName:
+          sourceName === "Kişisel Alanım" ? null : sourceName,
+        customerCompanyName: customerResult.data.name,
+      },
+      language,
+    );
 
     if (supabase && userId && visit) {
       const transcriptResult = await supabase.from("visit_transcripts").upsert(
@@ -273,7 +291,7 @@ export async function POST(
           organization_id: visit.organization_id,
           owner_id: userId,
           transcript,
-          language: "tr",
+          language,
           provider: "openai",
           model: transcriptionModel,
           updated_at: new Date().toISOString(),

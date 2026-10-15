@@ -5,10 +5,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createContact } from "./actions";
+import { getMessages } from "@/lib/i18n/messages";
+import type { AppLocale } from "@/lib/i18n/locale";
 
 const empty = { firstName: "", lastName: "", title: "", phone: "", email: "" };
 
-export function ContactForm({ companyId }: { companyId: string }) {
+export function ContactForm({
+  companyId,
+  locale,
+}: {
+  companyId: string;
+  locale: AppLocale;
+}) {
+  const messages = getMessages(locale).customerForms;
   const [fields, setFields] = useState(empty);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -40,8 +49,7 @@ export function ContactForm({ companyId }: { companyId: string }) {
         data?: BusinessCardExtraction;
         error?: string;
       };
-      if (!response.ok || !result.data)
-        throw new Error(result.error ?? "Kartvizit okunamadı.");
+      if (!response.ok || !result.data) throw new Error(messages.scanFailed);
       const data = result.data;
       setFields({
         firstName: data.firstName ?? "",
@@ -52,12 +60,13 @@ export function ContactForm({ companyId }: { companyId: string }) {
       });
       setCompanyName(data.companyName);
       setMessage(
-        `AI taslağı hazır · güven %${Math.round(data.confidence * 100)} · kaydetmeden önce kontrol edin`,
+        messages.scanReady.replace(
+          "{confidence}",
+          String(Math.round(data.confidence * 100)),
+        ),
       );
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Kartvizit okunamadı.",
-      );
+      setMessage(error instanceof Error ? error.message : messages.scanFailed);
     } finally {
       setProcessing(false);
     }
@@ -67,11 +76,11 @@ export function ContactForm({ companyId }: { companyId: string }) {
     <>
       <section className="ocr-panel">
         <div className="ocr-copy">
-          <span className="eyebrow">KARTVİZİTİ TARA</span>
-          <strong>Fotoğraftan formu doldur</strong>
-          <small>JPEG, PNG veya WebP · en fazla 10 MB</small>
+          <span className="eyebrow">{messages.scanEyebrow}</span>
+          <strong>{messages.scanTitle}</strong>
+          <small>{messages.scanRequirements}</small>
           <label className="ocr-button">
-            {processing ? "AI okuyor…" : "Kartvizit seç"}
+            {processing ? messages.aiReading : messages.chooseCard}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -86,7 +95,7 @@ export function ContactForm({ companyId }: { companyId: string }) {
         {preview && (
           <Image
             src={preview}
-            alt="Seçilen kartvizit"
+            alt={messages.selectedCard}
             width={180}
             height={110}
             unoptimized
@@ -101,14 +110,14 @@ export function ContactForm({ companyId }: { companyId: string }) {
       )}
       {companyName && (
         <p className="ocr-company">
-          Kartta görünen firma: <strong>{companyName}</strong>
+          {messages.cardCompany} <strong>{companyName}</strong>
         </p>
       )}
       <form action={createContact} className="entity-form">
         <input type="hidden" name="companyId" value={companyId} />
         <div className="form-row">
           <label>
-            Ad *
+            {messages.firstName} *
             <input
               name="firstName"
               required
@@ -117,7 +126,7 @@ export function ContactForm({ companyId }: { companyId: string }) {
             />
           </label>
           <label>
-            Soyad
+            {messages.lastName}
             <input
               name="lastName"
               value={fields.lastName}
@@ -126,7 +135,7 @@ export function ContactForm({ companyId }: { companyId: string }) {
           </label>
         </div>
         <label>
-          Pozisyon
+          {messages.jobTitle}
           <input
             name="title"
             value={fields.title}
@@ -135,7 +144,7 @@ export function ContactForm({ companyId }: { companyId: string }) {
         </label>
         <div className="form-row">
           <label>
-            Telefon
+            {messages.contactPhone}
             <input
               name="phone"
               type="tel"
@@ -144,7 +153,7 @@ export function ContactForm({ companyId }: { companyId: string }) {
             />
           </label>
           <label>
-            E-posta
+            {messages.contactEmail}
             <input
               name="email"
               type="email"
@@ -154,9 +163,9 @@ export function ContactForm({ companyId }: { companyId: string }) {
           </label>
         </div>
         <div className="form-actions">
-          <Link href={`/customers/${companyId}`}>Vazgeç</Link>
+          <Link href={`/customers/${companyId}`}>{messages.cancel}</Link>
           <button className="primary" type="submit">
-            Kontrol ettim, kişiyi kaydet
+            {messages.reviewedSave}
           </button>
         </div>
       </form>

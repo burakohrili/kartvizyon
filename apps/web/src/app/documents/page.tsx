@@ -2,8 +2,12 @@ import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { DocumentCenter } from "../interaction-workbench";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 export default async function DocumentsPage() {
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).operations;
   const context = await getWebWorkspaceContext();
   const result = context
     ? await context.supabase
@@ -19,22 +23,16 @@ export default async function DocumentsPage() {
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">GÜVENLİ DOSYALAR</span>
-          <h1>Belgeler</h1>
-          <p>
-            Dosyalar hash ve içerik imzasıyla doğrulanır, tarama tamamlanana
-            kadar karantinada tutulur.
-          </p>
+          <span className="eyebrow">{m.documentsEyebrow}</span>
+          <h1>{m.documentsTitle}</h1>
+          <p>{m.documentsDescription}</p>
         </div>
       </header>
-      {!context && (
-        <div className="demo-notice">
-          Belge yüklemek için Supabase ve document-quarantine kovası gerekir.
-        </div>
-      )}
+      {!context && <div className="demo-notice">{m.documentsDemoBody}</div>}
       <DocumentCenter
+        locale={locale}
         initialItems={(result.data ?? []) as Array<Record<string, unknown>>}
       />
     </main>

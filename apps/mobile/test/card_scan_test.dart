@@ -12,6 +12,7 @@ import 'package:kartvizyon_mobile/data/local/app_database.dart';
 import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/customers/customers_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 class _EmptySessionStore extends SecureSessionStore {
@@ -68,7 +69,12 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: CustomersScreen(services: services)),
+      MaterialApp(
+        locale: const Locale('tr', 'TR'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        home: CustomersScreen(services: services),
+      ),
     );
     await tester.pumpAndSettle();
 

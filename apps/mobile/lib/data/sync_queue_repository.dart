@@ -82,6 +82,7 @@ class SyncQueueRepository {
     required String workspaceId,
     required String visitId,
     required String transcript,
+    String language = 'tr',
     String? audioPath,
     String? clientMutationId,
   }) async {
@@ -93,7 +94,11 @@ class SyncQueueRepository {
         workspaceId: workspaceId,
         entityType: 'visit_debrief',
         clientMutationId: mutationId,
-        payloadJson: jsonEncode({'visitId': visitId, 'transcript': transcript}),
+        payloadJson: jsonEncode({
+          'visitId': visitId,
+          'transcript': transcript,
+          'language': language == 'en' ? 'en' : 'tr',
+        }),
         attachmentPath: Value(audioPath),
         createdAt: DateTime.now().toUtc(),
       ),

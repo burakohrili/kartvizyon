@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
 
 class CustomerDetailScreen extends StatefulWidget {
   const CustomerDetailScreen({
@@ -38,7 +39,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   Future<Map<String, dynamic>> _load() async {
     if (!widget.services.config.hasSupabase) {
       return {
-        'company': {'name': 'Müşteri'},
+        'company': {'name': ''},
         'memory': null,
         'contacts': const [],
         'tasks': const [],
@@ -56,6 +57,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   }
 
   Future<void> _editCompany(Map company) async {
+    final strings = AppLocalizations.of(context)!;
     final draft = await _showCompanyEditor(context, company);
     if (draft == null || !mounted) return;
     setState(() => _mutating = true);
@@ -66,17 +68,16 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       );
       if (!mounted) return;
       setState(() => _detail = _load());
-      _notify('Müşteri bilgileri güncellendi.');
-    } catch (error) {
-      _notify(
-        error is MobileApiException ? error.message : 'Müşteri güncellenemedi.',
-      );
+      _notify(strings.customerUpdated);
+    } catch (_) {
+      _notify(strings.customerUpdateFailed);
     } finally {
       if (mounted) setState(() => _mutating = false);
     }
   }
 
   Future<void> _editContact([Map? contact]) async {
+    final strings = AppLocalizations.of(context)!;
     final draft = await _showContactEditor(context, contact);
     if (draft == null || !mounted) return;
     setState(() => _mutating = true);
@@ -96,45 +97,43 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       }
       if (!mounted) return;
       setState(() => _detail = _load());
-      _notify(
-        contact == null ? 'İlgili kişi eklendi.' : 'İlgili kişi güncellendi.',
-      );
-    } catch (error) {
-      _notify(
-        error is MobileApiException
-            ? error.message
-            : 'İlgili kişi kaydedilemedi.',
-      );
+      _notify(contact == null ? strings.contactAdded : strings.contactUpdated);
+    } catch (_) {
+      _notify(strings.contactSaveGenericFailed);
     } finally {
       if (mounted) setState(() => _mutating = false);
     }
   }
 
   Future<void> _archive(String companyName, Map dependencies) async {
-    String count(String key, String label) =>
-        '${dependencies[key] ?? 0} $label';
+    final strings = AppLocalizations.of(context)!;
+    int count(String key) => (dependencies[key] as num?)?.toInt() ?? 0;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('$companyName arşivlensin mi?'),
+        title: Text(strings.archiveCustomerTitle(companyName)),
         content: Text(
-          'Bu müşteriye bağlı:\n\n'
-          '${count('contacts', 'ilgili kişi')}\n'
-          '${count('visits', 'ziyaret')}\n'
-          '${count('openTasks', 'açık görev')}\n'
-          '${count('opportunities', 'fırsat')}\n'
-          '${count('orders', 'sipariş taslağı')}\n'
-          '${count('documents', 'belge')}\n\n'
-          'Bu kayıtlar silinmeyecek. Müşteri aktif müşteri listenizden kaldırılacak.',
+          [
+            strings.archiveCustomerIntro,
+            '',
+            strings.archiveContactsCount(count('contacts')),
+            strings.archiveVisitsCount(count('visits')),
+            strings.archiveOpenTasksCount(count('openTasks')),
+            strings.archiveOpportunitiesCount(count('opportunities')),
+            strings.archiveOrdersCount(count('orders')),
+            strings.archiveDocumentsCount(count('documents')),
+            '',
+            strings.archivePreservesData,
+          ].join('\n'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Arşivle'),
+            child: Text(strings.archive),
           ),
         ],
       ),
@@ -146,10 +145,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         'action': 'archive',
       });
       if (mounted) context.pop(true);
-    } catch (error) {
-      _notify(
-        error is MobileApiException ? error.message : 'Müşteri arşivlenemedi.',
-      );
+    } catch (_) {
+      _notify(strings.customerArchiveFailed);
       if (mounted) setState(() => _mutating = false);
     }
   }
@@ -159,25 +156,23 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   /// Kaydedilen şey müşterinin konumudur; kullanıcının hareket geçmişi
   /// tutulmaz. Kullanıcının bunu bilmeden onaylaması istenmemelidir.
   Future<bool> _confirmPin(String companyName) async {
+    final strings = AppLocalizations.of(context)!;
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Konumu buraya sabitle'),
+        title: Text(strings.pinCustomerLocationTitle),
         content: Text(
-          '$companyName kaydına şu anki konumunuz müşterinin konumu olarak '
-          'yazılacak. Böylece bu müşterinin yakınına geldiğinizde hatırlatma '
-          'alabilirsiniz.\n\n'
-          'Yalnızca müşterinin konumu saklanır; sizin hareketleriniz '
-          'kaydedilmez.',
+          '${strings.pinCustomerLocationBody(companyName)}\n\n'
+          '${strings.pinCustomerLocationPrivacy}',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Sabitle'),
+            child: Text(strings.pinCustomerLocation),
           ),
         ],
       ),
@@ -187,12 +182,13 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
   Future<void> _pinLocation(String companyName) async {
     if (_pinning) return;
+    final strings = AppLocalizations.of(context)!;
     if (!await _confirmPin(companyName)) return;
     if (!mounted) return;
     setState(() => _pinning = true);
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
-        _notify('Konum servisi kapalı.');
+        _notify(strings.locationServiceOff);
         return;
       }
       var permission = await Geolocator.checkPermission();
@@ -201,41 +197,47 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        _notify('Konum izni verilmedi. Müşteri konumu kaydedilemedi.');
+        _notify(strings.locationPermissionDeniedForCustomer);
         return;
       }
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 20),
         ),
       );
-      await widget.services.api.post(
-        '/api/customers/${widget.companyId}/location',
-        {'latitude': position.latitude, 'longitude': position.longitude},
-      );
+      await widget.services.api
+          .post('/api/customers/${widget.companyId}/location', {
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+          })
+          .timeout(const Duration(seconds: 20));
       if (!mounted) return;
       setState(() => _detail = _load());
-      _notify('Müşteri konumu sabitlendi.');
-    } catch (error) {
-      _notify(error.toString());
+      _notify(strings.customerLocationPinned);
+    } catch (_) {
+      _notify(strings.customerLocationPinFailed);
     } finally {
       if (mounted) setState(() => _pinning = false);
     }
   }
 
-  String _locationLabel(Map company) {
+  String _locationLabel(Map company, AppLocalizations strings) {
     final source = company['location_source']?.toString();
-    if (source == 'pinned') return 'Konum sahada sabitlendi';
-    if (source == 'geocoded') return 'Konum adresten tahmin edildi';
-    return 'Konum kayıtlı değil — yakınlık hatırlatması çalışmaz';
+    if (source == 'pinned') return strings.locationPinnedAtSite;
+    if (source == 'geocoded') return strings.locationEstimatedFromAddress;
+    return strings.customerLocationMissing;
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Müşteri kartı')),
+    appBar: AppBar(
+      title: Text(AppLocalizations.of(context)!.customerDetailTitle),
+    ),
     body: FutureBuilder<Map<String, dynamic>>(
       future: _detail,
       builder: (context, snapshot) {
+        final strings = AppLocalizations.of(context)!;
         if (snapshot.connectionState != ConnectionState.done) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -244,7 +246,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Text(
-                snapshot.error.toString(),
+                strings.customerLoadFailed,
                 textAlign: TextAlign.center,
               ),
             ),
@@ -256,11 +258,17 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         final contacts = data['contacts'] as List? ?? [];
         final tasks = data['tasks'] as List? ?? [];
         final dependencies = data['dependencies'] as Map? ?? {};
-        final companyName = company['name']?.toString() ?? 'Firma';
+        final companyName =
+            company['name']?.toString() ?? strings.companyFallback;
         final hasLocation =
             company['latitude'] != null && company['longitude'] != null;
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            16 + MediaQuery.viewPaddingOf(context).bottom,
+          ),
           children: [
             Text(
               companyName,
@@ -279,7 +287,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             OutlinedButton.icon(
               onPressed: _mutating ? null : () => _editCompany(company),
               icon: const Icon(Icons.edit_outlined),
-              label: const Text('Müşteriyi düzenle'),
+              label: Text(strings.editCustomer),
             ),
             const SizedBox(height: 14),
             // Brifinge yalnız Bugün ekranındaki "sıradaki ziyaret" kartından
@@ -289,7 +297,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             FilledButton.icon(
               onPressed: () => context.push('/briefings/${widget.companyId}'),
               icon: const Icon(Icons.assignment_outlined),
-              label: const Text('Ziyaret brifingini aç'),
+              label: Text(strings.openVisitBriefing),
             ),
             const SizedBox(height: 18),
             Card(
@@ -306,7 +314,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                               : Icons.location_off_outlined,
                         ),
                         const SizedBox(width: 8),
-                        Expanded(child: Text(_locationLabel(company))),
+                        Expanded(child: Text(_locationLabel(company, strings))),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -323,8 +331,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                           : const Icon(Icons.my_location),
                       label: Text(
                         hasLocation
-                            ? 'Konumu buradan güncelle'
-                            : 'Konumu buraya sabitle',
+                            ? strings.updateCustomerLocation
+                            : strings.pinCustomerLocation,
                       ),
                     ),
                   ],
@@ -338,14 +346,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Müşteri hafıza kartı',
+                    Text(
+                      strings.customerMemoryCard,
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       memory?['summary']?.toString() ??
-                          'Onaylı hafıza kartı henüz oluşmadı.',
+                          strings.noApprovedSummary,
                     ),
                   ],
                 ),
@@ -356,14 +364,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'İlgili kişiler (${contacts.length})',
+                    strings.customerContactsCount(contacts.length),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
                 TextButton.icon(
                   onPressed: _mutating ? null : () => _editContact(),
                   icon: const Icon(Icons.person_add_alt_1_outlined),
-                  label: const Text('Kişi ekle'),
+                  label: Text(strings.addContact),
                 ),
               ],
             ),
@@ -381,13 +389,15 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             }),
             const Divider(),
             Text(
-              'Açık görevler (${tasks.length})',
+              strings.openTasksCount(tasks.length),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             ...tasks.map(
               (item) => ListTile(
                 leading: const Icon(Icons.task_alt),
-                title: Text((item as Map)['title']?.toString() ?? 'Görev'),
+                title: Text(
+                  (item as Map)['title']?.toString() ?? strings.taskFallback,
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -396,7 +406,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                   ? null
                   : () => _archive(companyName, dependencies),
               icon: const Icon(Icons.archive_outlined),
-              label: const Text('Müşteriyi arşivle'),
+              label: Text(strings.archiveCustomerAction),
             ),
           ],
         );
@@ -409,6 +419,7 @@ Future<Map<String, dynamic>?> _showCompanyEditor(
   BuildContext context,
   Map company,
 ) {
+  final strings = AppLocalizations.of(context)!;
   final formKey = GlobalKey<FormState>();
   final fields = {
     'name': TextEditingController(text: company['name']?.toString() ?? ''),
@@ -439,32 +450,32 @@ Future<Map<String, dynamic>?> _showCompanyEditor(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Müşteriyi düzenle',
+                    strings.editCustomer,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 16),
                   _field(
                     fields['name']!,
-                    'Firma adı *',
+                    strings.companyNameRequired,
                     validator: (value) => (value?.trim().length ?? 0) < 2
-                        ? 'Firma adı en az 2 karakter olmalı.'
+                        ? strings.companyNameTooShort
                         : null,
                   ),
-                  _field(fields['displayName']!, 'Görünen ad / kısa ad'),
-                  _field(fields['address']!, 'Adres'),
+                  _field(fields['displayName']!, strings.shortNameField),
+                  _field(fields['address']!, strings.address),
                   _field(
                     fields['phone']!,
-                    'Telefon',
+                    strings.phone,
                     keyboardType: TextInputType.phone,
                   ),
                   _field(
                     fields['email']!,
-                    'E-posta',
+                    strings.email,
                     keyboardType: TextInputType.emailAddress,
                   ),
                   _field(
                     fields['website']!,
-                    'Web sitesi',
+                    strings.website,
                     keyboardType: TextInputType.url,
                   ),
                   const SizedBox(height: 16),
@@ -475,7 +486,7 @@ Future<Map<String, dynamic>?> _showCompanyEditor(
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(dialogContext),
-                        child: const Text('Vazgeç'),
+                        child: Text(strings.cancel),
                       ),
                       FilledButton(
                         onPressed: () {
@@ -485,7 +496,7 @@ Future<Map<String, dynamic>?> _showCompanyEditor(
                               entry.key: entry.value.text.trim(),
                           });
                         },
-                        child: const Text('Kaydet'),
+                        child: Text(strings.saveCustomer),
                       ),
                     ],
                   ),
@@ -507,6 +518,7 @@ Future<Map<String, dynamic>?> _showContactEditor(
   BuildContext context, [
   Map? contact,
 ]) {
+  final strings = AppLocalizations.of(context)!;
   final formKey = GlobalKey<FormState>();
   final fields = {
     'firstName': TextEditingController(
@@ -534,28 +546,27 @@ Future<Map<String, dynamic>?> _showContactEditor(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    contact == null
-                        ? 'Yeni ilgili kişi'
-                        : 'İlgili kişiyi düzenle',
+                    contact == null ? strings.newContact : strings.editContact,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 16),
                   _field(
                     fields['firstName']!,
-                    'Ad *',
-                    validator: (value) =>
-                        (value?.trim().isEmpty ?? true) ? 'Ad gerekli.' : null,
+                    '${strings.firstName} *',
+                    validator: (value) => (value?.trim().isEmpty ?? true)
+                        ? strings.firstNameRequired
+                        : null,
                   ),
-                  _field(fields['lastName']!, 'Soyad'),
-                  _field(fields['title']!, 'Görev / Ünvan'),
+                  _field(fields['lastName']!, strings.lastName),
+                  _field(fields['title']!, strings.jobTitle),
                   _field(
                     fields['phone']!,
-                    'Telefon',
+                    strings.phone,
                     keyboardType: TextInputType.phone,
                   ),
                   _field(
                     fields['email']!,
-                    'E-posta',
+                    strings.email,
                     keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 16),
@@ -566,7 +577,7 @@ Future<Map<String, dynamic>?> _showContactEditor(
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(dialogContext),
-                        child: const Text('Vazgeç'),
+                        child: Text(strings.cancel),
                       ),
                       FilledButton(
                         onPressed: () {
@@ -576,7 +587,7 @@ Future<Map<String, dynamic>?> _showContactEditor(
                               entry.key: entry.value.text.trim(),
                           });
                         },
-                        child: const Text('Kaydet'),
+                        child: Text(strings.saveCustomer),
                       ),
                     ],
                   ),

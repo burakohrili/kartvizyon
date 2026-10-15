@@ -174,7 +174,8 @@ class SyncEngine {
           )
           ..headers['authorization'] = 'Bearer $accessToken'
           ..fields['clientMutationId'] = item.clientMutationId
-          ..fields['transcript'] = (payload['transcript'] as String?) ?? '';
+          ..fields['transcript'] = (payload['transcript'] as String?) ?? ''
+          ..fields['language'] = payload['language'] == 'en' ? 'en' : 'tr';
     final attachment = item.attachmentPath;
     if (attachment != null && await File(attachment).exists()) {
       request.files.add(

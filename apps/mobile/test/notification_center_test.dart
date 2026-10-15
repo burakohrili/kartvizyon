@@ -10,6 +10,7 @@ import 'package:kartvizyon_mobile/data/local/app_database.dart';
 import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/more/workspace_module_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 
 class _EmptySessionStore extends SecureSessionStore {
   const _EmptySessionStore();
@@ -54,6 +55,9 @@ void main() {
     addTearDown(database.close);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('tr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: WorkspaceModuleScreen(
           services: _services(
             database,
@@ -91,6 +95,9 @@ void main() {
     });
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('tr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: WorkspaceModuleScreen(
           services: services,
           module: WorkspaceModule.notifications,
@@ -130,6 +137,9 @@ void main() {
     services.reminders.permissionDenied.value = true;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('tr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,

@@ -10,6 +10,7 @@ import 'package:kartvizyon_mobile/data/local/app_database.dart';
 import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/tasks/tasks_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 
 class _EmptySessionStore extends SecureSessionStore {
   const _EmptySessionStore();
@@ -17,6 +18,13 @@ class _EmptySessionStore extends SecureSessionStore {
   @override
   Future<({String accessToken, String refreshToken})?> read() async => null;
 }
+
+Widget _testApp(Widget home) => MaterialApp(
+  locale: const Locale('tr'),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: home,
+);
 
 void main() {
   testWidgets('tamamlanmış görevin tiki onaysız kaldırılmaz', (tester) async {
@@ -71,7 +79,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(MaterialApp(home: TasksScreen(services: services)));
+    await tester.pumpWidget(_testApp(TasksScreen(services: services)));
     await tester.pumpAndSettle();
 
     expect(find.text('Tamamlananlar (1)'), findsOneWidget);
@@ -146,7 +154,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(MaterialApp(home: TasksScreen(services: services)));
+    await tester.pumpWidget(_testApp(TasksScreen(services: services)));
     await tester.pumpAndSettle();
 
     final fab = find.byType(FloatingActionButton);

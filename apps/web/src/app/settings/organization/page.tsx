@@ -2,8 +2,12 @@ import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { OrganizationStructure } from "./organization-structure";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 export default async function OrganizationPage() {
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).workspaceAdmin;
   const context = await getWebWorkspaceContext();
   const [regions, teams] = context
     ? await Promise.all([
@@ -27,23 +31,22 @@ export default async function OrganizationPage() {
       <header className="customers-header">
         <div>
           <Link href="/settings/team" className="back-link">
-            ← Ekip ve davetler
+            ← {m.teamInvites}
           </Link>
-          <span className="eyebrow">EKİP VE BÖLGE</span>
-          <h1>Organizasyon yapısı</h1>
-          <p>Takımları ve bölgeleri şirket çalışma alanında yönetin.</p>
+          <span className="eyebrow">{m.teamEyebrow}</span>
+          <h1>{m.organizationTitle}</h1>
+          <p>{m.organizationDescription}</p>
         </div>
       </header>
       {context ? (
         <OrganizationStructure
+          locale={locale}
           workspaceId={context.workspaceId}
           initialRegions={(regions.data ?? []) as Item[]}
           initialTeams={(teams.data ?? []) as Item[]}
         />
       ) : (
-        <div className="demo-notice">
-          Bu ekran için şirket Supabase oturumu gerekir.
-        </div>
+        <div className="demo-notice">{m.organizationDemo}</div>
       )}
     </main>
   );

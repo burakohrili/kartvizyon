@@ -2,29 +2,34 @@ import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { OrderWorkbench } from "../operations-workbench";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
+import { getDemoRecords } from "@/lib/i18n/demo-records";
 
 const demoWorkspace = "00000000-0000-4000-8000-000000000001";
-const demoCompanies = [
-  { id: "00000000-0000-4000-8000-000000000101", name: "Atlas Medikal" },
-];
-const demoProducts = [
-  {
-    id: "00000000-0000-4000-8000-000000000401",
-    name: "Endüstriyel Kontrol Ünitesi",
-    list_price: 125000,
-  },
-];
-const demoOrders = [
-  {
-    id: "00000000-0000-4000-8000-000000000501",
-    status: "pending_approval",
-    grand_total: 150000,
-    currency: "TRY",
-    company: { name: "Atlas Medikal" },
-  },
-];
-
 export default async function OrdersPage() {
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).operations;
+  const demo = getDemoRecords(locale);
+  const demoCompanies = [
+    { id: "00000000-0000-4000-8000-000000000101", name: demo.companies[0] },
+  ];
+  const demoProducts = [
+    {
+      id: "00000000-0000-4000-8000-000000000401",
+      name: demo.product,
+      list_price: 125000,
+    },
+  ];
+  const demoOrders = [
+    {
+      id: "00000000-0000-4000-8000-000000000501",
+      status: "pending_approval",
+      grand_total: 150000,
+      currency: "TRY",
+      company: { name: demo.companies[0] },
+    },
+  ];
   const context = await getWebWorkspaceContext();
   const [orders, companies, products] = context
     ? await Promise.all([
@@ -53,20 +58,20 @@ export default async function OrdersPage() {
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">KONTROLLÜ ÖN AKIŞ</span>
-          <h1>Sipariş taslakları</h1>
-          <p>ERP’ye dönüşmeden ürün, iskonto ve yönetici onayını yönetin.</p>
+          <span className="eyebrow">{m.ordersEyebrow}</span>
+          <h1>{m.ordersTitle}</h1>
+          <p>{m.ordersDescription}</p>
         </div>
       </header>
       {!context && (
         <div className="demo-notice">
-          <strong>Demo görünümü.</strong> Kayıt işlemleri için Supabase
-          bağlantısı gerekir.
+          <strong>{m.demoTitle}</strong> {m.demoBody}
         </div>
       )}
       <OrderWorkbench
+        locale={locale}
         workspaceId={context?.workspaceId ?? demoWorkspace}
         initialItems={(orders.data ?? []) as Array<Record<string, unknown>>}
         companies={

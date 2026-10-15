@@ -55,8 +55,10 @@ List<ReminderPlan> buildReminderPlans({
   required List<Map<String, dynamic>> tasks,
   required Map<String, dynamic> preferences,
   required DateTime now,
+  String locale = 'tr',
   tz.Location? location,
 }) {
+  final english = locale == 'en';
   final plans = <ReminderPlan>[];
   final visitEnabled = preferences['visitReminders'] as bool? ?? true;
   final taskEnabled = preferences['taskReminders'] as bool? ?? true;
@@ -80,19 +82,26 @@ List<ReminderPlan> buildReminderPlans({
       }.contains(visit['status']?.toString());
       if (id == null || start == null || terminal) continue;
       final company = visit['company'] is Map
-          ? customerDisplayName(visit['company'] as Map)
+          ? customerDisplayName(
+              visit['company'] as Map,
+              fallback: english ? 'Company' : 'Firma',
+            )
+          : english
+          ? 'Customer'
           : 'Müşteri';
-      for (final offset in const [
-        (Duration(hours: 24), '24h', '24 saat'),
-        (Duration(hours: 2), '2h', '2 saat'),
+      for (final offset in [
+        (Duration(hours: 24), '24h', english ? '24 hours' : '24 saat'),
+        (Duration(hours: 2), '2h', english ? '2 hours' : '2 saat'),
       ]) {
         final when = start.subtract(offset.$1);
         if (when.isAfter(now)) {
           plans.add(
             ReminderPlan(
               key: 'visit:$id:${offset.$2}',
-              title: 'Yaklaşan ziyaret',
-              body: '$company ziyaretiniz ${offset.$3} sonra.',
+              title: english ? 'Upcoming visit' : 'Yaklaşan ziyaret',
+              body: english
+                  ? 'Your visit with $company is in ${offset.$3}.'
+                  : '$company ziyaretiniz ${offset.$3} sonra.',
               when: when,
               route: '/visits',
             ),
@@ -114,7 +123,7 @@ List<ReminderPlan> buildReminderPlans({
       if (id == null || due == null || task['status']?.toString() != 'open') {
         continue;
       }
-      final title = task['title']?.toString() ?? 'Görev';
+      final title = task['title']?.toString() ?? (english ? 'Task' : 'Görev');
       final dueMorning = location == null
           ? DateTime(due.year, due.month, due.day, 8, 30)
           : tz.TZDateTime(location, due.year, due.month, due.day, 8, 30);
@@ -122,8 +131,8 @@ List<ReminderPlan> buildReminderPlans({
         plans.add(
           ReminderPlan(
             key: 'task:$id:due',
-            title: 'Bugünkü görev',
-            body: 'Bugün: $title',
+            title: english ? "Today's task" : 'Bugünkü görev',
+            body: english ? 'Due today: $title' : 'Bugün: $title',
             when: dueMorning,
             route: '/tasks',
           ),
@@ -134,8 +143,8 @@ List<ReminderPlan> buildReminderPlans({
         plans.add(
           ReminderPlan(
             key: 'task:$id:overdue',
-            title: 'Görev gecikti',
-            body: 'Görev gecikti: $title',
+            title: english ? 'Overdue task' : 'Görev gecikti',
+            body: english ? 'Overdue: $title' : 'Görev gecikti: $title',
             when: overdue,
             route: '/tasks',
           ),
@@ -182,9 +191,10 @@ List<ReminderPlan> buildReminderPlans({
         ReminderPlan(
           key:
               'field-morning:${entry.key.year}-${entry.key.month.toString().padLeft(2, '0')}-${entry.key.day.toString().padLeft(2, '0')}',
-          title: 'Bugünün saha planı',
-          body:
-              'Bugün ${entry.value} planlı ziyaretiniz var. Saha Modu’nu açmayı unutmayın.',
+          title: english ? "Today's field plan" : 'Bugünün saha planı',
+          body: english
+              ? 'You have ${entry.value} planned visits today. Remember to turn on Field Mode.'
+              : 'Bugün ${entry.value} planlı ziyaretiniz var. Saha Modu’nu açmayı unutmayın.',
           when: when,
           route: '/',
         ),
@@ -206,6 +216,11 @@ class ReminderNotificationService {
   final ValueNotifier<String?> pendingRoute = ValueNotifier(null);
   bool _initialised = false;
   bool _syncing = false;
+  String locale = 'tr';
+
+  void setLocale(String languageCode) {
+    if (languageCode == 'en' || languageCode == 'tr') locale = languageCode;
+  }
 
   Future<void> initialise() async {
     if (_initialised) return;
@@ -291,6 +306,7 @@ class ReminderNotificationService {
         ),
         preferences: Map<String, dynamic>.from(settings['data'] as Map),
         now: now,
+        locale: locale,
         location: location,
       );
       if (services.fieldMode.isActive.value) {
@@ -306,11 +322,15 @@ class ReminderNotificationService {
         if (!desiredIds.contains(old.id)) await _plugin.cancel(old.id);
       }
       if (plans.isEmpty || !await _ensurePermission()) return;
-      const details = NotificationDetails(
+      final details = NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,
-          'Ziyaret ve görev hatırlatmaları',
-          channelDescription: 'Planlı ziyaret ve görev zamanlarını hatırlatır.',
+          locale == 'en'
+              ? 'Visit and task reminders'
+              : 'Ziyaret ve görev hatırlatmaları',
+          channelDescription: locale == 'en'
+              ? 'Reminds you about planned visits and tasks.'
+              : 'Planlı ziyaret ve görev zamanlarını hatırlatır.',
           importance: Importance.high,
           priority: Priority.high,
         ),

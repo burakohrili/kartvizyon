@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DebriefRecorder } from "./recorder";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 export default async function VisitDebriefPage({
   params,
@@ -9,6 +11,8 @@ export default async function VisitDebriefPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).debrief;
   const supabase = await createSupabaseServerClient();
   const ownerId = supabase
     ? ((await supabase.auth.getUser()).data.user?.id ?? "signed-out")
@@ -18,16 +22,12 @@ export default async function VisitDebriefPage({
       <DemoBanner />
       <section className="review-card debrief-card">
         <Link href="/visits" className="back-link">
-          ← Ziyaretler
+          {m.back}
         </Link>
-        <span className="eyebrow">ZİYARET SONRASI</span>
-        <h1>Kısa değerlendirmeni kaydet</h1>
-        <p className="review-meta">
-          Bu, müşteri görüşmesinin kaydı değil; ziyaret bittikten sonra aldığın
-          kişisel saha notudur. Ham ses yalnızca sana görünür ve 30 gün sonra
-          silinmek üzere işaretlenir.
-        </p>
-        <DebriefRecorder visitId={id} ownerId={ownerId} />
+        <span className="eyebrow">{m.eyebrow}</span>
+        <h1>{m.title}</h1>
+        <p className="review-meta">{m.intro}</p>
+        <DebriefRecorder visitId={id} ownerId={ownerId} locale={locale} />
       </section>
     </main>
   );

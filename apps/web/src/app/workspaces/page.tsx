@@ -1,6 +1,9 @@
 import { createOrganization, selectWorkspace } from "./actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
+import { getDemoRecords } from "@/lib/i18n/demo-records";
 
 type Workspace = {
   id: string;
@@ -10,17 +13,20 @@ type Workspace = {
 };
 
 export default async function WorkspacesPage() {
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).workspaceAdmin;
+  const demo = getDemoRecords(locale);
   const supabase = await createSupabaseServerClient();
   let workspaces: Workspace[] = [
     {
       id: "demo-personal",
-      name: "Kişisel Alanım",
+      name: m.personalData,
       kind: "personal",
       organization_id: null,
     },
     {
       id: "demo-team",
-      name: "Vizyon Satış A.Ş.",
+      name: demo.workspace,
       kind: "organization",
       organization_id: "demo-organization",
     },
@@ -39,8 +45,8 @@ export default async function WorkspacesPage() {
         <div className="auth-brand">
           <span>KV</span>
           <div>
-            <strong>Çalışma alanı seçin</strong>
-            <small>Kişisel ve şirket verileri birbirinden ayrıdır</small>
+            <strong>{m.chooseWorkspace}</strong>
+            <small>{m.separatedData}</small>
           </div>
         </div>
         <div className="workspace-list">
@@ -55,8 +61,8 @@ export default async function WorkspacesPage() {
                   <strong>{workspace.name}</strong>
                   <small>
                     {workspace.kind === "personal"
-                      ? "Veriler size aittir"
-                      : "Kurumsal çalışma alanı"}
+                      ? m.personalData
+                      : m.organizationWorkspace}
                   </small>
                 </div>
                 <b>→</b>
@@ -65,14 +71,14 @@ export default async function WorkspacesPage() {
           ))}
         </div>
         <details className="create-org">
-          <summary>Yeni şirket çalışma alanı oluştur</summary>
+          <summary>{m.createCompanyWorkspace}</summary>
           <form action={createOrganization} className="auth-form">
             <label>
-              Şirket adı
+              {m.companyName}
               <input name="name" minLength={2} maxLength={160} required />
             </label>
             <label>
-              Kısa ad
+              {m.shortName}
               <input
                 name="slug"
                 pattern="[a-z0-9-]+"
@@ -80,7 +86,7 @@ export default async function WorkspacesPage() {
                 required
               />
             </label>
-            <button className="primary">Şirket alanını oluştur</button>
+            <button className="primary">{m.createWorkspace}</button>
           </form>
         </details>
       </section>

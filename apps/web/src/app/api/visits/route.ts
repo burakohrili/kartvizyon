@@ -64,8 +64,16 @@ export async function POST(request: Request) {
         representative_id: context.user.id,
         client_mutation_id: input.clientMutationId,
         purpose: input.purpose,
-        visit_type: input.visitType,
-        planning_note: input.planningNote || null,
+        ...(input.visitType !== undefined
+          ? { visit_type: input.visitType }
+          : {}),
+        // Eski production şemalarında 0030 henüz yoksa `null` bile PostgREST'in
+        // bulunmayan planning_note kolonunu yazmaya çalışıp normal saha ziyareti
+        // oluşturmasını 500 ile düşürür. Not verilmediyse kolonu payload'a
+        // ekleme; not girildiyse şema migration'ı gereklidir.
+        ...(input.planningNote !== undefined
+          ? { planning_note: input.planningNote }
+          : {}),
         planned_start_at: input.plannedStartAt,
         planned_end_at: input.plannedEndAt,
         started_at: input.startedAt,

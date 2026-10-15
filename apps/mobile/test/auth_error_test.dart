@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// dinleyici `onError` olmadan bırakılamaz.
 void main() {
   final source = File('lib/features/auth/login_screen.dart').readAsStringSync();
+  final turkishCatalog = File('lib/l10n/app_tr.arb').readAsStringSync();
 
   test('auth akışı dinleyicisi onError olmadan kurulmaz', () {
     final start = source.indexOf('onAuthStateChange.listen(');
@@ -43,8 +44,8 @@ void main() {
         reason: '$code için kullanıcıya mesaj yok',
       );
     }
-    expect(source.contains('süresi dolmuş'), isTrue);
-    expect(source.contains('başka bir cihazda'), isTrue);
+    expect(turkishCatalog.contains('süresi dolmuş'), isTrue);
+    expect(turkishCatalog.contains('başka bir cihazda'), isTrue);
   });
 
   test('tarayıcıdan sonuçsuz dönüş ekranı serbest bırakır', () {

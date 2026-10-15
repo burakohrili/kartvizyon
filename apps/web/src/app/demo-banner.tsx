@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 /**
  * Oturumsuz ziyaretçiye "bu veriler gerçek değil" diyen ve girişe götüren şerit.
@@ -20,6 +22,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  * çubuklu ızgarasına akış içinde bir blok sokmak düzeni bozardı.
  */
 export async function DemoBanner() {
+  const locale = await getRequestLocale();
   const supabase = await createSupabaseServerClient();
   if (supabase) {
     const {
@@ -30,12 +33,11 @@ export async function DemoBanner() {
   return (
     <aside className="demo-banner" role="status">
       <p>
-        <strong>Örnek veri görüntülüyorsunuz.</strong>
-        Buradaki firmalar, kişiler ve ziyaretler gerçek değildir. Kendi
-        kayıtlarınızı görmek için giriş yapın.
+        <strong>{getMessages(locale).demoTitle}</strong>{" "}
+        {getMessages(locale).demoBody}
       </p>
       <Link className="demo-banner-action" href="/login">
-        Giriş yap
+        {getMessages(locale).signIn}
       </Link>
     </aside>
   );

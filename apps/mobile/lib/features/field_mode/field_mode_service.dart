@@ -1,11 +1,29 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Locale;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../core/mobile_services.dart';
+import '../../l10n/app_localizations.dart';
+
+enum FieldModeMessage {
+  locationServiceOff,
+  locationPermission,
+  afterHours,
+  notificationPermission,
+  locationUnavailable,
+  sessionExpired,
+  accessRequired,
+  startFailed,
+  locationCheckFailed,
+  nearbyCustomersUpdateFailed,
+  sessionEnded,
+  stopped,
+  workspaceChanged,
+}
 
 /// Saha modu: kullanıcının başlattığı, görünür çalışan yakınlık hatırlatması.
 ///
@@ -31,6 +49,11 @@ class FieldModeService {
   final FlutterLocalNotificationsPlugin _notifications;
   final Future<bool> Function()? _notificationPermissionCheck;
   final DateTime Function() _now;
+  String _localeCode = 'tr';
+
+  void setLocale(String languageCode) {
+    _localeCode = languageCode == 'en' ? 'en' : 'tr';
+  }
 
   /// Vardiya bu süre sonunda kendiliğinden kapanır.
   ///
@@ -70,7 +93,8 @@ class FieldModeService {
   final Set<String> _notifiedCompanyIds = <String>{};
 
   final ValueNotifier<bool> isActive = ValueNotifier<bool>(false);
-  final ValueNotifier<String?> lastMessage = ValueNotifier<String?>(null);
+  final ValueNotifier<FieldModeMessage?> lastMessage =
+      ValueNotifier<FieldModeMessage?>(null);
 
   DateTime? get startedAt => _startedAt;
 
@@ -101,6 +125,9 @@ class FieldModeService {
     return durationLimit.isBefore(evening) ? durationLimit : evening;
   }
 
+  /// Saha modu, yerel kapanış saatinden sonra başlatılamaz.
+  static bool canStartAt(DateTime now) => sessionEndFor(now).isAfter(now);
+
   Future<void> initialise() async {
     await services.reminders.initialise();
   }
@@ -126,7 +153,7 @@ class FieldModeService {
 
   Future<bool> _ensureLocationPermission() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
-      lastMessage.value = 'Konum servisi kapalı.';
+      lastMessage.value = FieldModeMessage.locationServiceOff;
       return false;
     }
     var permission = await Geolocator.checkPermission();
@@ -135,9 +162,7 @@ class FieldModeService {
     }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      lastMessage.value =
-          'Konum izni verilmedi. Saha modu yerine Harita ekranından '
-          '"Yakınımdakileri bul" diyebilirsiniz.';
+      lastMessage.value = FieldModeMessage.locationPermission;
       return false;
     }
     return true;
@@ -145,15 +170,19 @@ class FieldModeService {
 
   LocationSettings _locationSettings() {
     if (defaultTargetPlatform == TargetPlatform.android) {
+      final english = _localeCode == 'en';
       return AndroidSettings(
         accuracy: LocationAccuracy.medium,
         distanceFilter: movementThresholdMeters,
         // Kalıcı bildirim, servisin çalıştığını kullanıcıdan gizlemez.
-        foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'KartVizyon saha modu açık',
-          notificationText:
-              'Yakınındaki müşterileri hatırlatıyor. Durdurmak için dokunun.',
-          notificationChannelName: 'Saha modu',
+        foregroundNotificationConfig: ForegroundNotificationConfig(
+          notificationTitle: english
+              ? 'KartVizyon Field Mode is on'
+              : 'KartVizyon saha modu açık',
+          notificationText: english
+              ? 'Reminding you about nearby customers. Tap to stop.'
+              : 'Yakınındaki müşterileri hatırlatıyor. Durdurmak için dokunun.',
+          notificationChannelName: english ? 'Field Mode' : 'Saha modu',
           enableWakeLock: false,
         ),
       );
@@ -187,9 +216,7 @@ class FieldModeService {
       final startedAt = _now();
       final endAt = sessionEndFor(startedAt);
       if (!endAt.isAfter(startedAt)) {
-        lastMessage.value =
-            'Saha modu saat 21.00’den sonra başlatılamaz. '
-            'Yarın çalışma saatinde yeniden deneyin.';
+        lastMessage.value = FieldModeMessage.afterHours;
         return false;
       }
       // Ortak local-notification platformu ve tap callback'i bir kez kurulur.
@@ -200,8 +227,7 @@ class FieldModeService {
       if (!await _ensureLocationPermission()) return false;
       if (!await (_notificationPermissionCheck?.call() ??
           _ensureNotificationPermission())) {
-        lastMessage.value =
-            'Bildirim izni verilmedi; saha modu hatırlatma gönderemez.';
+        lastMessage.value = FieldModeMessage.notificationPermission;
         return false;
       }
       var streamFailed = false;
@@ -212,18 +238,12 @@ class FieldModeService {
             _onPosition,
             onError: (Object _) {
               streamFailed = true;
-              unawaited(
-                stop(
-                  reason:
-                      'Konum alınamadı. Konum ayarlarınızı kontrol edip yeniden deneyin.',
-                ),
-              );
+              unawaited(stop(reason: FieldModeMessage.locationUnavailable));
             },
           );
       if (streamFailed) {
         await subscription.cancel();
-        lastMessage.value =
-            'Konum alınamadı. Konum ayarlarınızı kontrol edip yeniden deneyin.';
+        lastMessage.value = FieldModeMessage.locationUnavailable;
         return false;
       }
       _positionSubscription = subscription;
@@ -234,7 +254,7 @@ class FieldModeService {
       lastMessage.value = null;
       unawaited(services.reminders.cancelTodayMorningReminder());
       _sessionTimer = Timer(endAt.difference(startedAt), () {
-        unawaited(stop(reason: 'Saha modu süre dolduğu için kapandı.'));
+        unawaited(stop(reason: FieldModeMessage.sessionEnded));
       });
       _stationaryCheckTimer = Timer.periodic(stationaryCheckInterval, (_) {
         unawaited(checkCurrentLocation());
@@ -246,14 +266,13 @@ class FieldModeService {
       return true;
     } on MobileApiException catch (error) {
       lastMessage.value = error.statusCode == 402
-          ? error.message
+          ? FieldModeMessage.accessRequired
           : error.statusCode == 401
-          ? 'Oturumunuz sona erdi. Yeniden giriş yapın.'
-          : 'Saha Modu başlatılamadı. Bağlantınızı kontrol edip tekrar deneyin.';
+          ? FieldModeMessage.sessionExpired
+          : FieldModeMessage.startFailed;
       return false;
     } catch (_) {
-      lastMessage.value =
-          'Saha Modu başlatılamadı. Bağlantınızı veya konum izinlerini kontrol edip tekrar deneyin.';
+      lastMessage.value = FieldModeMessage.startFailed;
       return false;
     } finally {
       _starting = false;
@@ -295,7 +314,7 @@ class FieldModeService {
     }
   }
 
-  Future<void> stop({String? reason}) async {
+  Future<void> stop({FieldModeMessage? reason}) async {
     if (!isActive.value) return;
     try {
       await _positionSubscription?.cancel();
@@ -343,8 +362,7 @@ class FieldModeService {
       // Arka plan/ilk konum edinimi geçici olarak başarısız olabilir. Saha
       // modu kapanmaz; konum akışı veya sonraki zamanlanmış kontrol dener.
       if (isActive.value) {
-        lastMessage.value =
-            'Konum alınamadı. Konum iznini ve GPS ayarını kontrol edin.';
+        lastMessage.value = FieldModeMessage.locationCheckFailed;
       }
     } finally {
       _currentPositionInFlight = false;
@@ -390,34 +408,38 @@ class FieldModeService {
       await recordOutcome(candidate, 'shown');
     } catch (_) {
       // Saha modu ağ hatasında sessizce devam eder; vardiyayı bölmez.
-      lastMessage.value =
-          'Yakındaki müşteriler güncellenemedi. Bağlantınızı kontrol edin.';
+      lastMessage.value = FieldModeMessage.nearbyCustomersUpdateFailed;
     } finally {
       _candidateCheckInFlight = false;
     }
   }
 
-  String describeCandidate(Map<String, dynamic> candidate) {
+  String describeCandidate(
+    Map<String, dynamic> candidate,
+    AppLocalizations strings,
+  ) {
     final distanceKm = (candidate['distanceKm'] as num?)?.toDouble() ?? 0;
     final distance = distanceKm < 1
         ? '${(distanceKm * 1000).round()} m'
-        : '${distanceKm.toStringAsFixed(1).replaceAll('.', ',')} km';
+        : '${distanceKm.toStringAsFixed(1).replaceAll('.', _localeCode == 'en' ? '.' : ',')} km';
     final days = candidate['daysSinceVisit'] as int?;
     final visit = days == null
-        ? 'Henüz ziyaret edilmedi'
-        : 'Son ziyaret $days gün önce';
+        ? strings.notVisitedYet
+        : strings.lastVisitedDays(days);
     final overdue = (candidate['overdueTaskCount'] as num?)?.toInt() ?? 0;
-    final follow = overdue > 0 ? ' · $overdue geciken takip' : '';
-    return '$distance uzakta · $visit$follow';
+    final follow = overdue > 0
+        ? ' · ${strings.overdueFollowUpCount(overdue)}'
+        : '';
+    return '${strings.distanceAway(distance)} · $visit$follow';
   }
 
   Future<void> _notifyNearby(Map<String, dynamic> candidate) async {
-    const details = NotificationDetails(
+    final strings = await AppLocalizations.delegate.load(Locale(_localeCode));
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
         _nearbyChannelId,
-        'Yakındaki müşteri',
-        channelDescription:
-            'Saha modu açıkken yakınındaki müşteriyi hatırlatır.',
+        strings.fieldModeNotificationChannel,
+        channelDescription: strings.fieldModeNotificationDescription,
         importance: Importance.high,
         priority: Priority.high,
       ),
@@ -425,8 +447,8 @@ class FieldModeService {
     );
     await _notifications.show(
       candidate['id'].hashCode,
-      candidate['name']?.toString() ?? 'Yakındaki müşteri',
-      describeCandidate(candidate),
+      candidate['name']?.toString() ?? strings.fieldModeReminderTitle,
+      describeCandidate(candidate, strings),
       details,
       payload: candidate['id']?.toString(),
     );

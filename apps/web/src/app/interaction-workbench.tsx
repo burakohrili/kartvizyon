@@ -1,16 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import type { AppLocale } from "@/lib/i18n/locale";
+import { formatDateTime } from "@/lib/i18n/locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 type Item = Record<string, unknown>;
 
 export function ActivityFeed({
   initialVisits,
   initialComments,
+  locale,
 }: {
   initialVisits: Item[];
   initialComments: Item[];
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).activity;
   const [comments, setComments] = useState(initialComments);
   const [message, setMessage] = useState("");
   async function comment(visitId: string, formData: FormData) {
@@ -32,8 +38,8 @@ export function ActivityFeed({
           author: { full_name: "Siz" },
         },
       ]);
-      setMessage("Yorum eklendi ve temsilciye bildirildi.");
-    } else setMessage(result.error ?? "Yorum eklenemedi.");
+      setMessage(m.commentAdded);
+    } else setMessage(m.commentFailed);
   }
   return (
     <section className="activity-feed-full">
@@ -51,14 +57,12 @@ export function ActivityFeed({
           <article key={String(visit.id)}>
             <header>
               <div>
-                <strong>{company?.name ?? "Firma"}</strong>
-                <small>{representative?.full_name ?? "Saha temsilcisi"}</small>
+                <strong>{company?.name ?? m.company}</strong>
+                <small>{representative?.full_name ?? m.representative}</small>
               </div>
-              <time>
-                {new Date(String(visit.approved_at)).toLocaleString("tr-TR")}
-              </time>
+              <time>{formatDateTime(String(visit.approved_at), locale)}</time>
             </header>
-            <p>{summary?.summary ?? "Onaylı ziyaret"}</p>
+            <p>{summary?.summary ?? m.approvedVisit}</p>
             <div className="activity-comments">
               {visitComments.map((item) => {
                 const author = item.author as { full_name?: string } | null;
@@ -76,12 +80,12 @@ export function ActivityFeed({
             >
               <input
                 name="body"
-                aria-label="Yönetici yorumu"
-                placeholder="Yorum veya yönlendirme ekleyin"
+                aria-label={m.managerComment}
+                placeholder={m.commentPlaceholder}
                 required
                 maxLength={2000}
               />
-              <button>Yorum ekle</button>
+              <button>{m.addComment}</button>
             </form>
           </article>
         );
@@ -90,7 +94,14 @@ export function ActivityFeed({
   );
 }
 
-export function NotificationCenter({ initialItems }: { initialItems: Item[] }) {
+export function NotificationCenter({
+  initialItems,
+  locale,
+}: {
+  initialItems: Item[];
+  locale: AppLocale;
+}) {
+  const m = getMessages(locale).notifications;
   const [items, setItems] = useState(initialItems);
   async function markRead(id: string) {
     const response = await fetch("/api/notifications", {
@@ -109,21 +120,17 @@ export function NotificationCenter({ initialItems }: { initialItems: Item[] }) {
   }
   return (
     <section className="notification-list">
-      {items.length === 0 && (
-        <p className="empty-state">Yeni bildiriminiz yok.</p>
-      )}
+      {items.length === 0 && <p className="empty-state">{m.empty}</p>}
       {items.map((item) => (
         <article className={item.read_at ? "read" : ""} key={String(item.id)}>
           <div>
             <strong>{String(item.title)}</strong>
             <p>{String(item.body)}</p>
-            <small>
-              {new Date(String(item.created_at)).toLocaleString("tr-TR")}
-            </small>
+            <small>{formatDateTime(String(item.created_at), locale)}</small>
           </div>
           {!item.read_at && (
             <button onClick={() => void markRead(String(item.id))}>
-              Okundu
+              {m.markRead}
             </button>
           )}
         </article>
@@ -132,11 +139,18 @@ export function NotificationCenter({ initialItems }: { initialItems: Item[] }) {
   );
 }
 
-export function DocumentCenter({ initialItems }: { initialItems: Item[] }) {
+export function DocumentCenter({
+  initialItems,
+  locale,
+}: {
+  initialItems: Item[];
+  locale: AppLocale;
+}) {
+  const m = getMessages(locale).operations;
   const [items, setItems] = useState(initialItems);
   const [message, setMessage] = useState("");
   async function upload(formData: FormData) {
-    setMessage("Dosya doğrulanıyor ve karantinaya yükleniyor…");
+    setMessage(m.validatingDocument);
     const response = await fetch("/api/documents", {
       method: "POST",
       body: formData,
@@ -144,21 +158,21 @@ export function DocumentCenter({ initialItems }: { initialItems: Item[] }) {
     const result = await response.json();
     if (response.ok) {
       setItems((current) => [result.data, ...current]);
-      setMessage(result.message);
-    } else setMessage(result.error ?? "Dosya yüklenemedi.");
+      setMessage(m.documentUploaded);
+    } else setMessage(m.documentUploadFailed);
   }
   return (
     <div className="operations-grid">
       <form action={upload} className="operation-form">
-        <h2>Belge yükle</h2>
-        <p>PDF, JPEG, PNG veya DOCX · en fazla 20 MB</p>
+        <h2>{m.uploadDocument}</h2>
+        <p>{m.documentRequirements}</p>
         <input
           name="file"
           type="file"
           required
           accept=".pdf,.jpg,.jpeg,.png,.docx"
         />
-        <button className="primary">Karantinaya yükle</button>
+        <button className="primary">{m.quarantine}</button>
         {message && <p className="form-message">{message}</p>}
       </form>
       <section className="operation-list">
@@ -167,10 +181,23 @@ export function DocumentCenter({ initialItems }: { initialItems: Item[] }) {
             <div>
               <strong>{String(item.file_name)}</strong>
               <small>
-                {Number(item.size_bytes ?? 0).toLocaleString("tr-TR")} bayt
+                {Number(item.size_bytes ?? 0).toLocaleString(
+                  locale === "en" ? "en-US" : "tr-TR",
+                )}{" "}
+                {m.bytes}
               </small>
             </div>
-            <span>{String(item.scan_status)}</span>
+            <span>
+              {item.scan_status === "pending"
+                ? m.scanPending
+                : item.scan_status === "clean"
+                  ? m.scanClean
+                  : item.scan_status === "infected"
+                    ? m.scanInfected
+                    : item.scan_status === "error"
+                      ? m.scanError
+                      : m.scanUnknown}
+            </span>
           </article>
         ))}
       </section>
@@ -182,11 +209,14 @@ export function FormCenter({
   workspaceId,
   initialTemplates,
   initialSubmissions,
+  locale,
 }: {
   workspaceId: string;
   initialTemplates: Item[];
   initialSubmissions: Item[];
+  locale: AppLocale;
 }) {
+  const m = getMessages(locale).operations;
   const [templates, setTemplates] = useState(initialTemplates);
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [message, setMessage] = useState("");
@@ -203,7 +233,7 @@ export function FormCenter({
           fields: [
             {
               key: "ziyaret_notu",
-              label: formData.get("fieldLabel") || "Ziyaret notu",
+              label: formData.get("fieldLabel") || m.visitNote,
               type: "textarea",
               required: true,
             },
@@ -214,8 +244,8 @@ export function FormCenter({
     const result = await response.json();
     if (response.ok) {
       setTemplates((current) => [...current, result.data]);
-      setMessage("Form şablonu oluşturuldu.");
-    } else setMessage(result.error ?? "Şablon oluşturulamadı.");
+      setMessage(m.templateCreated);
+    } else setMessage(m.templateCreateFailed);
   }
   async function submit(formData: FormData) {
     const templateId = String(formData.get("templateId"));
@@ -230,32 +260,32 @@ export function FormCenter({
     const result = await response.json();
     if (response.ok) {
       setSubmissions((current) => [result.data, ...current]);
-      setMessage("Form yanıtı kaydedildi.");
-    } else setMessage(result.error ?? "Yanıt kaydedilemedi.");
+      setMessage(m.responseSaved);
+    } else setMessage(m.responseSaveFailed);
   }
   return (
     <div className="operations-grid">
       <div>
         <form action={createTemplate} className="operation-form">
-          <h2>Form şablonu</h2>
+          <h2>{m.formTemplate}</h2>
           <label>
-            Form adı
+            {m.formName}
             <input name="name" required />
           </label>
           <label>
-            Açıklama
+            {m.description}
             <input name="description" />
           </label>
           <label>
-            İlk alan etiketi
-            <input name="fieldLabel" defaultValue="Ziyaret notu" required />
+            {m.firstFieldLabel}
+            <input name="fieldLabel" defaultValue={m.visitNote} required />
           </label>
-          <button className="primary">Şablon oluştur</button>
+          <button className="primary">{m.createTemplate}</button>
         </form>
         <form action={submit} className="operation-form structure-team-form">
-          <h2>Form doldur</h2>
+          <h2>{m.fillForm}</h2>
           <label>
-            Şablon
+            {m.template}
             <select name="templateId">
               {templates.map((item) => (
                 <option key={String(item.id)} value={String(item.id)}>
@@ -265,29 +295,31 @@ export function FormCenter({
             </select>
           </label>
           <label>
-            Yanıt
+            {m.response}
             <textarea name="value" required />
           </label>
           <button className="primary" disabled={!templates.length}>
-            Kaydet
+            {m.save}
           </button>
         </form>
         {message && <p className="form-message">{message}</p>}
       </div>
       <section className="operation-list">
-        <h2>Şablonlar ve yanıtlar</h2>
+        <h2>{m.templatesAndResponses}</h2>
         {templates.map((item) => (
           <article key={String(item.id)}>
             <div>
               <strong>{String(item.name)}</strong>
               <small>
                 v{String(item.version ?? 1)} ·{" "}
-                {Array.isArray(item.fields) ? item.fields.length : 0} alan
+                {Array.isArray(item.fields) ? item.fields.length : 0} {m.fields}
               </small>
             </div>
           </article>
         ))}
-        <p>{submissions.length} kayıtlı yanıt</p>
+        <p>
+          {submissions.length} {m.savedResponses}
+        </p>
       </section>
     </div>
   );

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { approveVisit, returnVisitToDraft } from "./actions";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
 
 const demoSummary: VisitSummary = {
   summary:
@@ -53,6 +55,8 @@ export default async function VisitReviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).review;
   const visit = await getVisit(id);
 
   if (!visit) {
@@ -61,9 +65,9 @@ export default async function VisitReviewPage({
         <DemoBanner />
         <section className="review-card">
           <Link href="/visits" className="back-link">
-            ← Ziyaretler
+            {m.back}
           </Link>
-          <h1>İncelenecek ziyaret bulunamadı</h1>
+          <h1>{m.notFound}</h1>
         </section>
       </main>
     );
@@ -73,17 +77,17 @@ export default async function VisitReviewPage({
     <main className="review-page">
       <section className="review-card">
         <Link href="/visits" className="back-link">
-          ← Ziyaretler
+          {m.back}
         </Link>
-        <div className="ai-label">AI TARAFINDAN HAZIRLANDI · ONAY GEREKLİ</div>
-        <h1>{visit.companyName} ziyareti</h1>
-        <p className="review-meta">
-          {visit.purpose ?? "Ziyaret sonrası değerlendirme"}
-        </p>
+        <div className="ai-label">{m.aiReview}</div>
+        <h1>
+          {visit.companyName} {m.visitSuffix}
+        </h1>
+        <p className="review-meta">{visit.purpose ?? m.debriefPurpose}</p>
         <form action={approveVisit}>
           <input type="hidden" name="visitId" value={id} />
           <label className="review-field">
-            Ziyaret özeti
+            {m.summary}
             <textarea
               name="summary"
               defaultValue={visit.summary.summary}
@@ -95,16 +99,16 @@ export default async function VisitReviewPage({
           </label>
           <div className="review-grid">
             <label className="review-field">
-              Sonuç
+              {m.outcome}
               <select name="outcome" defaultValue={visit.summary.outcome}>
-                <option value="positive">Olumlu</option>
-                <option value="neutral">Nötr</option>
-                <option value="negative">Olumsuz</option>
-                <option value="unknown">Belirsiz</option>
+                <option value="positive">{m.positive}</option>
+                <option value="neutral">{m.neutral}</option>
+                <option value="negative">{m.negative}</option>
+                <option value="unknown">{m.unknown}</option>
               </select>
             </label>
             <label className="review-field">
-              İlk takip tarihi
+              {m.firstFollowUpDate}
               <input
                 name="followUpDate"
                 type="date"
@@ -113,7 +117,7 @@ export default async function VisitReviewPage({
             </label>
           </div>
           <section className="ai-actions">
-            <strong>Önerilen takipler</strong>
+            <strong>{m.recommendedFollowUps}</strong>
             {visit.summary.followUps.length ? (
               visit.summary.followUps.map((followUp, index) => (
                 <label key={`${followUp.title}-${index}`}>
@@ -127,20 +131,20 @@ export default async function VisitReviewPage({
                 </label>
               ))
             ) : (
-              <small>Takip önerisi bulunamadı.</small>
+              <small>{m.noSuggestions}</small>
             )}
           </section>
           <div className="sensitive-check">
             {visit.summary.sensitiveContentDetected
-              ? "⚠ Hassas kişisel veri olasılığı var; paylaşmadan önce düzenleyin"
-              : "✓ Hassas kişisel veri tespit edilmedi"}
+              ? m.sensitiveWarning
+              : m.noSensitiveData}
           </div>
           <div className="review-buttons">
             <button formAction={returnVisitToDraft} className="reject-button">
-              Taslağa geri gönder
+              {m.returnToDraft}
             </button>
             <button type="submit" className="primary">
-              Onayla ve kurumsal hafızaya ekle
+              {m.approve}
             </button>
           </div>
         </form>

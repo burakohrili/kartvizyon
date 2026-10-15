@@ -2,6 +2,10 @@ import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { completeTask } from "./actions";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
+import { formatDate } from "@/lib/i18n/locale";
+import { getDemoRecords } from "@/lib/i18n/demo-records";
 
 type Task = {
   id: string;
@@ -12,34 +16,34 @@ type Task = {
   company: { name: string } | null;
 };
 
-const demoTasks: Task[] = [
-  {
-    id: "demo-1",
-    title: "Revize teklifi gönder",
-    status: "open",
-    due_at: "2026-08-07T09:00:00Z",
-    source: "ai_follow_up",
-    company: { name: "Atlas Medikal" },
-  },
-  {
-    id: "demo-2",
-    title: "Teknik demo tarihini netleştir",
-    status: "open",
-    due_at: "2026-08-09T09:00:00Z",
-    source: "ai_follow_up",
-    company: { name: "Atlas Medikal" },
-  },
-  {
-    id: "demo-3",
-    title: "Bakım sözleşmesini kontrol et",
-    status: "completed",
-    due_at: "2026-08-02T09:00:00Z",
-    source: "manual",
-    company: { name: "Nova Otomasyon" },
-  },
-];
-
-async function getTasks() {
+async function getTasks(locale: "en" | "tr") {
+  const demo = getDemoRecords(locale);
+  const demoTasks: Task[] = [
+    {
+      id: "demo-1",
+      title: demo.tasks[0],
+      status: "open",
+      due_at: "2026-08-07T09:00:00Z",
+      source: "ai_follow_up",
+      company: { name: demo.companies[0] },
+    },
+    {
+      id: "demo-2",
+      title: demo.tasks[1],
+      status: "open",
+      due_at: "2026-08-09T09:00:00Z",
+      source: "ai_follow_up",
+      company: { name: demo.companies[0] },
+    },
+    {
+      id: "demo-3",
+      title: demo.tasks[2],
+      status: "completed",
+      due_at: "2026-08-02T09:00:00Z",
+      source: "manual",
+      company: { name: demo.companies[1] },
+    },
+  ];
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { tasks: demoTasks, demo: true };
   const {
@@ -56,7 +60,9 @@ async function getTasks() {
 }
 
 export default async function TasksPage() {
-  const { tasks, demo } = await getTasks();
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).tasks;
+  const { tasks, demo: isDemo } = await getTasks(locale);
   const openTasks = tasks.filter((task) => task.status === "open");
   const completed = tasks.filter((task) => task.status === "completed");
   return (
@@ -65,51 +71,52 @@ export default async function TasksPage() {
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">TAKVİM VE TAKİPLER</span>
-          <h1>Görevlerim</h1>
-          <p>Onayladığın AI takipleri ve elle eklenen saha görevleri.</p>
+          <span className="eyebrow">{m.eyebrow}</span>
+          <h1>{m.title}</h1>
+          <p>{m.description}</p>
         </div>
       </header>
-      {demo && (
+      {isDemo && (
         <div className="demo-notice">
-          <strong>Demo görevleri.</strong> Onaylanan ziyaret takipleri burada
-          otomatik görünür.
+          <strong>{m.demoTitle}</strong> {m.demoBody}
         </div>
       )}
       <section className="task-columns">
         <div className="task-column">
           <header>
-            <h2>Yaklaşan</h2>
+            <h2>{m.upcoming}</h2>
             <span>{openTasks.length}</span>
           </header>
+          {openTasks.length === 0 && (
+            <p className="empty-state">{m.allCaughtUp}</p>
+          )}
           {openTasks.map((task) => (
             <article key={task.id}>
               <div>
-                <small>{task.company?.name ?? "Firma yok"}</small>
+                <small>{task.company?.name ?? m.noCompany}</small>
                 <strong>{task.title}</strong>
                 <time>
-                  {task.due_at
-                    ? new Intl.DateTimeFormat("tr-TR", {
-                        dateStyle: "medium",
-                      }).format(new Date(task.due_at))
-                    : "Tarih yok"}
+                  {task.due_at ? formatDate(task.due_at, locale) : m.noDate}
                 </time>
               </div>
-              {task.source === "ai_follow_up" && <em>AI · ONAYLI ZİYARET</em>}
+              {task.source === "ai_follow_up" && <em>{m.aiApprovedVisit}</em>}
               <form action={completeTask}>
                 <input type="hidden" name="taskId" value={task.id} />
-                <button>Tamamla</button>
+                <button>{m.complete}</button>
               </form>
             </article>
           ))}
         </div>
         <div className="task-column completed-column">
           <header>
-            <h2>Tamamlanan</h2>
+            <h2>{m.completed}</h2>
             <span>{completed.length}</span>
           </header>
+          {completed.length === 0 && (
+            <p className="empty-state">{m.noCompletedTasks}</p>
+          )}
           {completed.map((task) => (
             <article key={task.id}>
               <div>

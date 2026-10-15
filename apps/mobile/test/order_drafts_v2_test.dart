@@ -11,6 +11,7 @@ import 'package:kartvizyon_mobile/data/secure_session_store.dart';
 import 'package:kartvizyon_mobile/data/sync_engine.dart';
 import 'package:kartvizyon_mobile/features/more/order_draft_form_screen.dart';
 import 'package:kartvizyon_mobile/features/more/workspace_module_screen.dart';
+import 'package:kartvizyon_mobile/l10n/app_localizations.dart';
 
 class _Session extends SecureSessionStore {
   const _Session();
@@ -93,6 +94,9 @@ void main() {
     });
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('tr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: WorkspaceModuleScreen(
           services: service,
           module: WorkspaceModule.orders,
@@ -122,13 +126,40 @@ void main() {
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(textScaler: TextScaler.linear(2)),
-        child: MaterialApp(home: OrderDraftFormScreen(services: service)),
+        child: MaterialApp(
+          locale: const Locale('tr', 'TR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: OrderDraftFormScreen(services: service),
+        ),
       ),
     );
     await tester.pumpAndSettle();
     expect(find.text('Yeni sipariş taslağı'), findsOneWidget);
     expect(find.text('Müşteri seç *'), findsOneWidget);
     expect(find.text('Ürün ekle'), findsOneWidget);
+    await service.dispose();
+  });
+
+  testWidgets('sipariş formu İngilizce arayüz metinlerini gösterir', (
+    tester,
+  ) async {
+    final service = _services(database, (request) async {
+      if (request.url.path == '/api/session') return _response(_session());
+      return _response({'data': []});
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: OrderDraftFormScreen(services: service),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('New order draft'), findsOneWidget);
+    expect(find.text('Choose customer *'), findsOneWidget);
+    expect(find.text('Add product'), findsOneWidget);
     await service.dispose();
   });
 }

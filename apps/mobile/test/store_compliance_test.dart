@@ -19,6 +19,7 @@ void main() {
     final premium = File(
       'lib/features/more/premium_screen.dart',
     ).readAsStringSync();
+    final storeCopy = File('lib/l10n/app_tr.arb').readAsStringSync();
 
     expect(pubspec.contains('purchases_flutter:'), isTrue);
     expect(billing.contains('Purchases.purchase('), isTrue);
@@ -44,7 +45,9 @@ void main() {
           'fiyatı RevenueCat/StoreKit ürününden gelmeli.',
     );
     expect(
-      premium.contains('ülke veya bölgesine göre satın alma düğmesinde'),
+      storeCopy.contains(
+        'Güncel fiyat, mağaza hesabınızın ülke veya bölgesine göre satın alma düğmesinde gösterilir.',
+      ),
       isTrue,
       reason:
           'Kullanıcıya mağaza fiyatının bölgeye göre değiştiği açıklanmalı.',
@@ -242,10 +245,19 @@ void main() {
       expect(auth.contains('/auth/v1/settings'), isTrue);
       expect(auth.contains('if (appleAuthAvailable)'), isTrue);
       expect(project.contains('CODE_SIGN_ENTITLEMENTS'), isFalse);
-      expect(menu.contains("'Hesabımı sil'"), isTrue);
+      expect(menu.contains('l10n.deleteAccount'), isTrue);
+      final turkish = File('lib/l10n/app_tr.arb').readAsStringSync();
+      expect(turkish.contains('"deleteAccount": "Hesabımı sil"'), isTrue);
+      expect(
+        turkish.contains(
+          '"privacyDeleteConfirmTitle": "Hesabımı kalıcı olarak sil"',
+        ),
+        isTrue,
+      );
+      expect(turkish.contains('"privacyDeleteConfirmBody":'), isTrue);
       expect(menu.contains("'/privacy?delete=true'"), isTrue);
-      expect(privacy.contains('Hesabımı kalıcı olarak sil'), isTrue);
-      expect(privacy.contains('İşlem geri alınamaz'), isTrue);
+      expect(privacy.contains('l10n.privacyDeleteConfirmTitle'), isTrue);
+      expect(privacy.contains('l10n.privacyDeleteConfirmBody'), isTrue);
     },
   );
 
@@ -264,7 +276,7 @@ void main() {
     expect(privacy.contains('_hasOpenRequest'), isTrue);
     expect(privacy.contains('submittingRequest'), isTrue);
     expect(privacy.contains('error.statusCode == 409'), isTrue);
-    expect(privacy.contains('talebiniz zaten açık'), isTrue);
+    expect(privacy.contains('l10n.privacyOpenDeletionRequest'), isTrue);
   });
 
   test('Android derlemesi API 36 hedefler', () {

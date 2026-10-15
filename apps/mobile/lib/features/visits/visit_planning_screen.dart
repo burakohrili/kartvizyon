@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/mobile_services.dart';
 import '../customers/customer_picker.dart';
+import '../../l10n/app_localizations.dart';
 
 class VisitPlanningScreen extends StatefulWidget {
   const VisitPlanningScreen({super.key, required this.services});
@@ -14,21 +16,13 @@ class VisitPlanningScreen extends StatefulWidget {
 }
 
 class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
-  static const visitTypes = <(String, String)>[
-    ('sales_meeting', 'Satış görüşmesi'),
-    ('quote_follow_up', 'Teklif takibi'),
-    ('order_follow_up', 'Sipariş takibi'),
-    ('introduction', 'Tanışma'),
-    ('technical', 'Teknik görüşme'),
-    ('other', 'Diğer'),
-  ];
   static const durations = [30, 45, 60, 90, 120];
 
   final formKey = GlobalKey<FormState>();
   final purpose = TextEditingController();
   final note = TextEditingController();
   CustomerChoice? customer;
-  String visitType = visitTypes.first.$1;
+  String visitType = 'sales_meeting';
   DateTime start = DateTime.now().add(const Duration(hours: 1));
   int durationMinutes = 60;
   bool submitting = false;
@@ -87,6 +81,7 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
   }
 
   Future<void> submit() async {
+    final l10n = AppLocalizations.of(context)!;
     if (submitting) return;
     FocusScope.of(context).unfocus();
     setState(() => attempted = true);
@@ -94,13 +89,13 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
     if (customer == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Müşteri seçin.')));
+      ).showSnackBar(SnackBar(content: Text(l10n.visitPlanCustomerRequired)));
       return;
     }
     if (!start.isAfter(DateTime.now())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gelecekte bir başlangıç seçin.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.visitPlanFutureStart)));
       return;
     }
 
@@ -131,7 +126,7 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(l10n.visitPlanSaveFailed)));
     } catch (_) {
       await _enqueueOffline(end, mutationId);
     } finally {
@@ -154,10 +149,8 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Planlı ziyaret çevrimdışı kuyruğa alındı. Hatırlatmalar senkronizasyondan sonra oluşturulur.',
-        ),
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.visitPlanOfflineQueued),
       ),
     );
     Navigator.pop(context, true);
@@ -165,12 +158,22 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final visitTypes = <(String, String)>[
+      ('sales_meeting', l10n.visitPlanTypeSalesMeeting),
+      ('quote_follow_up', l10n.visitPlanTypeQuoteFollowUp),
+      ('order_follow_up', l10n.visitPlanTypeOrderFollowUp),
+      ('introduction', l10n.visitPlanTypeIntroduction),
+      ('technical', l10n.visitPlanTypeTechnical),
+      ('other', l10n.visitPlanTypeOther),
+    ];
     final selectedType = visitTypes.firstWhere(
       (entry) => entry.$1 == visitType,
     );
     final customerError = customer == null && attempted;
     return Scaffold(
-      appBar: AppBar(title: const Text('Ziyaret planla')),
+      appBar: AppBar(title: Text(l10n.visitPlanTitle)),
       body: SafeArea(
         child: Form(
           key: formKey,
@@ -178,20 +181,23 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
             children: [
-              Text('Müşteri', style: Theme.of(context).textTheme.labelLarge),
+              Text(
+                l10n.visitPlanCustomer,
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
               const SizedBox(height: 6),
               Semantics(
                 button: true,
                 label: customer == null
-                    ? 'Müşteri seçilmedi, zorunlu alan'
-                    : 'Seçili müşteri ${customer!.name}',
+                    ? l10n.visitPlanCustomerMissingSemantics
+                    : l10n.visitPlanCustomerSelectedSemantics(customer!.name),
                 child: Card(
                   margin: EdgeInsets.zero,
                   child: ListTile(
                     minTileHeight: 64,
                     leading: const Icon(Icons.apartment_outlined),
                     title: Text(
-                      customer?.name ?? 'Müşteri seç *',
+                      customer?.name ?? l10n.visitPlanCustomerSelect,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -208,10 +214,10 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
                 ),
               ),
               if (customerError)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: 6, left: 12),
                   child: Text(
-                    'Müşteri seçin.',
+                    l10n.visitPlanCustomerRequired,
                     style: TextStyle(color: Colors.red),
                   ),
                 ),
@@ -219,8 +225,8 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
               DropdownButtonFormField<String>(
                 initialValue: visitType,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Ziyaret türü',
+                decoration: InputDecoration(
+                  labelText: l10n.visitPlanType,
                   border: OutlineInputBorder(),
                 ),
                 items: visitTypes
@@ -242,20 +248,20 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
                 minLines: 1,
                 maxLines: 3,
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Amaç *',
-                  hintText: 'Örn. Yeni teklif üzerinden geçmek',
+                decoration: InputDecoration(
+                  labelText: l10n.visitPlanPurpose,
+                  hintText: l10n.visitPlanPurposeHint,
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   final length = value?.trim().length ?? 0;
-                  if (length < 2) return 'Amacı en az 2 karakter yazın.';
+                  if (length < 2) return l10n.visitPlanPurposeMin;
                   return null;
                 },
               ),
               const SizedBox(height: 12),
               Text(
-                'Tarih ve saat',
+                l10n.visitPlanDateTime,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
@@ -266,7 +272,7 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
                     child: OutlinedButton.icon(
                       onPressed: submitting ? null : pickDate,
                       icon: const Icon(Icons.calendar_today_outlined),
-                      label: Text(_dateLabel(start)),
+                      label: Text(_dateLabel(start, locale)),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -275,7 +281,7 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
                     child: OutlinedButton.icon(
                       onPressed: submitting ? null : pickTime,
                       icon: const Icon(Icons.schedule_outlined),
-                      label: Text(_timeLabel(start)),
+                      label: Text(_timeLabel(start, locale)),
                     ),
                   ),
                 ],
@@ -284,15 +290,15 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
               DropdownButtonFormField<int>(
                 initialValue: durationMinutes,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Süre',
+                decoration: InputDecoration(
+                  labelText: l10n.visitPlanDuration,
                   border: OutlineInputBorder(),
                 ),
                 items: durations
                     .map(
                       (minutes) => DropdownMenuItem(
                         value: minutes,
-                        child: Text(_durationLabel(minutes)),
+                        child: Text(_durationLabel(minutes, l10n)),
                       ),
                     )
                     .toList(),
@@ -303,13 +309,11 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
               const SizedBox(height: 20),
               Card(
                 margin: EdgeInsets.zero,
-                child: const ListTile(
+                child: ListTile(
                   minTileHeight: 72,
                   leading: Icon(Icons.notifications_active_outlined),
-                  title: Text('Genel ziyaret hatırlatmaları'),
-                  subtitle: Text(
-                    'Bildirim Merkezi ayarınız açıksa 1 gün ve 2 saat önce',
-                  ),
+                  title: Text(l10n.visitPlanReminderTitle),
+                  subtitle: Text(l10n.visitPlanReminderBody),
                 ),
               ),
               const SizedBox(height: 16),
@@ -318,16 +322,19 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
                 maxLength: 2000,
                 minLines: 3,
                 maxLines: 6,
-                decoration: const InputDecoration(
-                  labelText: 'Planlama notu',
-                  hintText: 'Görüşme öncesi kısa hazırlık notu',
-                  helperText: 'Ziyaret sonrası değerlendirme notundan ayrıdır.',
+                decoration: InputDecoration(
+                  labelText: l10n.visitPlanNote,
+                  hintText: l10n.visitPlanNoteHint,
+                  helperText: l10n.visitPlanNoteHelper,
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Seçim: ${selectedType.$2} · ${_durationLabel(durationMinutes)}',
+                l10n.visitPlanSelectedSummary(
+                  selectedType.$2,
+                  _durationLabel(durationMinutes, l10n),
+                ),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -347,8 +354,8 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
                   )
                 : Text(
                     widget.services.canWrite
-                        ? 'Ziyareti planla'
-                        : 'Abonelik gerekli',
+                        ? l10n.visitPlanSubmit
+                        : l10n.visitPlanSubscriptionRequired,
                   ),
           ),
         ),
@@ -356,16 +363,17 @@ class _VisitPlanningScreenState extends State<VisitPlanningScreen> {
     );
   }
 
-  static String _dateLabel(DateTime value) =>
-      '${value.day.toString().padLeft(2, '0')}.${value.month.toString().padLeft(2, '0')}.${value.year}';
+  static String _dateLabel(DateTime value, String locale) =>
+      DateFormat.yMd(locale).format(value);
 
-  static String _timeLabel(DateTime value) =>
-      '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+  static String _timeLabel(DateTime value, String locale) =>
+      DateFormat.jm(locale).format(value);
 
-  static String _durationLabel(int minutes) => switch (minutes) {
-    60 => '1 saat',
-    90 => '1 saat 30 dk',
-    120 => '2 saat',
-    _ => '$minutes dk',
-  };
+  static String _durationLabel(int minutes, AppLocalizations l10n) =>
+      switch (minutes) {
+        60 => l10n.visitPlanDurationHour,
+        90 => l10n.visitPlanDurationHourHalf,
+        120 => l10n.visitPlanDurationTwoHours,
+        _ => l10n.visitPlanDurationMinutes(minutes),
+      };
 }

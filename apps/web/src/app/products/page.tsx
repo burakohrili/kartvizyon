@@ -2,21 +2,26 @@ import Link from "next/link";
 import { getWebWorkspaceContext } from "@/lib/web-context";
 import { PriceListWorkbench, ProductWorkbench } from "../operations-workbench";
 import { DemoBanner } from "@/app/demo-banner";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getMessages } from "@/lib/i18n/messages";
+import { getDemoRecords } from "@/lib/i18n/demo-records";
 
 const demoWorkspace = "00000000-0000-4000-8000-000000000001";
-const demoItems = [
-  {
-    id: "00000000-0000-4000-8000-000000000401",
-    sku: "KV-100",
-    name: "Endüstriyel Kontrol Ünitesi",
-    unit: "adet",
-    tax_rate: 20,
-    list_price: 125000,
-    currency: "TRY",
-  },
-];
-
 export default async function ProductsPage() {
+  const locale = await getRequestLocale();
+  const m = getMessages(locale).operations;
+  const demo = getDemoRecords(locale);
+  const demoItems = [
+    {
+      id: "00000000-0000-4000-8000-000000000401",
+      sku: "KV-100",
+      name: demo.product,
+      unit: locale === "en" ? "unit" : "adet",
+      tax_rate: 20,
+      list_price: 125000,
+      currency: "TRY",
+    },
+  ];
   const context = await getWebWorkspaceContext();
   const [products, priceLists] = context
     ? await Promise.all([
@@ -40,32 +45,27 @@ export default async function ProductsPage() {
       <header className="customers-header">
         <div>
           <Link href="/dashboard" className="back-link">
-            ← Genel bakış
+            {m.back}
           </Link>
-          <span className="eyebrow">ÜRÜN VE FİYAT</span>
-          <h1>Ürün kataloğu</h1>
-          <p>
-            Sipariş taslaklarında kullanılacak kontrollü ürün ve liste
-            fiyatları.
-          </p>
+          <span className="eyebrow">{m.productsEyebrow}</span>
+          <h1>{m.productsTitle}</h1>
+          <p>{m.productsDescription}</p>
         </div>
       </header>
       {!context && (
         <div className="demo-notice">
-          <strong>Demo görünümü.</strong> Kayıt işlemleri için Supabase
-          bağlantısı gerekir.
+          <strong>{m.demoTitle}</strong> {m.demoBody}
         </div>
       )}
       <ProductWorkbench
+        locale={locale}
         workspaceId={context?.workspaceId ?? demoWorkspace}
         initialItems={(products.data ?? []) as Array<Record<string, unknown>>}
       />
-      <h2 className="section-title">Fiyat listeleri</h2>
-      <p>
-        Saha ekibi bu listeleri mobil uygulamada salt okunur görür ve açar;
-        yükleme yalnız buradan yapılır.
-      </p>
+      <h2 className="section-title">{m.priceListsTitle}</h2>
+      <p>{m.priceListsDescription}</p>
       <PriceListWorkbench
+        locale={locale}
         initialItems={(priceLists.data ?? []) as Array<Record<string, unknown>>}
       />
     </main>

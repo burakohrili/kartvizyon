@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
+import '../../l10n/app_localizations.dart';
 import '../tasks/task_list.dart';
 
 class BriefingScreen extends StatefulWidget {
@@ -59,7 +60,9 @@ class _BriefingScreenState extends State<BriefingScreen> {
                 'workspaceId': widget.services.workspaceId,
                 'organizationId': widget.services.organizationId,
                 'companyId': widget.companyId,
-                'purpose': 'Saha ziyareti',
+                'purpose': AppLocalizations.of(
+                  context,
+                )!.briefingDefaultVisitPurpose,
                 'startedAt': DateTime.now().toUtc().toIso8601String(),
                 'clientMutationId': const Uuid().v4(),
               })
@@ -67,15 +70,11 @@ class _BriefingScreenState extends State<BriefingScreen> {
       final data = response['data'] as Map<String, dynamic>;
       if (!mounted) return;
       context.push('/visits/${data['id']}/debrief');
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            error is MobileApiException
-                ? error.message
-                : 'Ziyaret başlatılamadı. Tekrar deneyin.',
-          ),
+          content: Text(AppLocalizations.of(context)!.briefingStartVisitFailed),
         ),
       );
     } finally {
@@ -102,191 +101,205 @@ class _BriefingScreenState extends State<BriefingScreen> {
     final at = DateTime.tryParse(raw)?.toLocal();
     if (at == null) return '';
     final days = DateTime.now().difference(at).inDays;
-    if (days <= 0) return 'bugün';
-    if (days == 1) return 'dün';
-    return '$days gün önce';
+    final l10n = AppLocalizations.of(context)!;
+    if (days <= 0) return l10n.today;
+    if (days == 1) return l10n.yesterday;
+    return l10n.daysAgo(days);
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Ziyaret brifingi')),
-    body: FutureBuilder<Map<String, dynamic>>(
-      future: briefing,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(snapshot.error.toString(), textAlign: TextAlign.center),
-                  TextButton(
-                    onPressed: refresh,
-                    child: const Text('Tekrar dene'),
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.briefingTitle)),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: briefing,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l10n.briefingLoadFailed, textAlign: TextAlign.center),
+                    TextButton(
+                      onPressed: refresh,
+                      child: Text(l10n.briefingRetry),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          final data = snapshot.data!;
+          final company = data['company'] as Map? ?? {};
+          final memory = data['memory'] as Map?;
+          final tasks = List<Map<String, dynamic>>.from(
+            data['openTasks'] as List? ?? [],
+          );
+          final promises = List<Object?>.from(
+            memory?['open_promises'] as List? ?? const [],
+          );
+          final lastVisit = data['lastApprovedVisit'] as Map?;
+          final since = _sinceLabel(lastVisit?['approved_at']);
+          final staleAfter = DateTime.tryParse(
+            memory?['stale_after']?.toString() ?? '',
+          );
+          final stale =
+              staleAfter != null && staleAfter.isBefore(DateTime.now().toUtc());
+          final companyName =
+              company['name']?.toString() ?? l10n.customerFallback;
+          final canNavigate =
+              company['latitude'] != null && company['longitude'] != null;
+
+          return RefreshIndicator(
+            onRefresh: refresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(20),
+              children: [
+                Text(
+                  companyName,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if ((company['address']?.toString() ?? '').isNotEmpty)
+                  Text(company['address'].toString()),
+                const SizedBox(height: 8),
+                Text(
+                  since.isEmpty
+                      ? l10n.briefingNeverVisited
+                      : l10n.lastApprovedVisit(since),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 18),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                l10n.customerMemoryCard,
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            // Bayat kart sessizce eski bilgi verir; kullanıcı
+                            // buna güvenip yanlış şey söyleyebilir.
+                            if (stale)
+                              Text(
+                                l10n.updateRequired,
+                                style: TextStyle(fontStyle: FontStyle.italic),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          memory?['summary']?.toString() ??
+                              l10n.noApprovedSummary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Verilen söz takibi ürünün ana vaadi; sunucu bu alanı
+                // döndürüyordu ama ekran hiç basmıyordu.
+                Text(
+                  l10n.promisesCount(promises.length),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (promises.isEmpty)
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Text(l10n.noOpenPromises),
+                  )
+                else
+                  ...promises.map(
+                    (promise) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.handshake_outlined),
+                      title: Text(_promiseText(promise, l10n.promiseFallback)),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.openFollowUpsCount(tasks.length),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (tasks.isEmpty)
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Text(l10n.noOpenFollowUps),
+                  )
+                else
+                  ...tasks.map((task) {
+                    final due = taskDueLabel(
+                      task,
+                      locale: Localizations.localeOf(context).languageCode,
+                    );
+                    final dueDate = taskDueDate(task);
+                    final overdue =
+                        dueDate != null && dueDate.isBefore(DateTime.now());
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        overdue
+                            ? Icons.warning_amber_outlined
+                            : Icons.task_alt_outlined,
+                      ),
+                      title: Text(
+                        task['title']?.toString() ?? l10n.taskFallback,
+                      ),
+                      subtitle: due.isEmpty
+                          ? null
+                          : Text(
+                              overdue
+                                  ? '$due · ${l10n.overdue}'
+                                  : l10n.dueDateLabel(due),
+                            ),
+                    );
+                  }),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: starting ? null : () => startVisit(companyName),
+                  icon: const Icon(Icons.play_arrow),
+                  label: Text(
+                    starting ? l10n.startingVisit : l10n.startVisitAndTakeNote,
+                  ),
+                ),
+                if (canNavigate) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => navigate(company),
+                    icon: const Icon(Icons.navigation_outlined),
+                    label: Text(l10n.openNavigation),
                   ),
                 ],
-              ),
+              ],
             ),
           );
-        }
-        final data = snapshot.data!;
-        final company = data['company'] as Map? ?? {};
-        final memory = data['memory'] as Map?;
-        final tasks = List<Map<String, dynamic>>.from(
-          data['openTasks'] as List? ?? [],
-        );
-        final promises = List<Object?>.from(
-          memory?['open_promises'] as List? ?? const [],
-        );
-        final lastVisit = data['lastApprovedVisit'] as Map?;
-        final since = _sinceLabel(lastVisit?['approved_at']);
-        final staleAfter = DateTime.tryParse(
-          memory?['stale_after']?.toString() ?? '',
-        );
-        final stale =
-            staleAfter != null && staleAfter.isBefore(DateTime.now().toUtc());
-        final companyName = company['name']?.toString() ?? 'Müşteri';
-        final canNavigate =
-            company['latitude'] != null && company['longitude'] != null;
-
-        return RefreshIndicator(
-          onRefresh: refresh,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(20),
-            children: [
-              Text(
-                companyName,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if ((company['address']?.toString() ?? '').isNotEmpty)
-                Text(company['address'].toString()),
-              const SizedBox(height: 8),
-              Text(
-                since.isEmpty
-                    ? 'Bu müşteriyi henüz ziyaret etmediniz.'
-                    : 'Son onaylanan ziyaret: $since',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 18),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Müşteri hafıza kartı',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          // Bayat kart sessizce eski bilgi verir; kullanıcı
-                          // buna güvenip yanlış şey söyleyebilir.
-                          if (stale)
-                            const Text(
-                              'Güncellenmeli',
-                              style: TextStyle(fontStyle: FontStyle.italic),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        memory?['summary']?.toString() ??
-                            'Henüz onaylanmış ziyaret özeti bulunmuyor.',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Verilen söz takibi ürünün ana vaadi; sunucu bu alanı
-              // döndürüyordu ama ekran hiç basmıyordu.
-              Text(
-                'Verilen sözler (${promises.length})',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              if (promises.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
-                  child: Text('Bu müşteriye verilmiş açık söz kaydı yok.'),
-                )
-              else
-                ...promises.map(
-                  (promise) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.handshake_outlined),
-                    title: Text(_promiseText(promise)),
-                  ),
-                ),
-              const SizedBox(height: 8),
-              Text(
-                'Açık takipler (${tasks.length})',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              if (tasks.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
-                  child: Text('Bu müşteri için açık takip bulunmuyor.'),
-                )
-              else
-                ...tasks.map((task) {
-                  final due = taskDueLabel(task);
-                  final dueDate = taskDueDate(task);
-                  final overdue =
-                      dueDate != null && dueDate.isBefore(DateTime.now());
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      overdue
-                          ? Icons.warning_amber_outlined
-                          : Icons.task_alt_outlined,
-                    ),
-                    title: Text(task['title']?.toString() ?? 'Görev'),
-                    subtitle: due.isEmpty
-                        ? null
-                        : Text(overdue ? '$due · gecikti' : 'Son tarih $due'),
-                  );
-                }),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: starting ? null : () => startVisit(companyName),
-                icon: const Icon(Icons.play_arrow),
-                label: Text(
-                  starting ? 'Başlatılıyor…' : 'Ziyareti başlat ve not al',
-                ),
-              ),
-              if (canNavigate) ...[
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => navigate(company),
-                  icon: const Icon(Icons.navigation_outlined),
-                  label: const Text('Navigasyonu aç'),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    ),
-  );
+        },
+      ),
+    );
+  }
 
   /// Söz kaydı düz metin ya da `{title: …}` biçiminde gelebilir.
-  static String _promiseText(Object? promise) {
+  static String _promiseText(Object? promise, String fallback) {
     if (promise is Map) {
       return promise['title']?.toString() ??
           promise['promise']?.toString() ??
           promise['text']?.toString() ??
-          'Verilen söz';
+          fallback;
     }
-    return promise?.toString() ?? 'Verilen söz';
+    return promise?.toString() ?? fallback;
   }
 }

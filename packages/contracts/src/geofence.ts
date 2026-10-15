@@ -10,7 +10,16 @@ export const priorityInputSchema = z.object({
 export type PriorityInput = z.infer<typeof priorityInputSchema>;
 export type PriorityScore = {
   total: number;
-  reasons: Array<{ label: string; points: number }>;
+  reasons: Array<{
+    code:
+      | "no-visit"
+      | "last-visit"
+      | "overdue-follow-ups"
+      | "customer-value"
+      | "distance";
+    label: string;
+    points: number;
+  }>;
 };
 
 export function calculateVisitPriority(rawInput: PriorityInput): PriorityScore {
@@ -22,20 +31,30 @@ export function calculateVisitPriority(rawInput: PriorityInput): PriorityScore {
   const followUp = Math.min(25, input.overdueTaskCount * 10);
   const value = Math.round(input.customerValue * 20);
   const distance = Math.max(0, Math.round(20 - input.distanceKm * 2));
+  const reasons: PriorityScore["reasons"] = [
+    {
+      code: input.daysSinceVisit === null ? "no-visit" : "last-visit",
+      label:
+        input.daysSinceVisit === null
+          ? "Henüz ziyaret edilmedi"
+          : `Son ziyaret ${input.daysSinceVisit} gün önce`,
+      points: recency,
+    },
+    {
+      code: "overdue-follow-ups",
+      label: `${input.overdueTaskCount} geciken takip`,
+      points: followUp,
+    },
+    { code: "customer-value", label: "Müşteri değeri", points: value },
+    {
+      code: "distance",
+      label: `${input.distanceKm.toFixed(1)} km mesafede`,
+      points: distance,
+    },
+  ];
   return {
     total: recency + followUp + value + distance,
-    reasons: [
-      {
-        label:
-          input.daysSinceVisit === null
-            ? "Henüz ziyaret edilmedi"
-            : `Son ziyaret ${input.daysSinceVisit} gün önce`,
-        points: recency,
-      },
-      { label: `${input.overdueTaskCount} geciken takip`, points: followUp },
-      { label: "Müşteri değeri", points: value },
-      { label: `${input.distanceKm.toFixed(1)} km mesafede`, points: distance },
-    ].filter((reason) => reason.points > 0),
+    reasons: reasons.filter((reason) => reason.points > 0),
   };
 }
 

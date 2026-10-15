@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
+import '../../l10n/app_localizations.dart';
 import '../customers/customer_identity.dart';
 import '../customers/customer_picker.dart';
 
@@ -64,6 +65,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
   Future<void> createVisit() async {
     if (creatingVisit) return;
+    final l10n = AppLocalizations.of(context)!;
     setState(() => creatingVisit = true);
     final purpose = TextEditingController();
     CustomerChoice? customer;
@@ -75,7 +77,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text('Yeni ziyaret'),
+            scrollable: true,
+            title: Text(l10n.startVisit),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -83,7 +86,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.apartment_outlined),
-                    title: Text(customer?.name ?? 'Müşteri seç *'),
+                    title: Text(customer?.name ?? l10n.selectCustomerRequired),
                     subtitle: customer?.legalName == null
                         ? null
                         : Text(
@@ -105,9 +108,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: purpose,
-                    decoration: const InputDecoration(
-                      labelText: 'Ziyaret amacı',
-                    ),
+                    decoration: InputDecoration(labelText: l10n.visitPurpose),
                   ),
                 ],
               ),
@@ -115,13 +116,13 @@ class _VisitsScreenState extends State<VisitsScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Vazgeç'),
+                child: Text(l10n.cancel),
               ),
               FilledButton(
                 onPressed: customer == null
                     ? null
                     : () => Navigator.pop(dialogContext, true),
-                child: const Text('Ziyareti başlat'),
+                child: Text(l10n.startVisitAction),
               ),
             ],
           ),
@@ -144,11 +145,11 @@ class _VisitsScreenState extends State<VisitsScreen> {
       if (!mounted) return;
       widget.services.invalidateScreens();
       context.push('/visits/${data['id']}/debrief');
-    } on MobileApiException catch (error) {
+    } on MobileApiException catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(l10n.visitPlanSaveFailed)));
     } catch (_) {
       final selectedCustomer = customer;
       if (selectedCustomer == null) return;
@@ -160,13 +161,9 @@ class _VisitsScreenState extends State<VisitsScreen> {
         purpose: visitPurpose,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Ziyaret çevrimdışı kuyruğa alındı; bağlantı gelince gönderilecek.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.visitQueuedOffline)));
     } finally {
       purpose.dispose();
       if (mounted) setState(() => creatingVisit = false);
@@ -180,114 +177,114 @@ class _VisitsScreenState extends State<VisitsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Ziyaretler')),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: creatingVisit ? null : createVisit,
-      icon: creatingVisit
-          ? const SizedBox.square(
-              dimension: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.add),
-      label: Text(creatingVisit ? 'Açılıyor…' : 'Yeni ziyaret'),
-    ),
-    body: FutureBuilder<List<Map<String, dynamic>>>(
-      future: visits,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done &&
-            !snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError && !snapshot.hasData) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(snapshot.error.toString(), textAlign: TextAlign.center),
-                  TextButton(
-                    onPressed: refresh,
-                    child: const Text('Tekrar dene'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-        final items = snapshot.data ?? [];
-        if (items.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.route_outlined, size: 52),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Henüz ziyaret yok',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'İlk ziyaretinizi başlatmak için önce bir müşteri seçin.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: createVisit,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Yeni ziyaret'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-        return RefreshIndicator(
-          onRefresh: refresh,
-          child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (_, index) {
-              final item = items[index];
-              final company = item['company'] as Map? ?? {};
-              final status = item['status']?.toString() ?? 'draft';
-              return Card(
-                child: ListTile(
-                  title: Text(customerDisplayName(company)),
-                  subtitle: Text(item['purpose']?.toString() ?? 'Ziyaret'),
-                  trailing: Chip(
-                    label: Text(
-                      status == 'approved'
-                          ? 'Onaylandı'
-                          : status == 'needs_review'
-                          ? 'İncele'
-                          : 'Not ekle',
-                    ),
-                  ),
-                  onTap: () {
-                    if (status == 'needs_review') {
-                      context.push('/visits/${item['id']}/review');
-                      return;
-                    }
-                    final companyId = company['id']?.toString();
-                    if (status == 'approved' && companyId != null) {
-                      context.push('/briefings/$companyId');
-                      return;
-                    }
-                    context.push('/visits/${item['id']}/debrief');
-                  },
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.visits)),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: creatingVisit ? null : createVisit,
+        icon: creatingVisit
+            ? const SizedBox.square(
+                dimension: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.add),
+        label: Text(creatingVisit ? l10n.opening : l10n.startVisit),
+      ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: visits,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done &&
+              !snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError && !snapshot.hasData) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l10n.visitsLoadFailed, textAlign: TextAlign.center),
+                    TextButton(onPressed: refresh, child: Text(l10n.tryAgain)),
+                  ],
                 ),
-              );
-            },
-          ),
-        );
-      },
-    ),
-  );
+              ),
+            );
+          }
+          final items = snapshot.data ?? [];
+          if (items.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.route_outlined, size: 52),
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n.noVisits,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.startFirstVisitPrompt,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            );
+          }
+          return RefreshIndicator(
+            onRefresh: refresh,
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (_, index) {
+                final item = items[index];
+                final company = item['company'] as Map? ?? {};
+                final status = item['status']?.toString() ?? 'draft';
+                return Card(
+                  child: ListTile(
+                    title: Text(
+                      customerDisplayName(
+                        company,
+                        fallback: l10n.companyFallback,
+                      ),
+                    ),
+                    subtitle: Text(item['purpose']?.toString() ?? l10n.visit),
+                    trailing: Chip(
+                      label: Text(
+                        status == 'approved'
+                            ? l10n.approved
+                            : status == 'needs_review'
+                            ? l10n.review
+                            : l10n.addNote,
+                      ),
+                    ),
+                    onTap: () {
+                      if (status == 'needs_review') {
+                        context.push('/visits/${item['id']}/review');
+                        return;
+                      }
+                      final companyId = company['id']?.toString();
+                      if (status == 'approved' && companyId != null) {
+                        context.push('/briefings/$companyId');
+                        return;
+                      }
+                      context.push('/visits/${item['id']}/debrief');
+                    },
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
 }

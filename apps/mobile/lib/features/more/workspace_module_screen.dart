@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/mobile_services.dart';
 import '../../core/refresh.dart';
+import '../../l10n/app_localizations.dart';
 import '../customers/customer_identity.dart';
 import 'workspace_module_actions.dart';
 
@@ -21,16 +23,16 @@ enum WorkspaceModule {
 
 /// Adlandırılmış, çünkü boş durum metinleri testten de okunuyor.
 extension WorkspaceModuleCopy on WorkspaceModule {
-  String get title => switch (this) {
-    WorkspaceModule.calendar => 'Takvim',
-    WorkspaceModule.activity => 'Aktivite',
-    WorkspaceModule.reports => 'Rapor özeti',
-    WorkspaceModule.notifications => 'Bildirimler',
-    WorkspaceModule.opportunities => 'Fırsatlar',
-    WorkspaceModule.products => 'Ürün ve fiyatlar',
-    WorkspaceModule.orders => 'Sipariş taslakları',
-    WorkspaceModule.documents => 'Belgeler',
-    WorkspaceModule.forms => 'Saha formları',
+  String localizedTitle(AppLocalizations l10n) => switch (this) {
+    WorkspaceModule.calendar => l10n.calendar,
+    WorkspaceModule.activity => l10n.activity,
+    WorkspaceModule.reports => l10n.reportsSummary,
+    WorkspaceModule.notifications => l10n.notifications,
+    WorkspaceModule.opportunities => l10n.opportunities,
+    WorkspaceModule.products => l10n.productsPrices,
+    WorkspaceModule.orders => l10n.orderDrafts,
+    WorkspaceModule.documents => l10n.documents,
+    WorkspaceModule.forms => l10n.fieldForms,
   };
 
   IconData get emptyIcon => switch (this) {
@@ -45,47 +47,29 @@ extension WorkspaceModuleCopy on WorkspaceModule {
     WorkspaceModule.forms => Icons.dynamic_form_outlined,
   };
 
-  String get emptyTitle => switch (this) {
-    WorkspaceModule.calendar => 'Planlanmış ziyaret yok',
-    WorkspaceModule.activity => 'Henüz onaylanmış ziyaret yok',
-    WorkspaceModule.reports => 'Gösterge üretecek kayıt yok',
-    WorkspaceModule.notifications => 'Bildirim yok',
-    WorkspaceModule.opportunities => 'Fırsat kaydı yok',
-    WorkspaceModule.products => 'Katalogda ürün yok',
-    WorkspaceModule.orders => 'Sipariş taslağı yok',
-    WorkspaceModule.documents => 'Belge yok',
-    WorkspaceModule.forms => 'Aktif form yok',
+  String localizedEmptyTitle(AppLocalizations l10n) => switch (this) {
+    WorkspaceModule.calendar => l10n.moduleNoPlannedVisits,
+    WorkspaceModule.activity => l10n.moduleNoApprovedVisits,
+    WorkspaceModule.reports => l10n.moduleNoReportData,
+    WorkspaceModule.notifications => l10n.moduleNoNotifications,
+    WorkspaceModule.opportunities => l10n.moduleNoOpportunities,
+    WorkspaceModule.products => l10n.moduleNoProducts,
+    WorkspaceModule.orders => l10n.moduleNoOrderDrafts,
+    WorkspaceModule.documents => l10n.moduleNoDocuments,
+    WorkspaceModule.forms => l10n.moduleNoActiveForms,
   };
 
   /// Ekranın ne olduğunu ve mobilde ilk kaydın nasıl oluştuğunu anlatır.
-  String get emptyBody => switch (this) {
-    WorkspaceModule.calendar =>
-      'Tarihli ziyaretler ve son tarihi olan görevler burada listelenir. '
-          'Sağ alttaki düğmeyle yeni ziyaret planlayabilirsiniz.',
-    WorkspaceModule.activity =>
-      'Onayladığınız ziyaretler buraya düşer. Bir ziyaret notu gönderip '
-          'özeti onayladığınızda ilk kayıt görünecek.',
-    WorkspaceModule.reports =>
-      'Müşteri, ziyaret ve görev sayıları buradan okunur. İlk müşterinizi '
-          'ekleyip bir ziyaret kaydettiğinizde göstergeler dolar.',
-    WorkspaceModule.notifications =>
-      'Yaklaşan ziyaretler, geciken görevler ve saha hatırlatmaları burada '
-          'görünecek.',
-    WorkspaceModule.opportunities =>
-      'Yeni fırsatı mobilde oluşturabilir, kayda dokunarak satış aşamasını '
-          'güncelleyebilirsiniz.',
-    WorkspaceModule.products =>
-      'Aktif ürün kataloğu ve liste fiyatları burada görünür. Yeni ürünü '
-          'mobilde kataloğa ekleyebilirsiniz.',
-    WorkspaceModule.orders =>
-      'Mobilde sipariş taslağı oluşturabilir; kayda dokunarak onaya '
-          'gönderebilir veya yetkiniz varsa sonuçlandırabilirsiniz.',
-    WorkspaceModule.documents =>
-      'Yüklenen dosyalar ve zararlı yazılım tarama durumları burada görünür. '
-          'Belgeyi fotoğraflayıp güvenlik taramasına gönderebilirsiniz.',
-    WorkspaceModule.forms =>
-      'Mağaza kontrolü, rakip analizi, servis kontrolü veya özel ziyaret '
-          'kontrol listeleri oluşturun ve saha yanıtlarını görüntüleyin.',
+  String localizedEmptyBody(AppLocalizations l10n) => switch (this) {
+    WorkspaceModule.calendar => l10n.moduleCalendarEmptyHint,
+    WorkspaceModule.activity => l10n.moduleActivityEmptyHint,
+    WorkspaceModule.reports => l10n.moduleReportsEmptyHint,
+    WorkspaceModule.notifications => l10n.moduleNotificationsEmptyHint,
+    WorkspaceModule.opportunities => l10n.moduleOpportunitiesEmptyHint,
+    WorkspaceModule.products => l10n.moduleProductsEmptyHint,
+    WorkspaceModule.orders => l10n.moduleOrdersEmptyHint,
+    WorkspaceModule.documents => l10n.moduleDocumentsEmptyHint,
+    WorkspaceModule.forms => l10n.moduleFormsEmptyHint,
   };
 
   String get path => switch (this) {
@@ -122,6 +106,8 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
   String orderFilter = 'open';
   bool canApproveOrders = false;
   String activityFilter = 'all';
+
+  AppLocalizations get l10n => AppLocalizations.of(context)!;
 
   @override
   void initState() {
@@ -162,25 +148,25 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
       return [
         _ModuleItem(
           title: '$customerTotal',
-          subtitle: 'Aktif müşteri',
+          subtitle: l10n.moduleActiveCustomer,
           icon: Icons.apartment_outlined,
           raw: const {'route': '/customers'},
         ),
         _ModuleItem(
           title: '$approved',
-          subtitle: 'Onaylanmış ziyaret',
+          subtitle: l10n.moduleApprovedVisit,
           icon: Icons.verified_outlined,
           raw: const {'route': '/visits'},
         ),
         _ModuleItem(
           title: '$review',
-          subtitle: 'İnceleme bekleyen ziyaret',
+          subtitle: l10n.moduleReviewVisit,
           icon: Icons.rate_review_outlined,
           raw: const {'route': '/visits'},
         ),
         _ModuleItem(
           title: '$openTasks',
-          subtitle: 'Açık görev',
+          subtitle: l10n.moduleOpenTask,
           icon: Icons.task_alt_outlined,
           raw: const {'route': '/tasks'},
         ),
@@ -204,10 +190,14 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         priceLists.addAll(
           _list(documents['data']).map(
             (item) => _ModuleItem(
-              title: item['file_name']?.toString() ?? 'Fiyat listesi',
+              title:
+                  item['file_name']?.toString() ?? l10n.modulePriceListFallback,
               subtitle: item['scan_status']?.toString() == 'clean'
-                  ? _parts([_date(item['created_at']), 'Açmak için dokunun'])
-                  : 'Güvenlik taraması sürüyor; henüz açılamaz',
+                  ? _parts([
+                      _date(item['created_at'], l10n.localeName),
+                      l10n.moduleOpenDocument,
+                    ])
+                  : l10n.moduleScanPending,
               icon: Icons.picture_as_pdf_outlined,
               raw: {...item, '_kind': 'price_list'},
             ),
@@ -222,10 +212,13 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
       WorkspaceModule.calendar => [
         ..._list(response['visits']).map(
           (item) => _ModuleItem(
-            title: _company(item) ?? item['purpose']?.toString() ?? 'Ziyaret',
+            title:
+                _company(item, l10n) ??
+                item['purpose']?.toString() ??
+                l10n.moduleVisit,
             subtitle: _parts([
               item['purpose'],
-              _date(item['planned_start_at']),
+              _date(item['planned_start_at'], l10n.localeName),
             ]),
             icon: Icons.event_outlined,
             raw: {...item, '_kind': 'visit'},
@@ -233,8 +226,11 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         ),
         ..._list(response['tasks']).map(
           (item) => _ModuleItem(
-            title: item['title']?.toString() ?? 'Görev',
-            subtitle: _parts([_company(item), _date(item['due_at'])]),
+            title: item['title']?.toString() ?? l10n.moduleTask,
+            subtitle: _parts([
+              _company(item, l10n),
+              _date(item['due_at'], l10n.localeName),
+            ]),
             icon: Icons.task_alt_outlined,
             raw: {...item, '_kind': 'task'},
           ),
@@ -244,8 +240,11 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         _list(response['data'])
             .map(
               (item) => _ModuleItem(
-                title: item['title']?.toString() ?? 'Aktivite',
-                subtitle: _parts([item['detail'], _date(item['occurredAt'])]),
+                title: item['title']?.toString() ?? l10n.moduleActivity,
+                subtitle: _parts([
+                  item['detail'],
+                  _date(item['occurredAt'], l10n.localeName),
+                ]),
                 icon: _activityIcon(item['kind']),
                 raw: item,
               ),
@@ -259,10 +258,10 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                 title:
                     item['title']?.toString() ??
                     item['kind']?.toString() ??
-                    'Bildirim',
+                    l10n.moduleNotification,
                 subtitle: _parts([
                   item['body']?.toString() ?? item['message']?.toString(),
-                  _notificationTime(item['created_at']),
+                  _notificationTime(item['created_at'], l10n),
                 ]),
                 icon: item['read_at'] == null
                     ? Icons.notifications_active_outlined
@@ -275,11 +274,15 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         _list(response['data'])
             .map(
               (item) => _ModuleItem(
-                title: item['title']?.toString() ?? 'Fırsat',
+                title: item['title']?.toString() ?? l10n.moduleOpportunity,
                 subtitle: _parts([
-                  _company(item),
-                  _stage(item['stage']),
-                  _money(item['estimated_value'], item['currency']),
+                  _company(item, l10n),
+                  _stage(item['stage'], l10n),
+                  _money(
+                    item['estimated_value'],
+                    item['currency'],
+                    l10n.localeName,
+                  ),
                 ]),
                 icon: Icons.trending_up,
                 raw: item,
@@ -290,10 +293,10 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         ...priceLists,
         ..._list(response['data']).map(
           (item) => _ModuleItem(
-            title: item['name']?.toString() ?? 'Ürün',
+            title: item['name']?.toString() ?? l10n.moduleProduct,
             subtitle: _parts([
               item['sku'],
-              _money(item['list_price'], item['currency']),
+              _money(item['list_price'], item['currency'], l10n.localeName),
             ]),
             icon: Icons.inventory_2_outlined,
             raw: item,
@@ -304,10 +307,14 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         _list(response['data'])
             .map(
               (item) => _ModuleItem(
-                title: _company(item) ?? 'Sipariş taslağı',
+                title: _company(item, l10n) ?? l10n.moduleOrderDraft,
                 subtitle: _parts([
-                  _stage(item['status']),
-                  _money(item['grand_total'], item['currency']),
+                  _stage(item['status'], l10n),
+                  _money(
+                    item['grand_total'],
+                    item['currency'],
+                    l10n.localeName,
+                  ),
                 ]),
                 icon: Icons.receipt_long_outlined,
                 raw: item,
@@ -318,12 +325,14 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         _list(response['data'])
             .map(
               (item) => _ModuleItem(
-                title: item['file_name']?.toString() ?? 'Belge',
+                title:
+                    item['file_name']?.toString() ??
+                    l10n.moduleDocumentFallback,
                 subtitle: _parts([
-                  _scanStatus(item['scan_status']),
-                  _date(item['created_at']),
+                  _scanStatus(item['scan_status'], l10n),
+                  _date(item['created_at'], l10n.localeName),
                   if (item['scan_status']?.toString() == 'clean')
-                    'Açmak için dokunun',
+                    l10n.moduleOpenDocument,
                 ]),
                 icon: Icons.description_outlined,
                 raw: item,
@@ -333,18 +342,20 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
       WorkspaceModule.forms => [
         ..._list(response['templates']).map(
           (item) => _ModuleItem(
-            title: item['name']?.toString() ?? 'Form şablonu',
-            subtitle: item['description']?.toString() ?? 'Aktif form şablonu',
+            title: item['name']?.toString() ?? l10n.moduleFormTemplate,
+            subtitle:
+                item['description']?.toString() ??
+                l10n.moduleActiveFormTemplate,
             icon: Icons.dynamic_form_outlined,
             raw: {...item, '_kind': 'template'},
           ),
         ),
         ..._list(response['submissions']).map(
           (item) => _ModuleItem(
-            title: 'Gönderilmiş form',
+            title: l10n.moduleSubmittedForm,
             subtitle: _parts([
               (item['template'] as Map?)?['name'],
-              _date(item['submitted_at']),
+              _date(item['submitted_at'], l10n.localeName),
             ]),
             icon: Icons.fact_check_outlined,
             raw: {...item, '_kind': 'submission'},
@@ -363,11 +374,11 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
       final next = load();
       setState(() => items = next);
       await next;
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ).showSnackBar(SnackBar(content: Text(l10n.moduleActionFailed)));
     }
   }
 
@@ -384,7 +395,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text('Bildirim tercihleri'),
+            title: Text(l10n.modulePreferencesTitle),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -392,32 +403,28 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                   ValueListenableBuilder<bool>(
                     valueListenable: widget.services.reminders.permissionDenied,
                     builder: (context, denied, _) => denied
-                        ? const Padding(
-                            padding: EdgeInsets.only(bottom: 8),
-                            child: Text(
-                              'Sistem bildirimleri kapalı. Hatırlatmalar '
-                              'uygulama içindeki Bildirimler ekranında görünmeye '
-                              'devam eder.',
-                            ),
+                        ? Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(l10n.moduleSystemNotificationsDisabled),
                           )
                         : const SizedBox.shrink(),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Ziyaret hatırlatmaları'),
+                    title: Text(l10n.moduleVisitReminders),
                     value: visits,
                     onChanged: (value) => setDialogState(() => visits = value),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Görev hatırlatmaları'),
+                    title: Text(l10n.moduleTaskReminders),
                     value: tasks,
                     onChanged: (value) => setDialogState(() => tasks = value),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Sabah saha hatırlatması'),
-                    subtitle: const Text('Planlı ziyaret olan günlerde 08.30'),
+                    title: Text(l10n.moduleMorningReminder),
+                    subtitle: Text(l10n.moduleMorningReminderTime),
                     value: morning,
                     onChanged: (value) => setDialogState(() => morning = value),
                   ),
@@ -427,11 +434,11 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Vazgeç'),
+                child: Text(l10n.cancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Kaydet'),
+                child: Text(l10n.save),
               ),
             ],
           ),
@@ -445,20 +452,14 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
       });
       await widget.services.reminders.sync();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bildirim tercihleri kaydedildi.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.modulePreferencesSaved)));
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is MobileApiException
-                ? error.message
-                : 'Bildirim tercihleri açılamadı. Tekrar deneyin.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.modulePreferencesFailed)));
     }
   }
 
@@ -485,15 +486,9 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is MobileApiException
-                ? error.message
-                : 'Belge açılamadı. Tekrar deneyin.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.moduleDocumentsFailed)));
     }
   }
 
@@ -514,13 +509,13 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
   };
 
   String get _actionLabel => switch (widget.module) {
-    WorkspaceModule.calendar => 'Ziyaret planla',
-    WorkspaceModule.opportunities => 'Yeni fırsat',
-    WorkspaceModule.products => 'Yeni ürün',
-    WorkspaceModule.orders => 'Yeni taslak',
-    WorkspaceModule.documents => 'Belge yükle',
-    WorkspaceModule.forms => 'Yeni form',
-    _ => 'Yeni kayıt',
+    WorkspaceModule.calendar => l10n.modulePlanVisit,
+    WorkspaceModule.opportunities => l10n.moduleNewOpportunity,
+    WorkspaceModule.products => l10n.moduleNewProduct,
+    WorkspaceModule.orders => l10n.moduleNewOrderDraft,
+    WorkspaceModule.documents => l10n.moduleUploadDocument,
+    WorkspaceModule.forms => l10n.moduleNewForm,
+    _ => l10n.moduleRegistrationFallback,
   };
 
   IconData get _actionIcon => switch (widget.module) {
@@ -565,19 +560,13 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
       if (!await changed || !mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Kayıt oluşturuldu.')));
+      ).showSnackBar(SnackBar(content: Text(l10n.moduleRecordCreated)));
       await refresh();
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is MobileApiException
-                ? error.message
-                : 'İşlem tamamlanamadı. Tekrar deneyin.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.moduleActionFailed)));
     } finally {
       if (mounted) setState(() => actionBusy = false);
     }
@@ -649,36 +638,30 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                 item.raw!,
               )) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Form yanıtı gönderildi.')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(l10n.moduleFormSubmitted)));
             }
             await refresh();
           }
           return;
       }
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error is MobileApiException
-                ? error.message
-                : 'İşlem tamamlanamadı. Tekrar deneyin.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.moduleActionFailed)));
     }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: Text(widget.module.title),
+      title: Text(widget.module.localizedTitle(l10n)),
       actions: [
         if (widget.module == WorkspaceModule.notifications)
           IconButton(
-            tooltip: 'Bildirim tercihleri',
+            tooltip: l10n.modulePreferencesTitle,
             onPressed: openNotificationSettings,
             icon: const Icon(Icons.tune),
           ),
@@ -695,7 +678,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : Icon(_actionIcon),
-            label: Text(actionBusy ? 'İşleniyor…' : _actionLabel),
+            label: Text(actionBusy ? l10n.sending : _actionLabel),
           )
         : null,
     body: FutureBuilder<List<_ModuleItem>>(
@@ -711,11 +694,8 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(snapshot.error.toString(), textAlign: TextAlign.center),
-                  TextButton(
-                    onPressed: refresh,
-                    child: const Text('Tekrar dene'),
-                  ),
+                  Text(l10n.moduleLoadFailed, textAlign: TextAlign.center),
+                  TextButton(onPressed: refresh, child: Text(l10n.retrySync)),
                 ],
               ),
             ),
@@ -750,14 +730,14 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                 const SizedBox(height: 14),
                 Text(
                   widget.module == WorkspaceModule.notifications
-                      ? 'Şimdilik yeni bildiriminiz yok.'
-                      : widget.module.emptyTitle,
+                      ? l10n.moduleNoNewNotifications
+                      : widget.module.localizedEmptyTitle(l10n),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  widget.module.emptyBody,
+                  widget.module.localizedEmptyBody(l10n),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
@@ -766,7 +746,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                   child: OutlinedButton.icon(
                     onPressed: refresh,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Yenile'),
+                    label: Text(l10n.moduleRefresh),
                   ),
                 ),
               ],
@@ -828,7 +808,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         children: [
           Text(
-            '${open.length} açık fırsat',
+            l10n.moduleOpportunityOpenCount(open.length),
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
@@ -839,7 +819,9 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                 .where((entry) => entry.value > 0)
                 .map(
                   (entry) => Chip(
-                    label: Text('${entry.key} ${_compactMoney(entry.value)}'),
+                    label: Text(
+                      _compactMoney(entry.value, entry.key, l10n.localeName),
+                    ),
                   ),
                 )
                 .toList(),
@@ -848,11 +830,11 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
           Wrap(
             spacing: 8,
             children:
-                const {
-                      'open': 'Açık',
-                      'won': 'Kazanılan',
-                      'lost': 'Kaybedilen',
-                      'all': 'Tümü',
+                {
+                      'open': l10n.moduleOpportunityOpen,
+                      'won': l10n.moduleOpportunityWon,
+                      'lost': l10n.moduleOpportunityLost,
+                      'all': l10n.moduleAll,
                     }.entries
                     .map(
                       (entry) => FilterChip(
@@ -872,22 +854,24 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                 children: [
                   Text(
                     all.isEmpty
-                        ? WorkspaceModule.opportunities.emptyTitle
-                        : 'Bu filtrede fırsat bulunmuyor.',
+                        ? WorkspaceModule.opportunities.localizedEmptyTitle(
+                            l10n,
+                          )
+                        : l10n.moduleFilteredOpportunitiesEmpty,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   if (all.isEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      WorkspaceModule.opportunities.emptyBody,
+                      WorkspaceModule.opportunities.localizedEmptyBody(l10n),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     OutlinedButton.icon(
                       onPressed: refresh,
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Yenile'),
+                      label: Text(l10n.moduleRefresh),
                     ),
                   ],
                 ],
@@ -897,7 +881,10 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
             ...items.map((item) {
               final raw = item.raw!;
               final stage = raw['stage']?.toString();
-              final close = _dateOnly(raw['expected_close_date']);
+              final close = _dateOnly(
+                raw['expected_close_date'],
+                l10n.localeName,
+              );
               return Card(
                 child: InkWell(
                   onTap: widget.services.canWrite
@@ -914,7 +901,7 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        if (_company(raw) case final company?)
+                        if (_company(raw, l10n) case final company?)
                           Text(
                             company,
                             maxLines: 1,
@@ -927,20 +914,33 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
-                              _money(raw['estimated_value'], raw['currency']) ??
+                              _money(
+                                    raw['estimated_value'],
+                                    raw['currency'],
+                                    l10n.localeName,
+                                  ) ??
                                   '0 ${raw['currency'] ?? 'TRY'}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            Chip(label: Text(_stage(stage))),
-                            Text('%${raw['probability'] ?? 0}'),
+                            Chip(label: Text(_stage(stage, l10n))),
+                            Text(
+                              NumberFormat.percentPattern(
+                                l10n.localeName,
+                              ).format(
+                                ((raw['probability'] as num?) ?? 0) / 100,
+                              ),
+                            ),
                           ],
                         ),
-                        if (close != null) Text('Tahmini kapanış: $close'),
+                        if (close != null)
+                          Text(l10n.moduleEstimateClose(close)),
                         if (stage == 'lost' &&
                             (raw['loss_reason']?.toString() ?? '').isNotEmpty)
-                          Text('Neden: ${raw['loss_reason']}'),
+                          Text(
+                            l10n.moduleReason(raw['loss_reason'].toString()),
+                          ),
                       ],
                     ),
                   ),
@@ -965,12 +965,12 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                _company(order) ?? 'Sipariş taslağı',
+                _company(order, l10n) ?? l10n.orderDrafts,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
-              Chip(label: Text(_stage(status))),
-              Text(_orderExplanation(status)),
+              Chip(label: Text(_stage(status, l10n))),
+              Text(_orderExplanation(status, l10n)),
               const SizedBox(height: 16),
               for (final item in _list(order['items']))
                 Padding(
@@ -980,29 +980,54 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                       Expanded(
                         child: Text(
                           (item['product'] as Map?)?['name']?.toString() ??
-                              'Ürün',
+                              l10n.productsPrices,
                         ),
                       ),
-                      Text('${item['quantity']} × ${item['unit_price']}'),
+                      Text(
+                        '${NumberFormat.decimalPattern(l10n.localeName).format((item['quantity'] as num?) ?? 0)} × ${_money(item['unit_price'], order['currency'], l10n.localeName) ?? item['unit_price']}',
+                      ),
                     ],
                   ),
                 ),
               const Divider(),
               Text(
-                'Toplam: ${_money(order['grand_total'], order['currency']) ?? '0 ${order['currency']}'}',
+                l10n.moduleOrderTotal(
+                  _money(
+                        order['grand_total'],
+                        order['currency'],
+                        l10n.localeName,
+                      ) ??
+                      '0 ${order['currency']}',
+                ),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               if (order['delivery_date'] != null)
-                Text('Teslim tarihi: ${_dateOnly(order['delivery_date'])}'),
+                Text(
+                  l10n.moduleDeliveryDate(
+                    _dateOnly(order['delivery_date'], l10n.localeName) ?? '',
+                  ),
+                ),
               if ((order['notes']?.toString() ?? '').isNotEmpty)
-                Text('Not: ${order['notes']}'),
+                Text(l10n.moduleNote(order['notes'].toString())),
               if (status == 'rejected') ...[
                 const SizedBox(height: 12),
-                Text('Neden: ${order['rejected_reason'] ?? '-'}'),
+                Text(
+                  l10n.moduleReason(
+                    (order['rejected_reason'] ?? '-').toString(),
+                  ),
+                ),
                 if (order['decision_actor_name'] != null)
-                  Text('Reddeden: ${order['decision_actor_name']}'),
+                  Text(
+                    l10n.moduleRejectedBy(
+                      order['decision_actor_name'].toString(),
+                    ),
+                  ),
                 if (order['rejected_at'] != null)
-                  Text('Tarih: ${_date(order['rejected_at'])}'),
+                  Text(
+                    l10n.moduleDate(
+                      _date(order['rejected_at'], l10n.localeName) ?? '',
+                    ),
+                  ),
               ],
               const SizedBox(height: 20),
               if (editable)
@@ -1012,7 +1037,9 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                       : null,
                   icon: const Icon(Icons.edit_outlined),
                   label: Text(
-                    status == 'rejected' ? 'Düzenle ve taslağa al' : 'Düzenle',
+                    status == 'rejected'
+                        ? l10n.moduleEditAndReturnToDraft
+                        : l10n.moduleEdit,
                   ),
                 ),
               if (status == 'draft')
@@ -1020,14 +1047,14 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                   onPressed: widget.services.canWrite
                       ? () => Navigator.pop(sheetContext, 'transition')
                       : null,
-                  child: const Text('Onaya gönder'),
+                  child: Text(l10n.moduleSubmitForApproval),
                 ),
               if (status == 'pending_approval' && canApproveOrders)
                 FilledButton(
                   onPressed: widget.services.canWrite
                       ? () => Navigator.pop(sheetContext, 'transition')
                       : null,
-                  child: const Text('Karar ver'),
+                  child: Text(l10n.moduleMakeDecision),
                 ),
             ],
           ),
@@ -1070,11 +1097,11 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
             spacing: 8,
             runSpacing: 8,
             children:
-                const {
-                      'open': 'Açık',
-                      'approved': 'Onaylandı',
-                      'rejected': 'Reddedildi',
-                      'all': 'Tümü',
+                {
+                      'open': l10n.moduleOpportunityOpen,
+                      'approved': l10n.moduleOrderApproved,
+                      'rejected': l10n.moduleOrderRejected,
+                      'all': l10n.moduleAll,
                     }.entries
                     .map(
                       (entry) => FilterChip(
@@ -1092,8 +1119,8 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
               padding: const EdgeInsets.symmetric(vertical: 48),
               child: Text(
                 all.isEmpty
-                    ? WorkspaceModule.orders.emptyTitle
-                    : 'Bu filtrede sipariş bulunmuyor.',
+                    ? WorkspaceModule.orders.localizedEmptyTitle(l10n)
+                    : l10n.moduleFilteredOrdersEmpty,
                 textAlign: TextAlign.center,
               ),
             )
@@ -1116,7 +1143,11 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          _money(raw['grand_total'], raw['currency']) ??
+                          _money(
+                                raw['grand_total'],
+                                raw['currency'],
+                                l10n.localeName,
+                              ) ??
                               '0 ${raw['currency'] ?? 'TRY'}',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
@@ -1124,8 +1155,11 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
                           spacing: 8,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Chip(label: Text(_stage(raw['status']))),
-                            Text(_dateOnly(raw['created_at']) ?? ''),
+                            Chip(label: Text(_stage(raw['status'], l10n))),
+                            Text(
+                              _dateOnly(raw['created_at'], l10n.localeName) ??
+                                  '',
+                            ),
                           ],
                         ),
                       ],
@@ -1145,13 +1179,13 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         : all.where((item) => item.raw?['kind'] == activityFilter).toList();
     String dayLabel(dynamic value) {
       final date = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
-      if (date == null) return 'Daha önce';
+      if (date == null) return l10n.unknown;
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final day = DateTime(date.year, date.month, date.day);
-      if (day == today) return 'Bugün';
-      if (day == today.subtract(const Duration(days: 1))) return 'Dün';
-      return _dateOnly(value) ?? 'Daha önce';
+      if (day == today) return l10n.today;
+      if (day == today.subtract(const Duration(days: 1))) return l10n.yesterday;
+      return _dateOnly(value, l10n.localeName) ?? l10n.unknown;
     }
 
     String? previousDay;
@@ -1165,12 +1199,12 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
             spacing: 8,
             runSpacing: 8,
             children:
-                const {
-                      'all': 'Tümü',
-                      'visit': 'Ziyaretler',
-                      'task': 'Görevler',
-                      'opportunity': 'Fırsatlar',
-                      'order': 'Siparişler',
+                {
+                      'all': l10n.moduleAll,
+                      'visit': l10n.moduleActivityVisits,
+                      'task': l10n.moduleActivityTasks,
+                      'opportunity': l10n.moduleActivityOpportunities,
+                      'order': l10n.moduleActivityOrders,
                     }.entries
                     .map(
                       (entry) => FilterChip(
@@ -1188,8 +1222,8 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
               padding: EdgeInsets.symmetric(vertical: 48),
               child: Text(
                 all.isEmpty
-                    ? WorkspaceModule.activity.emptyTitle
-                    : 'Bu filtrede aktivite bulunmuyor.',
+                    ? WorkspaceModule.activity.localizedEmptyTitle(l10n)
+                    : l10n.moduleFilteredActivityEmpty,
                 textAlign: TextAlign.center,
               ),
             ),
@@ -1229,18 +1263,14 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         children: [
           Text(
-            'Fiyat Listeleri',
+            l10n.modulePriceLists,
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Güvenlik taraması tamamlanan PDF listelerini görüntüleyebilirsiniz.',
-          ),
+          Text(l10n.moduleCleanPriceListHint),
           const SizedBox(height: 8),
           if (priceLists.isEmpty)
-            const Card(
-              child: ListTile(title: Text('Fiyat listesi bulunmuyor.')),
-            ),
+            Card(child: ListTile(title: Text(l10n.moduleNoPriceLists))),
           ...priceLists.map(
             (item) => Card(
               child: ListTile(
@@ -1257,10 +1287,13 @@ class _WorkspaceModuleScreenState extends State<WorkspaceModuleScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          Text('Ürün Kataloğu', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            l10n.moduleProductCatalog,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
           if (products.isEmpty)
-            const Card(child: ListTile(title: Text('Aktif ürün bulunmuyor.'))),
+            Card(child: ListTile(title: Text(l10n.moduleNoActiveProducts))),
           ...products.map(
             (item) => Card(
               child: ListTile(
@@ -1293,83 +1326,87 @@ class _ModuleItem {
 List<Map<String, dynamic>> _list(dynamic value) =>
     List<Map<String, dynamic>>.from(value as List? ?? []);
 
-String? _company(Map<String, dynamic> item) =>
-    item['company'] is Map ? customerDisplayName(item['company'] as Map) : null;
+String? _company(Map<String, dynamic> item, AppLocalizations l10n) =>
+    item['company'] is Map
+    ? customerDisplayName(
+        item['company'] as Map,
+        fallback: l10n.companyFallback,
+      )
+    : null;
 
 String _parts(List<dynamic> values) => values
     .where((value) => value != null && value.toString().trim().isNotEmpty)
     .map((value) => value.toString())
     .join(' · ');
 
-String? _date(dynamic value) {
+String? _date(dynamic value, String locale) {
   final date = DateTime.tryParse(value?.toString() ?? '');
   if (date == null) return null;
-  final local = date.toLocal();
-  return '${local.day.toString().padLeft(2, '0')}.${local.month.toString().padLeft(2, '0')}.${local.year} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  return DateFormat.yMd(locale).add_jm().format(date.toLocal());
 }
 
-String? _notificationTime(dynamic value) {
+String? _notificationTime(dynamic value, AppLocalizations l10n) {
   final date = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
   if (date == null) return null;
   final now = DateTime.now();
   final day = DateTime(date.year, date.month, date.day);
   final today = DateTime(now.year, now.month, now.day);
   final label = day == today
-      ? 'Bugün'
+      ? l10n.today
       : day == today.subtract(const Duration(days: 1))
-      ? 'Dün'
-      : '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
-  return '$label ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      ? l10n.yesterday
+      : DateFormat.yMd(l10n.localeName).format(date);
+  return '$label ${DateFormat.jm(l10n.localeName).format(date)}';
 }
 
-String? _money(dynamic value, dynamic currency) {
+String? _money(dynamic value, dynamic currency, String locale) {
   if (value is! num) return null;
-  return '${value.toStringAsFixed(2)} ${currency ?? 'TRY'}';
+  final code = currency?.toString() ?? 'TRY';
+  return NumberFormat.currency(locale: locale, name: code).format(value);
 }
 
-String _compactMoney(double value) => value == value.roundToDouble()
-    ? value.toStringAsFixed(0)
-    : value.toStringAsFixed(2);
+String _compactMoney(double value, String currency, String locale) =>
+    NumberFormat.compactCurrency(locale: locale, name: currency).format(value);
 
-String? _dateOnly(dynamic value) {
+String? _dateOnly(dynamic value, String locale) {
   final date = DateTime.tryParse(value?.toString() ?? '');
   if (date == null) return null;
-  return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+  return DateFormat.yMd(locale).format(date.toLocal());
 }
 
-String _stage(dynamic value) => switch (value?.toString()) {
-  'lead' => 'Aday',
-  'qualified' => 'Nitelikli',
-  'proposal' => 'Teklif',
-  'negotiation' => 'Müzakere',
-  'won' => 'Kazanıldı',
-  'lost' => 'Kaybedildi',
-  'draft' => 'Taslak',
-  'pending_approval' => 'Onay bekliyor',
-  'approved' => 'Onaylandı',
-  'rejected' => 'Reddedildi',
-  final value? => value,
-  null => '',
-};
+String _stage(dynamic value, AppLocalizations l10n) =>
+    switch (value?.toString()) {
+      'lead' => l10n.moduleStageLead,
+      'qualified' => l10n.moduleStageQualified,
+      'proposal' => l10n.moduleStageProposal,
+      'negotiation' => l10n.moduleStageNegotiation,
+      'won' => l10n.moduleStageWon,
+      'lost' => l10n.moduleStageLost,
+      'draft' => l10n.moduleStageDraft,
+      'pending_approval' => l10n.moduleStagePendingApproval,
+      'approved' => l10n.moduleStageApproved,
+      'rejected' => l10n.moduleStageRejected,
+      final value? => value,
+      null => '',
+    };
 
-String _orderExplanation(String status) => switch (status) {
-  'draft' => 'Taslak üzerinde değişiklik yapabilirsiniz.',
-  'pending_approval' =>
-    'Onay için gönderildi. Onaylanana veya reddedilene kadar düzenleme kapalıdır.',
-  'approved' =>
-    'Sipariş taslağı onaylandı. Bu kayıt KartVizyon içindeki onaylı satış kaydıdır.',
-  'rejected' =>
-    'Sipariş taslağı reddedildi. Gerekli düzeltmeleri yapıp yeniden gönderebilirsiniz.',
-  _ => '',
-};
+String _orderExplanation(String status, AppLocalizations l10n) =>
+    switch (status) {
+      'draft' => l10n.moduleOrderDraftExplanation,
+      'pending_approval' => l10n.moduleOrderPendingExplanation,
+      'approved' => l10n.moduleOrderApprovedExplanation,
+      'rejected' => l10n.moduleOrderRejectedExplanation,
+      _ => '',
+    };
 
-String _scanStatus(dynamic value) => switch (value?.toString()) {
-  'pending' => 'Tarama bekliyor',
-  'clean' => 'Temiz',
-  'infected' => 'Zararlı içerik bulundu',
-  'error' => 'Tarama hatası',
-  _ => 'Durum bilinmiyor',
-};
+String _scanStatus(dynamic value, AppLocalizations l10n) =>
+    switch (value?.toString()) {
+      'pending' => l10n.moduleScanStatusPending,
+      'clean' => l10n.moduleScanStatusClean,
+      'infected' => l10n.moduleScanStatusInfected,
+      'error' => l10n.moduleScanStatusError,
+      _ => l10n.moduleScanStatusUnknown,
+    };
 
 IconData _activityIcon(dynamic kind) => switch (kind?.toString()) {
   'visit' => Icons.handshake_outlined,
